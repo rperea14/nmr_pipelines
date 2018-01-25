@@ -2607,7 +2607,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         function obj = trkland_hippocing(obj)
             fprintf('\n%s\n', 'PERFORMING TRKLAND HIPPOCAMPAL CINGULUM: TRKLAND_HIPPOCING():');
-            wasRun=false;
             %Create trkland directory (if doesn't exist)
             if exist(obj.Trkland.root,'dir') == 0
                 exec_cmd = [ 'mkdir -p ' obj.Trkland.root ];
@@ -2812,8 +2811,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         function obj = trkland_cingulum(obj)
             fprintf('\n%s\n', 'PERFORMING TRKLAND CINGULUM: TRKLAND_CINGULUM():');
-            %Create trkland directory (if doesn't exist)
-            wasRun=false;
+             %Create trkland directory (if doesn't exist)
             if exist(obj.Trkland.root,'dir') == 0
                 exec_cmd = [ 'mkdir -p ' obj.Trkland.root ];
                 obj.RunBash(exec_cmd);
