@@ -1,5 +1,6 @@
-function QuickCoReg(ref,mov,list_applyxforms, opt)
-%%% map ref to mov
+function QuickCoReg_rdp(mov,ref,list_applyxforms, prefix)
+%function QuickCoReg_rdp(mov,ref,list_applyxforms, prefix)
+%%% map mov to ref
 
 clear flags
 flags.sep = [4 2]; % default
@@ -19,77 +20,60 @@ if exist(mov,'file') == 0
 end
 
 
-%Check if gzipped...
-[ ~, ~, ext_ref ] = fileparts(ref);
-if strcmp(ext_ref,'.gz')
-    system(['gunzip ' ref ] );
-    VF = spm_vol(strrep(ref,'.gz',''));
-elseif strcmp(ext_ref,'.nii');
-    VF = spm_vol(ref);
-else
-    error([ 'ref is not .nii or .nii.gz -->' ref ]);
-end
 
+%Check if gzipped...
 [ ~, ~, ext_mov ] = fileparts(mov);
 if strcmp(ext_mov,'.gz')
-    system(['gunzip ' mov ] )
-    VG = spm_vol(strrep(mov,'.gz',''));
+    system(['gunzip ' mov ] );
+    mov = strrep(mov,'.gz','');
+    VF = spm_vol(mov);
 elseif strcmp(ext_mov,'.nii')
-    VG = spm_vol(mov);
+    VF = spm_vol(mov);
 else
     error([ 'mov is not .nii or .nii.gz -->' mov ]);
 end
 
-x = spm_coreg(VG,VF,flags);
-M  = spm_matrix(x);
 
-save CoReg.mat x M;
-
-%%% apply the estimated transformations to the header. look at spm_run_coreg_estwrite.m
-M  = spm_matrix(x);
-PO = {VF.fname};
-MM = zeros(4,4,numel(PO));
-MM = spm_get_space(VF.fname);
-spm_get_space(VF.fname, M\MM);
+[ ~, ~, ext_ref ] = fileparts(ref);
+if strcmp(ext_ref,'.gz')
+    system(['gunzip ' ref ] );
+    ref = strrep(ref,'.gz',''); 
+    VG = spm_vol(ref);
+elseif strcmp(ext_ref,'.nii');
+    VG = spm_vol(ref);
+else
+    error([ 'ref is not .nii or .nii.gz -->' ref ]);
+end
 
 %%% reslice the Mean CPS image to T1 space
 clear P;
-P{1}  = mov;
-P{2}  = ref;
+P{1}  = ref;
+P{2}  = mov;
 clear flags;
 flags.mask   = 0;
 flags.mean   = 0;
 flags.interp = 0; % 1 for default (B-spline). 0 for neares neighbout
 flags.which  = 1;
 flags.wrap   = [0 0 0];
-flags.prefix = 'r';
+flags.prefix = 'r_';
 
-if opt==1
-    spm_reslice(P,flags);
-end
 
+spm_reslice(P,flags);
 
 %%GZIP check
 if strcmp(ext_ref,'.gz')
-    system(['gzip ' strrep(ref,'.gz','') ] )
+    system(['gzip ' ref ] );
 end
 
 if strcmp(ext_mov,'.gz')
-    system(['gzip ' strrep(mov,'.gz','') ] )
+    system(['gzip ' mov ]);
 end
-
-
-
-
 
 if nargin==3 && ~isempty(list_applyxforms)
     for ii=1:numel(list_applyxforms)
-        [m h] = openIMG(list_applyxforms{ii});
-        h2 = spm_vol(ref);
-        h.mat = h2(1).mat;
-        spm_write_vol(h,m);
-        
+        %Now reslicing...
         P{2} = list_applyxforms{ii};
         spm_reslice(P,flags);
+        
     end
 end

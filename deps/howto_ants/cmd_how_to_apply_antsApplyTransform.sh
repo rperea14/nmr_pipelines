@@ -1,0 +1,1 @@
+ antsApplyTransforms -d 3  -i <FMRIB58_FA_1mm.nii.gz OR ANY FILE IN FMRIB>  -r 150304_8CS00253_FA.nii.gz -o <OUTPUT.nii> -t FMRIB_2_150304_8CS002531Warp.nii.gz -t FMRIB_2_150304_8CS002530GenericAffine.mat 

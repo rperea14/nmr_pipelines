@@ -2263,7 +2263,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     exec_cmd = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    wasRun=true;
                     obj.RunBash(exec_cmd,44);
+                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step1_prep', obj.Params.Tracula.out.prep_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.prep_check);
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
@@ -2277,7 +2279,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     exec_cmd = ['trac-all -bedp -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    wasRun=true;
                     obj.RunBash(exec_cmd,44);
+                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_bedpostx', obj.Params.Tracula.out.bedp_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.bedp_check);
                     fprintf(['trac-all -bedp file ' bb cc ' exists.\n']);
@@ -2291,7 +2295,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     exec_cmd = ['trac-all -path -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    wasRun=true;
                     obj.RunBash(exec_cmd,44);
+                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_tractall', obj.Params.Tracula.out.path_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.path_check);
                     fprintf(['trac-all -path ' bb cc ' exists.\n']);

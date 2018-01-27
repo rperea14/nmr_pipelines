@@ -11,7 +11,6 @@ classdef dwi_ADRC < dwiMRI_Session
         session_location='/eris/bang/ADRC/Sessions/';
         dcm_location = '/eris/bang/ADRC/DICOM_Archive/';
         gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
-        dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
         
         %sh dependencies:
         sh_gradfile=[ '/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
@@ -19,7 +18,7 @@ classdef dwi_ADRC < dwiMRI_Session
         b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
         init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
         col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/drigo_col2rows.sh';
-        
+        dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
  
         %FreeSurfer Dependencies
         FS_location='/eris/bang/ADRC/FreeSurferv6.0/';
@@ -32,12 +31,12 @@ classdef dwi_ADRC < dwiMRI_Session
         %frois dependencies
         FROIS_dir = '/eris/bang/ADRC/TEMPLATES/FROIS/'
         
-        %Related to T1 (maybe optional?)
+        
+        
+        %Related to T1
         bb = [-78 -112 -70; 78 76 90];
         T1_vox = [ 1 1 1 ] ; 
     end
-    
-    
     methods
         function obj = dwi_ADRC(sessionname,opt)
              %For compiler code:
@@ -62,12 +61,17 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.objectHome = obj.root ; 
             %!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             %!!!!!!!
-      
+            %TEMPORAL VALUES TO BE REPLACED (if changed in properties)
+            tmp_FS_location = obj.FS_location;
+            %!!!!!
+            %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!!
+            
             %Check to see if a *.mat file exists.
             if exist([obj.objectHome filesep sessionname '.mat'],'file')>0
                 load([obj.objectHome filesep sessionname '.mat']);
                 oldroot = obj.root;
                 obj.wasLoaded = true;
+                obj.FS_location = tmp_FS_location;
             else
               %  obj.setMyParams;
               donothing=1;
@@ -467,7 +471,8 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.Tracula.in.nb0 = 28;
             obj.Params.Tracula.in.prefix = 'adrc';
             
-            obj.proc_tracula(); obj.resave();
+          %  obj.proc_tracula();
+            
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %TRACX THAL_2_CORTEX11:
