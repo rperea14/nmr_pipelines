@@ -8,7 +8,8 @@ function WML2dwi(SessionID,projectID,OUTPUT_dir, WML_dir)
 %           projectID: ID of the project (e.g. 'ADRC')
 %           output_DIR: location where the data will be outputted. 
 %           WML_dir: (optional): directory where the WML information exist 
-
+%
+% EXAMPLE TO RUN: WML2dwi('150401_8CSAD00009','ADRC','/autofs/eris/bang/ADRC/PROJECTS/IMGS_WMLs_Tracts')
 if nargin <3
     error(' Not enough arguments. Type ''help WML2dwi'' ');
 end

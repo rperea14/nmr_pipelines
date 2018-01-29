@@ -64,7 +64,6 @@ if nargin==3 && ~isempty(list_applyxforms)
     for ii=1:numel(list_applyxforms)
         %Now reslicing...
         P{2} = list_applyxforms{ii};
-        spm_reslice(P,flags);
-        
+        spm_reslice(P,flags);        
     end
 end

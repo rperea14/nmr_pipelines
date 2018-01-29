@@ -2308,25 +2308,139 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             % **THIS SCRIPT WAS IMPLEMENTED AFTER WMLS WERE CREATED
             % INDEPENDENT OF THIS OBJECT. HENCE, THIS METHOD EXTRACTS
             % PREVIOUSLY RAN 'FLAIR IMAGES' AND 'WHITE MATTER LESIONS
-            % (WMLs)' FROM A PREVIOUS DIRECTORY* 
+            % (WMLs)' FROM A PREVIOUS DIRECTORY*
+            % **ALSO AVAILABLE FOR SINGLE FILES @ pipelines/deps/WML2dwi.m
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_WML2DWI():');
             %Creating WML2dwis root directory:
             for tohide=1:1
                 [a b c ] = fileparts(obj.Params.WMLs2DWI.in.b0);
                 outpath=obj.getPath(a,obj.Params.WMLs2DWI.in.movefiles);
-                obj.Params.WMLs2DWI.out.directory=outpath;
+                %Making sure we have the 'filesep' for the outpath
+                %directory
+                if ~strcmp(outpath(end),filesep)
+                    outpath(end+1) = filesep;
+                end
+                
             end
             
+            %Initialize outdirs:
+            obj.Params.WMLs2DWI.out.dir_name=outpath;
+            obj.Params.WMLs2DWI.out.raw_FLAIR = [ outpath 'raw_' obj.sessionname '_FLAIR.nii'];
+            obj.Params.WMLs2DWI.out.raw_WMLprobmap = [ outpath  'raw_' obj.sessionname '_WMLmap.nii' ];
+            obj.Params.WMLs2DWI.out.raw_b0 = [ outpath  'raw_' obj.sessionname '_b0.nii' ];
+            obj.Params.WMLs2DWI.out.dwi_FLAIR = [ outpath 'dwi_' obj.sessionname '_FLAIR.nii'];
+            obj.Params.WMLs2DWI.out.dwi_WMLprobmap = [ outpath  'dwi_' obj.sessionname '_WMLmap.nii' ];
             
             
+            %Checking that in_files exist and is gzipped
+            for tohide=1:1
+                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
+                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Exiting...')
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
+                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
+                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
+                end
+            end
             
+            %Check gzip for FLAIRS/WMLsmap
+            for tohide=1:1
+                if ~strcmp(obj.Params.WMLs2DWI.in.FLAIR(end-3:end),'.nii')
+                    error(['proc_WMLs2DWI(): obj.Params.WMLs2DWI.in.FLAIR ' ...
+                        ' file extension does not finish in *.nii. Please check (or implement)'])
+                end
+                
+                if ~strcmp(obj.Params.WMLs2DWI.in.WMLprobmap(end-3:end),'.nii')
+                    error(['proc_WMLs2DWI(): obj.Params.in.WMLprobmap ' ...
+                        ' file extension does not finish in *.nii. Please check (or implement)'])
+                end
+            end
+            
+            %Initializing exec_cmd:
+            exec_cmd{:}='EXEC_CMD INIT:';
+            
+            %Copying FLAIRS and WMLprob to obj.Params.WMLs2DWI.out.dir_name
+            for tohide=1:1
+                if ~exist(obj.Params.WMLs2DWI.out.raw_FLAIR,'file')
+                    fprintf('\n copying raw_FLAIR..');
+                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.FLAIR ' ' obj.Params.WMLs2DWI.out.raw_FLAIR ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                end
+                if ~exist(obj.Params.WMLs2DWI.out.raw_WMLprobmap,'file');
+                    fprintf('\n copying raw_WMLmap..');
+                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.WMLprobmap ' ' obj.Params.WMLs2DWI.out.raw_WMLprobmap ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                end
+
+            end
+            
+            %Gunzip b0 (if necessary) and coreg:
+            if ~exist(obj.Params.WMLs2DWI.out.raw_b0,'file')
+                [b0_dir b0_bname b0_ext] = fileparts(obj.Params.WMLs2DWI.in.b0);
+                if strcmp(b0_ext,'.gz') %gunzipping and copying
+                    display('b0 is gzipped. gunzipping and copying...')
+                    exec_cmd{:,end+1}=(['gunzip ' obj.Params.WMLs2DWI.in.b0]);
+                    obj.RunBash(exec_cmd{:,end})
+                    exec_cmd{:,end+1}=(['cp ' b0_dir filesep b0_bname  ' ' obj.Params.WMLs2DWI.out.raw_b0]);
+                    obj.RunBash(exec_cmd{:,end});
+                    exec_cmd{:,end+1}=(['gzip ' b0_dir filesep b0_bname]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                else %copying only
+                    display('b0 is gzipped. gunzipping and copying...')
+                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.b0 ' ' obj.Params.WMLs2DWI.out.raw_b0 ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                end
+            end
+            if exist(obj.Params.WMLs2DWI.out.dwi_WMLprobmap,'file') == 0
+                %CoReg Now:
+                obj.proc_QuickCoReg(obj.Params.WMLs2DWI.out.raw_FLAIR, ...
+                    obj.Params.WMLs2DWI.out.raw_b0,{obj.Params.WMLs2DWI.out.raw_WMLprobmap},'dwi_')
+                exec_cmd{:,end+1} = ['obj.proc_QuickCoReg(obj.Params.WMLs2DWI.out.raw_FLAIR,' ...
+                    obj.Params.WMLs2DWI.out.raw_b0,{obj.Params.WMLs2DWI.out.raw_WMLprobmap},'dwi_'];
+                
+                %Replace 'dwi_raw' prefix with 'dwi_':
+                [ FLAIR_dir FLAIR_fname FLAIR_ext ] = fileparts(obj.Params.WMLs2DWI.out.raw_FLAIR);
+                exec_cmd{:,end+1}=['mv ' FLAIR_dir filesep 'dwi_' FLAIR_fname  FLAIR_ext ...
+                    ' ' obj.Params.WMLs2DWI.out.dwi_FLAIR ];
+                obj.RunBash(exec_cmd{:,end});
+                
+                [ WMLprobmap_dir WMLprobmap_fname WMLprobmap_ext ] = fileparts(obj.Params.WMLs2DWI.out.raw_WMLprobmap);
+                exec_cmd{:,end+1}=['mv ' WMLprobmap_dir filesep 'dwi_' WMLprobmap_fname WMLprobmap_ext ...
+                    ' ' obj.Params.WMLs2DWI.out.dwi_WMLprobmap ];
+                obj.RunBash(exec_cmd{:,end});
+                
+                %Remove spm_nans now:
+                if exist(obj.Params.WMLs2DWI.out.dwi_FLAIR,'file')
+                    obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_FLAIR);
+                    exec_cmd{:,end+1} = ['Removing spm_nans dwi_FLAIR: obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_FLAIR) ' ];
+                else
+                    warning('obj.Params.WMLs2DWI.out.dwi_FLAIR does not exist!');
+                end
+                if exist(obj.Params.WMLs2DWI.out.dwi_WMLprobmap,'file')
+                    obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_WMLprobmap);
+                    exec_cmd{:,end+1} =  ['Removing spm_nans dwi_WMLprobmap: obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_WMLprobmap) ' ];
+                else
+                    warning('obj.Params.WMLs2DWI.out.dwi_WMLprobmap does not exist!')
+                end
+                wasRun=true;
+                 obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
+            end
             
         end
         
         function obj = proc_tracula(obj)
             % try
             wasRun=false;
+            exec_cmd{:}='INIT proc_tracula()_step1 exec_cmd:';
             fprintf('\n%s\n', 'PERFORMING PROC_TRACULA():');
             %Creating root directory:
             for tohide=1:1
@@ -2337,21 +2451,23 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if strcmp(obj.projectID,'HAB')
                     replaced_outpath = outpath ;
                     outpath = [ '/eris/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
-                    system(['mkdir -p ' outpath ]);
-                    system(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
+                    exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
+                    obj.RunBash(exec_cmd{:,end});
                 end
             end
             %Create the necessary dcmirc file:
             for tohide=1:1
                 if exist(obj.Params.Tracula.out.dcmirc,'file') == 0
-                    exec_cmd = [ 'cat ' obj.Params.Tracula.in.dcmrirc ' | sed s%''<SUBJECTID>''%' ...
+                    exec_cmd{:,end+1} = [ 'cat ' obj.Params.Tracula.in.dcmrirc ' | sed s%''<SUBJECTID>''%' ...
                         obj.sessionname '%g | sed s%''<DTROOT>''%' outpath ...
                         '%g | sed s%''<FSSUBJECTSDIR>''%' obj.Params.Tracula.in.FSDIR ...
                         '%g | sed s%''<BVECFILE>''%' obj.Params.Tracula.in.bvec ...
                         '%g | sed s%''<BVALFILE>''%' obj.Params.Tracula.in.bval ...
                         '%g | sed s%''<NB0>''%' num2str(obj.Params.Tracula.in.nb0) ...
                         '%g > ' obj.Params.Tracula.out.dcmirc ];
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{:,end});
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.dcmirc);
                     fprintf(['The file ' bb cc ' exists.\n']);
@@ -2374,15 +2490,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
-                    exec_cmd = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    exec_cmd{:,end+1} = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    obj.RunBash(exec_cmd{:,end},44);
                     wasRun=true;
-                    obj.RunBash(exec_cmd,44);
                     obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step1_prep', obj.Params.Tracula.out.prep_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.prep_check);
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
                 end
                 %Step 2: Trac-all -prep
+                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step2_bedpostx exec_cmd:';
                 obj.Params.Tracula.out.bedp_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dmri.bedpostX' filesep 'mean_fsumsamples.nii.gz' ];
                 if exist(obj.Params.Tracula.out.bedp_check, 'file') == 0
@@ -2390,15 +2507,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
-                    exec_cmd = ['trac-all -bedp -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    exec_cmd{:,end+1} = ['trac-all -bedp -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
                     wasRun=true;
-                    obj.RunBash(exec_cmd,44);
+                    obj.RunBash(exec_cmd{:,end},44);
                     obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_bedpostx', obj.Params.Tracula.out.bedp_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.bedp_check);
                     fprintf(['trac-all -bedp file ' bb cc ' exists.\n']);
                 end
                 %Step 3: Trac-all -path
+                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step3_tract-all exec_cmd:';
                 obj.Params.Tracula.out.path_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dpath' filesep 'merged_avg33_mni_bbr.mgz' ];
                 if exist(obj.Params.Tracula.out.path_check,'file') == 0
@@ -2406,9 +2524,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
-                    exec_cmd = ['trac-all -path -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    exec_cmd{:,end+1} = ['trac-all -path -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
                     wasRun=true;
-                    obj.RunBash(exec_cmd,44);
+                    obj.RunBash(exec_cmd{:,end},44);
                     obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_tractall', obj.Params.Tracula.out.path_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.path_check);
@@ -4109,126 +4227,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
-        %WML2DWI DEPENDENT METHOD:
-        function obj = WML2dwi(SessionID,projectID,OUTPUT_dir, WML_dir)
-% %            
-% %                 The goal is to coregister white matter lesions (WMLs) developed by the LST
-% %                 algorithm (http://www.applied-statistics.de/lst.html) into diffusion
-% %                 imaging space.
-% %                 
-% %                 INPUT:    SessionID: ID of the participants (e.g. '150401_8CSAD00009')
-% %                 projectID: ID of the project (e.g. 'ADRC')
-% %                 output_DIR: location where the data will be outputted.
-% %                 WML_dir: (optional): directory where the WML information exist
-%                 
-%                 if nargin <3
-%                     error(' Not enough arguments. Type ''help WML2dwi'' ');
-%                 end
-%                 
-%                 if nargin <4
-%                     if strcmp(projectID,'ADRC')
-%                         WML_dir='/eris/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/'
-%                     elseif strcmp(projectID,'HAB')
-%                         WML_dir='/cluster/hab/HAB/Project1/wmh_LST_LPA/'
-%                         display(['WML_dir is now: ' WML_dir 'but need to respecify...']);
-%                         error('HAB project have crosssectional and longitudinal WML processes separately. Please specify')
-%                     else
-%                         error(['projectID (2nd argument): ' projectID ' has not been implemented'])
-%                     end
-%                 else
-%                     display('Make sure you append the las ''/ in the directory ');
-%                     pause(1);
-%                 end
-%                 
-%                 
-%                 
-%                 INITIALIZE VARIABLES
-%                 if strcmp(OUTPUT_dir(end),'/') %check if the slash is present...
-%                     OUTPUT_dir=[OUTPUT_dir SessionID filesep ] ;
-%                 else
-%                     OUTPUT_dir=[OUTPUT_dir filesep SessionID filesep ] ;
-%                 end
-%                 system(['mkdir -p ' OUTPUT_dir ]);
-%                 
-%                 
-%                 in_T1_fname=[WML_dir 'm' SessionID '_FLAIR.nii']; % ',' stands for bias correction image
-%                 in_WML_probmap=[WML_dir 'ples_lpa_m' SessionID '_FLAIR.nii'];
-%                 
-%                 out_T1_fname=[OUTPUT_dir 'm' SessionID '_FLAIR.nii']; % ',' stands for bias correction image
-%                 r_T1_fname=[OUTPUT_dir 'r_m' SessionID '_FLAIR.nii'];
-%                 out_WML_probmap=[OUTPUT_dir 'ples_lpa_m' SessionID '_FLAIR.nii'];
-%                 r_WML_probmap=[OUTPUT_dir 'r_ples_lpa_m' SessionID '_FLAIR.nii'];
-%                 
-%                 
-%                 if strcmp(projectID,'ADRC')
-%                     in_b0=['/eris/bang/ADRC/Sessions/' SessionID '/DWIs/06_CoRegDWIs/combined_preproc_b0.nii.gz'];
-%                     tmp_out_b0=[OUTPUT_dir 'b0_' SessionID '.nii.gz'];
-%                     out_b0=[OUTPUT_dir 'b0_' SessionID '.nii'];
-%                 elseif strcmp(projectID,'HAB')
-%                     error('in_bo has not been implemented to HAB dataset yet...')
-%                 end
-%                 
-%                 
-%                 Checking if 'in' files exist:
-%                 fprintf('\nChecking ''in'' file...');
-%                 if exist(in_T1_fname,'file')
-%                     display('in_T1_fname exists!')
-%                 end
-%                 
-%                 if exist(in_WML_probmap,'file')
-%                     display('in_WML_probmap exists!')
-%                 end
-%                 
-%                 if exist(in_b0,'file')
-%                     display('in_b0 exists!')
-%                 end
-%                 fprintf('done checking\n');
-%                 
-%                 Checking if 'out' files exist:
-%                 fprintf('\nChecking ''out'' file...');
-%                 if exist(out_T1_fname,'file')
-%                     display('out_T1_fname exists! Skipping copy!');
-%                 else
-%                     display('copying T1_fname...');
-%                     system(['cp ' in_T1_fname ' ' out_T1_fname]);
-%                     fprintf('done.\n');
-%                 end
-%                 
-%                 if exist(out_WML_probmap,'file')
-%                     display('out_WML_probmap exists! Skipping copy');
-%                 else
-%                     display('copying WML_probmap...');
-%                     system(['cp ' in_WML_probmap ' ' out_WML_probmap]);
-%                     fprintf('done.\n');
-%                 end
-%                 
-%                 if exist(out_b0,'file')
-%                     display('out_b0 exists! Skipping copy');
-%                 else
-%                     display('copying b0...');
-%                     system(['cp ' in_b0 ' ' tmp_out_b0]);
-%                     system(['gunzip ' tmp_out_b0  ]);
-%                     fprintf('done.\n');
-%                 end
-%                 fprintf('done checking \n');
-%                 
-%             end
-%             
-%             
-%             
-%             
-%             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%             IMPLEMENTATION STARTING NOW...
-%                 QuickCoReg_rdp(out_b0,out_T1_fname,{out_WML_probmap})
-%             if ~exist(r_WML_probmap)
-%                 QuickCoReg_rdp(out_T1_fname,out_b0,{out_WML_probmap})
-%                 Removing nans:
-%                 rm_spm_nans(r_T1_fname);
-%                 rm_spm_nans(r_WML_probmap);
-%             else
-%                 display([ r_WML_probmap ' exists. Skipping...'])
-%             end
-        end
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
             %Code values:
@@ -4315,7 +4313,106 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
+        %COREG METHODS:
+        function obj = proc_QuickCoReg(obj,mov,ref,list_applyxforms, prefix)
+            %function proc_QuickCoReg(mov,ref,list_applyxforms, prefix)
+            
+            %Check if files exists!
+            if exist(ref,'file') == 0
+                error([ ref ' does not exist']);
+            end
+            
+            if exist(mov,'file') == 0
+                error([ mov ' does not exist']);
+            end
+            
+            if nargin > 3
+                for ijk=1:numel(list_applyxforms)
+                    if exist(list_applyxforms{ijk},'file') == 0 
+                        error(['proc_QuickCoReg: ' list_applyxforms{ijk} ' not found!' ]);
+                    end
+                end
+            end
+            
+            %Check if gzipped...
+            [ ~, ~, ext_mov ] = fileparts(mov);
+            if strcmp(ext_mov,'.gz')
+                system(['gunzip ' mov ] );
+                mov = strrep(mov,'.gz','');
+                VF = spm_vol(mov);
+            elseif strcmp(ext_mov,'.nii')
+                VF = spm_vol(mov);
+            else
+                error([ 'mov is not .nii or .nii.gz -->' mov ]);
+            end
+            
+            
+            [ ~, ~, ext_ref ] = fileparts(ref);
+            if strcmp(ext_ref,'.gz')
+                system(['gunzip ' ref ] );
+                ref = strrep(ref,'.gz','');
+                VG = spm_vol(ref);
+            elseif strcmp(ext_ref,'.nii');
+                VG = spm_vol(ref);
+            else
+                error([ 'ref is not .nii or .nii.gz -->' ref ]);
+            end
+            
+            %%% reslice the Mean CPS image to T1 space
+            clear P;
+            P{1}  = ref;
+            P{2}  = mov;
+            clear flags;
+            flags.mask   = 0;
+            flags.mean   = 0;
+            flags.interp = 0; % 1 for default (B-spline). 0 for neares neighbout
+            flags.which  = 1;
+            flags.wrap   = [0 0 0];
+            if nargin >4
+                flags.prefix=prefix;
+            else
+                display('Using default prefix ''r_'' ');
+                pause(2);
+                flags.prefix = 'r_';
+            end
+            
+            spm_reslice(P,flags);
+            
+            %%GZIP check
+            if strcmp(ext_ref,'.gz')
+                system(['gzip ' ref ] );
+            end
+            
+            if strcmp(ext_mov,'.gz')
+                system(['gzip ' mov ]);
+            end
+            
+            if nargin>3 && ~isempty(list_applyxforms)
+                for ii=1:numel(list_applyxforms)
+                    %Now reslicing...
+                    P{2} = list_applyxforms{ii};
+                    spm_reslice(P,flags);
+                end
+            end
+        end
         
+        function obj = proc_remove_spm_nans(obj,f_name)
+            %Replaces NaNs with 0s so images can be viewed in other non-spm
+            %related viewers (e.g. fslview)
+            
+            %No need to check for *.nii.gz as this method purpose is to
+            %remove spm_nans hence the f_names passed should be *.nii
+            %always (SPM output/input does not support *.nii.gz)
+            
+            display(['Removing NaNs for: ' f_name ])
+            V = spm_vol(f_name);
+            Y = spm_read_vols(V);
+            Y(isnan(Y))  = 0 ;
+            spm_write_vol(V,Y);
+            fprintf(' ...done\n');
+        end
+        
+        %MISC FUNCTIONALITIES
         function outpath = getPath(obj,a,movefiles)
             if isempty(movefiles)
                 outpath = [a filesep movefiles filesep];
@@ -4338,8 +4435,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             outpath = [pwd filesep];
             cd(hm);
         end
-        
-        
         function out = UserTime(obj)
             tmp = pwd;
             cd ~

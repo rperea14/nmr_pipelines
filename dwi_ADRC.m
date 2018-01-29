@@ -97,10 +97,8 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.CommonPreProc();
                 %Start the CommonPostProc:
                 %obj.CommonPostProc();
-                fprintf(['\n If first time running, please run obj.CommonPostProc() after this'])
-                
+                fprintf(['\n>>*If first time running, please run obj.CommonPostProc() after this! \n<<\n'])
             end
-           
         end
         
         function obj=setMyParams(obj)
@@ -337,7 +335,6 @@ classdef dwi_ADRC < dwiMRI_Session
         function obj = CommonPostProc(obj)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Creating Fornix TRKLAND
-            %~~~~~~ TRKLAND PROCESSING:
             %~~~~~~~ TRACULA (and implicit functionality of bedpostx):
             for tohide=1:1
             obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -360,13 +357,12 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 obj.Params.WMLs2DWI.in.dir = '/eris/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/' ;
                 obj.Params.WMLs2DWI.in.FLAIR = [obj.Params.WMLs2DWI.in.dir 'm' obj.sessionname '_FLAIR.nii' ];
-                obj.Params.WMLs2DWI.in.WMLprob = [obj.Params.WMLs2DWI.in.dir 'm' ...
+                obj.Params.WMLs2DWI.in.WMLprobmap = [obj.Params.WMLs2DWI.in.dir 'ples_lpa_m' ...
                     obj.sessionname '_FLAIR.nii' ];
-                obj.proc_WMLs2DWI(); obj.resave();
+                obj.proc_WMLs2DWI(); %obj.resave();
             end
         
-            
-            %~~~~~~~ Trkland methods:
+            %~~~~~~ TRKLAND PROCESSING:
             obj.Trkland.root = [ obj.root  'post_TRKLAND' filesep ];
             % TRKLAND_FX:
             for tohide=1:1
@@ -465,9 +461,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.cingulum.in.n_interp = 32;
                 trkland_cingulum(obj); obj.resave();
             end
-            
-            
-            
             
             %% [ DEPRECATED METHODS ]
             %~~~~~~ TRKLAND_DEPENDENT:
