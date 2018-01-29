@@ -96,8 +96,9 @@ classdef dwi_ADRC < dwiMRI_Session
                 %Start the CommonPreProc:
                 obj.CommonPreProc();
                 %Start the CommonPostProc:
-                obj.CommonPostProc();
-                obj.resave();
+                %obj.CommonPostProc();
+                fprintf(['\n If first time running, please run obj.CommonPostProc() after this'])
+                
             end
            
         end
@@ -334,12 +335,40 @@ classdef dwi_ADRC < dwiMRI_Session
         end
   
         function obj = CommonPostProc(obj)
-            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Creating Fornix TRKLAND
-            %TRKLAND
+            %~~~~~~ TRKLAND PROCESSING:
+            %~~~~~~~ TRACULA (and implicit functionality of bedpostx):
+            for tohide=1:1
+            obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
+            obj.Params.Tracula.in.fn = obj.Params.CoRegMultiple.out.combined_fn ;
+            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir 'dcmrirc.template' ];
+            obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
+            obj.Params.Tracula.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs ;
+            obj.Params.Tracula.in.bval = obj.Params.CoRegMultiple.out.combined_bvals ;
+            obj.Params.Tracula.in.nb0 = 28;
+            obj.Params.Tracula.in.prefix = 'adrc';
+            
+            obj.proc_tracula(); obj.resave();
+            end
+           
+            
+            %~~~~~~~ White matter Lesions 2 DWI space:
+            for tohide=1:1
+                obj.Params.WMLs2DWI.in.movefiles = ['..' filesep 'post_WML2DWI' ];
+                obj.Params.WMLs2DWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
+                
+                obj.Params.WMLs2DWI.in.dir = '/eris/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/' ;
+                obj.Params.WMLs2DWI.in.FLAIR = [obj.Params.WMLs2DWI.in.dir 'm' obj.sessionname '_FLAIR.nii' ];
+                obj.Params.WMLs2DWI.in.WMLprob = [obj.Params.WMLs2DWI.in.dir 'm' ...
+                    obj.sessionname '_FLAIR.nii' ];
+                obj.proc_WMLs2DWI(); obj.resave();
+            end
+        
+            
+            %~~~~~~~ Trkland methods:
             obj.Trkland.root = [ obj.root  'post_TRKLAND' filesep ];
-            %FX_TRKLAND:
+            % TRKLAND_FX:
             for tohide=1:1
                 obj.Trkland.fx.in.movefiles = ['..' filesep 'post_TRKLAND' ];
                 %b0 params:
@@ -410,9 +439,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.trkland_fx(); obj.resave();
             end
             
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRKLAND_HIPPOCING:
+            % [TO MODIFY ROIs/ROAs] TRKLAND_HIPPOCING:
             for tohide=1:1
                 obj.Trkland.hippocing.in.hippo_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Hippocampus.nii.gz');
                 obj.Trkland.hippocing.in.hippo_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Right-Hippocampus.nii.gz');
@@ -424,9 +451,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.trkland_hippocing(); obj.resave();
             end
             
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRKLAND_CINGULUM:
+            %  [TO MODIFY ROIs/ROAs] TRKLAND_CINGULUM:
             for tohide=1:1
                 obj.Trkland.cingulum.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
                 obj.Trkland.cingulum.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
@@ -441,36 +466,27 @@ classdef dwi_ADRC < dwiMRI_Session
                 trkland_cingulum(obj); obj.resave();
             end
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRKLAND_ATR:
-            for tohide=1:1
-                obj.Trkland.atr.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
-                obj.Trkland.atr.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
-                obj.Trkland.atr.in.thalamus_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Thalamus-Proper.nii.gz');
-                obj.Trkland.atr.in.thalamus_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Right-Thalamus-Proper.nii.gz');
-                
-              %Under DEVELOPMENT:
-              %I haven't found an optimal trimming technique...yet
-              %trkland_atr(obj)
-            end
             
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRACULA (and implicit functionality of bedpostx):
-            for tohide=1:1
-            obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
-            obj.Params.Tracula.in.fn = obj.Params.CoRegMultiple.out.combined_fn ;
-            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir 'dcmrirc.template' ];
-            obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
-            obj.Params.Tracula.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs ;
-            obj.Params.Tracula.in.bval = obj.Params.CoRegMultiple.out.combined_bvals ;
-            obj.Params.Tracula.in.nb0 = 28;
-            obj.Params.Tracula.in.prefix = 'adrc';
             
-            obj.proc_tracula(); obj.resave();
-            end
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRACX THAL_2_CORTEX11:
+            %% [ DEPRECATED METHODS ]
+            %~~~~~~ TRKLAND_DEPENDENT:
+            % [ DEPRECATED ] TRKLAND_ATR:
+             for tohide=1:1
+%                 CANNOT USE TRKLAND_ATR APPROACH FOR THE ATR TRACTS AS
+%                 A MOST ROBUST STREAMLINE CANNOT BE ISOLATED
+%                 obj.Trkland.atr.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
+%                 obj.Trkland.atr.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
+%                 obj.Trkland.atr.in.thalamus_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Thalamus-Proper.nii.gz');
+%                 obj.Trkland.atr.in.thalamus_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Right-Thalamus-Proper.nii.gz');
+%                 
+%               %Under DEVELOPMENT:
+%               %I haven't found an optimal trimming technique...yet
+%               %trkland_atr(obj)
+             end
+             
+            %~~~~~~ TRACULA DEPENDENT:
+            % [ DEPRECATED ] TRACX THAL_2_CORTEX11:
             for tohide=1:1
 %                 obj.Params.tracx_thal2ctx11.in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 obj.Params.tracx_thal2ctx11.in.FSaparc_dir = [ fileparts(obj.Params.FS2dwi.out.fn_aparc2009)  filesep 'aparc_aseg' filesep];
@@ -479,10 +495,7 @@ classdef dwi_ADRC < dwiMRI_Session
 %               
                %obj.proc_tracx2thal11();
             end
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRACX THAL_2_PAPEZ (2 frontals, 1 cingualte, 3 temporals):
+            % [DEPRECATED ] TRACX THAL_2_PAPEZ (2 frontals, 1 cingualte, 3 temporals):
             for tohide=1:1
 %                 obj.Params.tracx_thal2papez.in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 obj.Params.tracx_thal2papez.in.FSaparc_dir = [ fileparts(obj.Params.FS2dwi.out.fn_aparc2009)  filesep 'aparc_aseg' filesep];
@@ -491,11 +504,7 @@ classdef dwi_ADRC < dwiMRI_Session
 %                 
 %                 %obj.proc_tracx2papez();
             end
-            
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %TRACX THAL_2_DMN:
+            % [ DEPRECATED ] TRACX THAL_2_DMN:
             for tohide=1:1
 %                 obj.Params.tracx_thal2dmn.in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 obj.Params.tracx_thal2dmn.in.DMN_dir = obj.FROIS_dir ; 
@@ -505,15 +514,18 @@ classdef dwi_ADRC < dwiMRI_Session
 %                 obj.proc_tracx2DMN();
             end
             
+            %~~~~~~~ AFQ (https://github.com/yeatmanlab/AFQ/wiki) ADAPTABILITY DEPRECATED 
+            %(NO MANUAL AC-PC WHICH IS NECESSARY FOR AFQ TO WORK)
+            % [DEPRECATED ] AFQ:
+            for tohide=1:1
+                % obj.Params.AFQ.in.movefiles = ['..' filesep 'post_AFQ' ];
+                % obj.Params.AFQ.in.dwi = obj.Params.CoRegMultiple.out.combined_fn ;
+                % obj.Params.AFQ.in.T1 = obj.T1 ;
+                %
+                % obj.proc_AFQ();
+            end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %AFQ:
-%             for tohide=1:1
-%             obj.Params.AFQ.in.movefiles = ['..' filesep 'post_AFQ' ];
-%             obj.Params.AFQ.in.dwi = obj.Params.CoRegMultiple.out.combined_fn ;
-%             obj.Params.AFQ.in.T1 = obj.T1 ;
-%             
-%             %obj.proc_AFQ();
-%            end
+            
         end
       
     end

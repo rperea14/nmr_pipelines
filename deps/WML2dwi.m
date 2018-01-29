@@ -1,6 +1,6 @@
 function WML2dwi(SessionID,projectID,OUTPUT_dir, WML_dir)
 %output_DIR = function WML2dwi(SessionID,projectID)
-%The goal is to morph white matter lesions (WMLs) developed by the LST
+%The goal is to coregister white matter lesions (WMLs) developed by the LST
 %algorithm (http://www.applied-statistics.de/lst.html) into diffusion
 %imaging space. 
 %
@@ -8,9 +8,6 @@ function WML2dwi(SessionID,projectID,OUTPUT_dir, WML_dir)
 %           projectID: ID of the project (e.g. 'ADRC')
 %           output_DIR: location where the data will be outputted. 
 %           WML_dir: (optional): directory where the WML information exist 
-
-
-
 
 if nargin <3
     error(' Not enough arguments. Type ''help WML2dwi'' ');

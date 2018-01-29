@@ -1,6 +1,6 @@
 function WML2dwi(SessionID,projectID,OUTPUT_dir, WML_dir)
 %output_DIR = function WML2dwi(SessionID,projectID)
-%The goal is to morph white matter lesions (WMLs) developed by the LST
+%The goal is to coregister white matter lesions (WMLs) developed by the LST
 %algorithm (http://www.applied-statistics.de/lst.html) into diffusion
 %imaging space. 
 %
@@ -8,9 +8,6 @@ function WML2dwi(SessionID,projectID,OUTPUT_dir, WML_dir)
 %           projectID: ID of the project (e.g. 'ADRC')
 %           output_DIR: location where the data will be outputted. 
 %           WML_dir: (optional): directory where the WML information exist 
-
-
-
 
 if nargin <3
     error(' Not enough arguments. Type ''help WML2dwi'' ');
@@ -35,10 +32,19 @@ end
 
 
 %INITIALIZE VARIABLES
+if strcmp(OUTPUT_dir(end),'/') %check if the slash is present...
+    OUTPUT_dir=[OUTPUT_dir SessionID filesep ] ;
+else
+    OUTPUT_dir=[OUTPUT_dir filesep SessionID filesep ] ;
+end
+system(['mkdir -p ' OUTPUT_dir ]);
+
+
 in_T1_fname=[WML_dir 'm' SessionID '_FLAIR.nii']; % ',' stands for bias correction image
+in_WML_probmap=[WML_dir 'ples_lpa_m' SessionID '_FLAIR.nii'];
+
 out_T1_fname=[OUTPUT_dir 'm' SessionID '_FLAIR.nii']; % ',' stands for bias correction image
 r_T1_fname=[OUTPUT_dir 'r_m' SessionID '_FLAIR.nii'];
-in_WML_probmap=[WML_dir 'ples_lpa_m' SessionID '_FLAIR.nii'];
 out_WML_probmap=[OUTPUT_dir 'ples_lpa_m' SessionID '_FLAIR.nii'];
 r_WML_probmap=[OUTPUT_dir 'r_ples_lpa_m' SessionID '_FLAIR.nii'];
 
@@ -108,8 +114,10 @@ if ~exist(r_WML_probmap)
     %Removing nans:
     rm_spm_nans(r_T1_fname);
     rm_spm_nans(r_WML_probmap);
+else
+   display([ r_WML_probmap ' exists. Skipping...']) 
 end
-AA=1;
+
 
 
 
