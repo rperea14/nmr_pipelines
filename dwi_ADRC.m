@@ -359,7 +359,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Params.WMLs2DWI.in.FLAIR = [obj.Params.WMLs2DWI.in.dir 'm' obj.sessionname '_FLAIR.nii' ];
                 obj.Params.WMLs2DWI.in.WMLprobmap = [obj.Params.WMLs2DWI.in.dir 'ples_lpa_m' ...
                     obj.sessionname '_FLAIR.nii' ];
-                obj.proc_WMLs2DWI(); %obj.resave();
+                obj.proc_WMLs2DWI(); obj.resave();
             end
         
             %~~~~~~ TRKLAND PROCESSING:

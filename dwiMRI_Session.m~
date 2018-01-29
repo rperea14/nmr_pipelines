@@ -2324,6 +2324,28 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
             end
             
+            %Checking that in_files exist and is gzipped
+            for tohide=1:1
+                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Exiting...')
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
+                    obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmaptrue;
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,'');
+                    return
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
+                    obj.Params.WMLs2DWI.NoWMLprob=true;
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,'');
+                    return 
+                end
+            end
+            
             %Initialize outdirs:
             obj.Params.WMLs2DWI.out.dir_name=outpath;
             obj.Params.WMLs2DWI.out.raw_FLAIR = [ outpath 'raw_' obj.sessionname '_FLAIR.nii'];
@@ -2332,21 +2354,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.WMLs2DWI.out.dwi_FLAIR = [ outpath 'dwi_' obj.sessionname '_FLAIR.nii'];
             obj.Params.WMLs2DWI.out.dwi_WMLprobmap = [ outpath  'dwi_' obj.sessionname '_WMLmap.nii' ];
             
-            
-            %Checking that in_files exist and is gzipped
-            for tohide=1:1
-                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
-                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Exiting...')
-                end
-                
-                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
-                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
-                end
-                
-                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
-                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
-                end
-            end
             
             %Check gzip for FLAIRS/WMLsmap
             for tohide=1:1
@@ -2488,8 +2495,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist(obj.Params.Tracula.out.prep_check,'file') == 0
                     %Remove IsRunning.trac if exists
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
-                        exec_cmd{:,end+1}=(['rm '  obj.Params.Tracula.out.isrunning ]);
-                        obj.RunBash(exec_cmd{:,end});
+                        system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     exec_cmd{:,end+1} = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
                     obj.RunBash(exec_cmd{:,end},44);
@@ -2500,7 +2506,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
                 end
                 %Step 2: Trac-all -prep
-                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step2 exec_cmd:';
+                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step2_bedpostx exec_cmd:';
                 obj.Params.Tracula.out.bedp_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dmri.bedpostX' filesep 'mean_fsumsamples.nii.gz' ];
                 if exist(obj.Params.Tracula.out.bedp_check, 'file') == 0
@@ -2517,6 +2523,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['trac-all -bedp file ' bb cc ' exists.\n']);
                 end
                 %Step 3: Trac-all -path
+                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step3_tract-all exec_cmd:';
                 obj.Params.Tracula.out.path_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dpath' filesep 'merged_avg33_mni_bbr.mgz' ];
                 if exist(obj.Params.Tracula.out.path_check,'file') == 0
@@ -2524,9 +2531,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
-                    exec_cmd = ['trac-all -path -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                    exec_cmd{:,end+1} = ['trac-all -path -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
                     wasRun=true;
-                    obj.RunBash(exec_cmd,44);
+                    obj.RunBash(exec_cmd{:,end},44);
                     obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_tractall', obj.Params.Tracula.out.path_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.path_check);

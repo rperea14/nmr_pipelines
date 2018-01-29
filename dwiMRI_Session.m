@@ -2324,6 +2324,28 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
             end
             
+            %Checking that in_files exist and is gzipped
+            for tohide=1:1
+                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Exiting...')
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
+                    obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No FLAIR FOUND!' , wasRun,'');
+                    return
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No WMLprobmap!' , wasRun,'');
+                    return 
+                end
+            end
+            
             %Initialize outdirs:
             obj.Params.WMLs2DWI.out.dir_name=outpath;
             obj.Params.WMLs2DWI.out.raw_FLAIR = [ outpath 'raw_' obj.sessionname '_FLAIR.nii'];
@@ -2332,21 +2354,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.WMLs2DWI.out.dwi_FLAIR = [ outpath 'dwi_' obj.sessionname '_FLAIR.nii'];
             obj.Params.WMLs2DWI.out.dwi_WMLprobmap = [ outpath  'dwi_' obj.sessionname '_WMLmap.nii' ];
             
-            
-            %Checking that in_files exist and is gzipped
-            for tohide=1:1
-                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
-                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Exiting...')
-                end
-                
-                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
-                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
-                end
-                
-                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
-                    error('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
-                end
-            end
             
             %Check gzip for FLAIRS/WMLsmap
             for tohide=1:1
@@ -4290,18 +4297,22 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         function obj = UpdateHist_v2(obj,Params,process_to_update,checkFile,wasRun,exec_cmd)
            
-            if wasRun
-                info = regexprep(sprintf('%-30s%s', [process_to_update ':'], obj.UserTime),'\n','');
-            else
-                %%% For Linux
-                %Gets you the username:
-                [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
-                %Gets you the time:
-                [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
-                theTime = datestr(theTime(1:end-11));
-                info = regexprep(sprintf('%-30s%s', [process_to_update ':'], ['Last run by (file created) ' theUser ' on ' theTime]),'\n','');
-            end
             
+            if isempty(exec_cmd)
+                  info = regexprep(sprintf('%-30s%s', [process_to_update ':'], [checkFile]),'\n','')
+            else
+                if wasRun
+                    info = regexprep(sprintf('%-30s%s', [process_to_update ':'], obj.UserTime),'\n','');
+                else
+                    %%% For Linux
+                    %Gets you the username:
+                    [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
+                    %Gets you the time:
+                    [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
+                    theTime = datestr(theTime(1:end-11));
+                    info = regexprep(sprintf('%-30s%s', [process_to_update ':'], ['Last run by (file created) ' theUser ' on ' theTime]),'\n','');
+                end
+            end
             Params.lastRun = info;
             Params.exec_cmd=exec_cmd;
             [ind assume] = obj.CheckHist(Params,wasRun);
