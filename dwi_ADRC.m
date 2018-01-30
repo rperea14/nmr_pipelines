@@ -16,9 +16,9 @@ classdef dwi_ADRC < dwiMRI_Session
         %sh dependencies:
         sh_gradfile=[ '/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5 '];
-        b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
-        col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/drigo_col2rows.sh';
+        b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
+        init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
         
  
         %FreeSurfer Dependencies
@@ -27,7 +27,6 @@ classdef dwi_ADRC < dwiMRI_Session
         
         %trkland dependencies:
         fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
-        
         
         %frois dependencies
         FROIS_dir = '/eris/bang/ADRC/TEMPLATES/FROIS/'
@@ -95,8 +94,8 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.exec_onecmd = '' ;
                 %Start the CommonPreProc:
                 obj.CommonPreProc();
-                %Start the CommonPostProc:
-                %obj.CommonPostProc();
+                %Start the CommonPostProc (commenting it? Maybe, maybe not?):
+                obj.CommonPostProc();
                 fprintf(['\n>>*If first time running, please run obj.CommonPostProc() after this! \n<<\n'])
             end
         end
@@ -300,9 +299,9 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.FS2dwi.in.b0 =  {obj.Params.CoRegMultiple.out.combined_bet} ; % Removed due to nonskulls stripping --> {obj.Params.CoRegMultiple.out.combined_b0} ; 
             obj.Params.FS2dwi.in.aparcaseg = obj.Params.FreeSurfer.out.aparcaseg ; 
             
-            obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir 'FS_aparc.txt' ] ; 
-            obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir 'FS_aparc2009.txt' ] ; 
-            obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir 'FS_hippolabels_bil.txt' ] ;
+            obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir filesep 'FS_DEPS' filesep  'FS_aparc.txt' ] ; 
+            obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_aparc2009.txt' ] ; 
+            obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_hippolabels_bil.txt' ] ;
             
             
             
@@ -339,7 +338,7 @@ classdef dwi_ADRC < dwiMRI_Session
             for tohide=1:1
             obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
             obj.Params.Tracula.in.fn = obj.Params.CoRegMultiple.out.combined_fn ;
-            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir 'dcmrirc.template' ];
+            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir filesep 'TRACULA_DEPS' filesep 'dcmrirc.template' ];
             obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
             obj.Params.Tracula.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs ;
             obj.Params.Tracula.in.bval = obj.Params.CoRegMultiple.out.combined_bvals ;
@@ -484,7 +483,7 @@ classdef dwi_ADRC < dwiMRI_Session
 %                 obj.Params.tracx_thal2ctx11.in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 obj.Params.tracx_thal2ctx11.in.FSaparc_dir = [ fileparts(obj.Params.FS2dwi.out.fn_aparc2009)  filesep 'aparc_aseg' filesep];
 %                 obj.Params.tracx_thal2ctx11.in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'thal2ctx11' ];
-%                 obj.Params.tracx_thal2ctx11.in.prep_segs_list = [ obj.dependencies_dir  'THALX_CTX11.txt' ];
+%                 obj.Params.tracx_thal2ctx11.in.prep_segs_list = [ obj.dependencies_dir filesep 'TRACULA_DEPS' filesep  'THALX_CTX11.txt' ];
 %               
                %obj.proc_tracx2thal11();
             end
@@ -493,16 +492,16 @@ classdef dwi_ADRC < dwiMRI_Session
 %                 obj.Params.tracx_thal2papez.in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 obj.Params.tracx_thal2papez.in.FSaparc_dir = [ fileparts(obj.Params.FS2dwi.out.fn_aparc2009)  filesep 'aparc_aseg' filesep];
 %                 obj.Params.tracx_thal2papez.in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'thal2papez' ];
-%                 obj.Params.tracx_thal2papez.in.prep_segs_list = [ obj.dependencies_dir  'THALX_PAPEZ.txt' ];
+%                 obj.Params.tracx_thal2papez.in.prep_segs_list = [ obj.dependencies_dir  filesep 'TRACULA_DEPS' filesep 'ontheworks' filesep  'THALX_PAPEZ.txt' ];
 %                 
-%                 %obj.proc_tracx2papez();
+%                 obj.proc_tracx2papez();
             end
             % [ DEPRECATED ] TRACX THAL_2_DMN:
             for tohide=1:1
 %                 obj.Params.tracx_thal2dmn.in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 obj.Params.tracx_thal2dmn.in.DMN_dir = obj.FROIS_dir ; 
 %                 obj.Params.tracx_thal2dmn.in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'thal2ctx10' ];
-%                 obj.Params.tracx_thal2dmn.in.prep_segs_list = [ obj.dependencies_dir  'THALX_CTX10.txt' ];  
+%                 obj.Params.tracx_thal2dmn.in.prep_segs_list = [ obj.dependencies_dir  filesep 'TRACULA_DEPS' filesep  'THALX_CTX10.txt' ];  
 %                 
 %                 obj.proc_tracx2DMN();
             end

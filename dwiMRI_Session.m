@@ -2327,11 +2327,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Checking that in_files exist and is gzipped
             for tohide=1:1
                 if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
-                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Exiting...')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Returning now...')
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No b0 FOUND!' , wasRun,'');
                 end
                 
                 if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
-                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Returning now...')
                     obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
                     obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
                     obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No FLAIR FOUND!' , wasRun,'');
@@ -3521,7 +3522,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Creating segs dir
             obj.Params.tracx_thal2papez.in.segs_dir = [ obj.Params.tracx_thal2papez.in_dir 'segs' filesep ];
             exec_cmd = [ 'mkdir -p ' obj.Params.tracx_thal2papez.in.segs_dir ];
-            obj.RunBash(exec_cmd);
+            %%COMMENTED: obj.RunBash(exec_cmd);
             
             
             %Creating segmentations...
@@ -3569,7 +3570,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 if exist(cur_segname_L,'file') == 0
                     display([' In proc_tracx2papez(): merging ' cur_segname_L '...'])
-                    obj.RunBash(exec_cmd);
+                    %%COMMENTED:obj.RunBash(exec_cmd);
                     display('...done');
                 end
                 %rh:
@@ -3578,7 +3579,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd = ['fslmaths ' temp_seg_R cur_segname_R ] ;
                 if exist(cur_segname_R) == 0
                     display([' In proc_tracx2papez(): merging ' cur_segname_R '...'])
-                    obj.RunBash(exec_cmd);
+                    %%COMMENTED: obj.RunBash(exec_cmd);
                     display('...done');
                 end
             end
@@ -3588,12 +3589,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.tracx_thal2papez.in.lh_txt =  [ obj.Params.tracx_thal2papez.in.segs_dir 'segs_lh.txt' ];
             exec_cmd = [ ' ls -1 ' obj.Params.tracx_thal2papez.in.segs_dir ...
                 'lh_* > ' obj.Params.tracx_thal2papez.in.lh_txt  ];
-            obj.RunBash(exec_cmd);
+            %%COMMENTED: obj.RunBash(exec_cmd);
             %rh:
             obj.Params.tracx_thal2papez.in.rh_txt =  [ obj.Params.tracx_thal2papez.in.segs_dir 'segs_rh.txt' ];
             exec_cmd = [ ' ls -1 ' obj.Params.tracx_thal2papez.in.segs_dir ...
                 'rh_* > ' obj.Params.tracx_thal2papez.in.rh_txt  ];
-            obj.RunBash(exec_cmd);
+            %%COMMENTED: obj.RunBash(exec_cmd);
             
             
             
@@ -3616,7 +3617,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             obj.Params.tracx_thal2papez.out.seed2temporal_lh = [ obj.Params.tracx_thal2papez.in_dir 'seeds_to_lh_temporal.nii.gz'] ;
             if exist(obj.Params.tracx_thal2papez.out.seed2temporal_lh) == 0
-                obj.RunBash(exec_cmd,44);
+                %%COMMENTED: obj.RunBash(exec_cmd,44);
             end
             %rh:
             exec_cmd = ['probtrackx2 -x ' obj.Params.tracx_thal2papez.in.rh_seed ...
@@ -3629,7 +3630,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             obj.Params.tracx_thal2papez.out.seed2temporal_rh = [ obj.Params.tracx_thal2papez.in_dir 'seeds_to_lh_temporal.nii.gz'] ;
             if exist(obj.Params.tracx_thal2papez.out.seed2temporal_rh,'file') == 0
-                obj.RunBash(exec_cmd,44);
+                %%COMMENTED: obj.RunBash(exec_cmd,44);
             end
             
             %Now find the biggest
@@ -3638,7 +3639,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if exist(obj.Params.tracx_thal2papez.out.biggest_lh,'file') == 0
                 exec_cmd = ['find_the_biggest ' obj.Params.tracx_thal2papez.in_dir  ...
                     'seeds_to_lh_* '  obj.Params.tracx_thal2papez.out.biggest_lh ]
-                obj.RunBash(exec_cmd,44);
+                %%COMMENTED: obj.RunBash(exec_cmd,44);
             end
             %Extracting the values and uploading data
             [check_ok , tmp_lh_vals] = system(['fslstats ' ...
@@ -3656,7 +3657,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if exist(obj.Params.tracx_thal2papez.out.biggest_rh,'file') == 0
                 exec_cmd = ['find_the_biggest ' obj.Params.tracx_thal2papez.in_dir  ...
                     'seeds_to_rh_* '  obj.Params.tracx_thal2papez.out.biggest_rh ]
-                obj.RunBash(exec_cmd,44);
+                %%COMMENTED: obj.RunBash(exec_cmd,44);
             end
             
             
@@ -3669,7 +3670,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             
             %Saving object:
-            obj.resave
+            display('Exiting....')
+            return
+            %%COMMENTED:obj.resave
             
         end
         
@@ -3998,9 +4001,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         %%%%%%%%%%%%%%%%%%% END Data Post-Processing Methods %%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        
-        
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%% END of Post-Processing Methods %%%%%%%%%%%%%%%%%

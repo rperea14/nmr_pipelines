@@ -296,9 +296,9 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.FS2dwi.in.b0 = obj.Params.B0mean.out.fn ; 
             obj.Params.FS2dwi.in.aparcaseg = obj.Params.FreeSurfer.out.aparcaseg ; 
             
-            obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir 'FS_aparc.txt' ] ; 
-            obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir 'FS_aparc2009.txt' ] ; 
-            obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir 'FS_hippolabels_bil.txt' ] ;
+            obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_aparc.txt' ] ; 
+            obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_aparc2009.txt' ] ; 
+            obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_hippolabels_bil.txt' ] ;
             
             
             
@@ -440,7 +440,7 @@ classdef dwi_HAB < dwiMRI_Session
             %TRACULA (and implicit functionality of bedpostx):
             obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
             obj.Params.Tracula.in.fn = obj.Params.Eddy.out.fn{1} ; 
-            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir 'dcmrirc.template' ];
+            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir  filesep 'TRACULA_DEPS' filesep  'dcmrirc.template' ];
             obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
             obj.Params.Tracula.in.bvec = obj.Params.Eddy.out.bvecs{1};  
             obj.Params.Tracula.in.bval = obj.Params.Eddy.in.bvals{1};

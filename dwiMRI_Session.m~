@@ -2333,15 +2333,15 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
                     warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Exiting...')
                     obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
-                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmaptrue;
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,'');
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No FLAIR FOUND!' , wasRun,'');
                     return
                 end
                 
                 if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
                     warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
-                    obj.Params.WMLs2DWI.NoWMLprob=true;
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,'');
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No WMLprobmap!' , wasRun,'');
                     return 
                 end
             end
@@ -3521,7 +3521,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Creating segs dir
             obj.Params.tracx_thal2papez.in.segs_dir = [ obj.Params.tracx_thal2papez.in_dir 'segs' filesep ];
             exec_cmd = [ 'mkdir -p ' obj.Params.tracx_thal2papez.in.segs_dir ];
-            obj.RunBash(exec_cmd);
+            %%COMMENTED: obj.RunBash(exec_cmd);
             
             
             %Creating segmentations...
@@ -3569,7 +3569,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 if exist(cur_segname_L,'file') == 0
                     display([' In proc_tracx2papez(): merging ' cur_segname_L '...'])
-                    obj.RunBash(exec_cmd);
+                    %%COMMENTED:obj.RunBash(exec_cmd);
                     display('...done');
                 end
                 %rh:
@@ -3998,9 +3998,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         %%%%%%%%%%%%%%%%%%% END Data Post-Processing Methods %%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        
-        
     end
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%%%%%%%%%%%%%%% END of Post-Processing Methods %%%%%%%%%%%%%%%%%
@@ -4297,18 +4294,22 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         function obj = UpdateHist_v2(obj,Params,process_to_update,checkFile,wasRun,exec_cmd)
            
-            if wasRun
-                info = regexprep(sprintf('%-30s%s', [process_to_update ':'], obj.UserTime),'\n','');
-            else
-                %%% For Linux
-                %Gets you the username:
-                [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
-                %Gets you the time:
-                [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
-                theTime = datestr(theTime(1:end-11));
-                info = regexprep(sprintf('%-30s%s', [process_to_update ':'], ['Last run by (file created) ' theUser ' on ' theTime]),'\n','');
-            end
             
+            if isempty(exec_cmd)
+                  info = regexprep(sprintf('%-30s%s', [process_to_update ':'], [checkFile]),'\n','')
+            else
+                if wasRun
+                    info = regexprep(sprintf('%-30s%s', [process_to_update ':'], obj.UserTime),'\n','');
+                else
+                    %%% For Linux
+                    %Gets you the username:
+                    [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
+                    %Gets you the time:
+                    [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
+                    theTime = datestr(theTime(1:end-11));
+                    info = regexprep(sprintf('%-30s%s', [process_to_update ':'], ['Last run by (file created) ' theUser ' on ' theTime]),'\n','');
+                end
+            end
             Params.lastRun = info;
             Params.exec_cmd=exec_cmd;
             [ind assume] = obj.CheckHist(Params,wasRun);
