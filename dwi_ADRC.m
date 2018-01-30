@@ -114,6 +114,8 @@ classdef dwi_ADRC < dwiMRI_Session
             save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
         end
         
+        %COMMON METHODS THAT CALL post_XXX METHODS IN SUPERCLASS
+        %dwiMRI_Session.m : 
         function obj = CommonPreProc(obj)
             obj.dosave = true ; %To record process in MAT file
             
@@ -520,6 +522,113 @@ classdef dwi_ADRC < dwiMRI_Session
             
         end
       
+        
+        %OTHER PROCESSES THAT GET CREATED
+        function obj = post_tracx_by_txt(obj,masktxt_fname,masktxt_dir,replace_masktxt_info)
+            %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR RPOB TRACTOGRAPHY%
+            for tohide=1:1
+                if nargin<2 || isempty(masktxt_fname)
+                    masktxt_fname = 'try_masks_one';
+                    masktxt_dir='';
+                   
+                end
+                
+                %Verify you don't want to reaplace the processing of the
+                %specific mask:
+                if nargin <4
+                    replace_masktxt_info=false;
+                end
+                
+                %Initialize the Params structure if not already:
+                if ~isfield(obj.Params,'tracxBYmask')
+                    obj.Params.tracxBYmask=[];
+                end
+                
+                %Check if this is the first txt_filename that is inputted
+                %*This will allow us to run different instances of tractxBYmask
+                %without losing information about what was ran:
+                [~ , tmp_txtfname, ~ ]  = fileparts(masktxt_fname);
+                if ~isfield(obj.Params.tracxBYmask,'list_txt_fnames')
+                    obj.Params.tracxBYmask.list_txt_fnames{1} = {tmp_txtfname};
+                else
+                    %Double check that the txt_fname hasn't been used or else
+                    %it will be replaced
+                    flag_list_exist=0;
+                    for ijk=1:numel(obj.Params.tracxBYmask.list_txt_fnames)
+                        if strcmp(tmp_txtfname,obj.Params.tracxBYmask.list_txt_fnames{ijk}) 
+                            if replace_masktxt_info ~= 1
+                                warning(['The name for the mask_txt fname: ' tmp_txtfname ' has been used (and probably already ran, not necessarily successfully).'])
+                                display(['Either 1) change the masktxt_fname (1st argument in obj.post_tracx_by_txt() ) filename or' ])
+                                display('       2) check the obj.Params.tracxBYmask.(masktxt_fname) structure or')
+                                display('       3) re-run the obj.post_tracx_by_txt with a 3rd argument as True (*info data will be replaced)')
+                                display('Returning...')
+                                return
+                            end
+                            %This flag tells me that the same name exists!
+                            flag_list_exist=1;
+                        end
+                    end
+                    %Add the newer txt_fname is the list of tracx parameters,
+                    %it replace_masktxt_info is true then no need as the values
+                    %will be explicitly be replace
+                    if flag_list_exist == 0
+                        obj.Params.tracxBYmask.list_txt_fnames{end+1} = {tmp_txtfname};
+                    else
+                        warning(['All the Params info for obj.Params.tracxBTmask.' tmp_txtfname ' will be replaced...'])
+                    end
+                end
+            end
+            %%%%%% END DEALING WITH VARIABLE NUMBER OF MASK FOR TRACX%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+            
+            %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+            for tohide=1:1
+                %Check to see whether a mask directory locations is input
+                if nargin < 3 || isempty(masktxt_dir) %Check for directory
+                    obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.dir = [obj.dependencies_dir ...
+                        'fMRI_masks' filesep 'mask_txt' filesep ];
+                else
+                    
+                    %Checking whether the last charcater is a '/' (linux) or
+                    %'/' (windows). filesep = file separator character
+                    if ~strcmp(masktxt_dir(end),filesep)
+                        obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.dir = masktxt_dir;
+                    else
+                        obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.dir = [ masktxt_dir filesep ];
+                    end
+                end
+                
+                
+                %Check to see what mask_txt file is inputted
+                if nargin <2
+                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.dir 'try_masks_one.txt' ] ;
+                else
+                    tmp_txt_fullpath =[ obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
+                end
+            end
+            %%%%%%%%%%%%%%%END CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+            
+            
+            %%%%%%%%%%%%%%%%%% VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%%
+            %VARIABLE INITIALIZATION:
+            obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
+            obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
+            obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep tmp_txtfname ];
+            
+            obj.Params.tracxBYmask.all_masks.(tmp_txtfname).in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
+            
+            tracx_name=tmp_txtfname;
+            proc_tracxBYmask(obj,tracx_name); %obj.resave()
+            %%%%%%%%%%%%%%% END VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%
+            
+            
+            %%%%%%%%%%%%%%%% IMPLEMENTATION STARTS HERE %%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%% END OF IMPLEMENTATION  %%%%%%%%%%%%%%%%%%%%%
+            
+        end
+        
     end
     methods ( Access = protected )
         function obj = getDCM2nii(obj,torun)

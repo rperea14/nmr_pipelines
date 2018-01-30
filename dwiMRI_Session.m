@@ -2544,6 +2544,145 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
+        function obj = proc_tracxBYmask(obj,tracx_name)
+            wasRun=false;
+            fprintf('\n%s\n', 'PERFORMING PROC_TRACXBYMASK():');
+            
+            
+            %INIT VARIABLES
+            %Introducing local variable for ease of method implementation
+            in_b0           = obj.Params.tracxBYmask.all_masks.(tracx_name).in.b0;
+            in_txtfname     = obj.Params.tracxBYmask.all_masks.(tracx_name).in.txt_fname;
+            in_bedp_dir     = obj.Params.tracxBYmask.all_masks.(tracx_name).in.bedp_dir;
+            in_movefiles    = obj.Params.tracxBYmask.all_masks.(tracx_name).in.movefiles;
+            %Creating working directory and assigning a short name:
+            obj.Params.tracxBYmask.all_masks.(tracx_name).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
+            out_dir = obj.Params.tracxBYmask.all_masks.(tracx_name).out.dir;%short-naming
+          
+            obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_dir =  [ out_dir filesep 'coreg' ];
+            coreg_dir = obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_dir; %short-naming
+            %~~~
+            
+            %%%%%%%%%%%%%% FILE CHECKING IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
+            for tohide=1:1
+                %Check b0 exists:
+                if ~exist(in_b0,'file');
+                    error(['proc_tracxBYmask: b0 file ' '' in_b0 '' ' does not exist. Returning...']);
+                    return
+                end
+                %Check if txt_mask_name exists
+                if ~exist(in_txtfname,'file');
+                    error(['proc_tracxBYmask: txt filename ' '' in_txtfname''  ' does not exist. Returning...']);
+                    return
+                end
+                
+                %Check to see that all filepaths and image exist in in_txtfname
+                fileID=fopen(in_txtfname);
+                %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+                tmp_txtscan=textscan(fileID,'%s');
+                list_MASKS=tmp_txtscan{1};
+                for ii=1:numel(list_MASKS)
+                    if ~exist(list_MASKS{ii})
+                        fprintf('\n\n')
+                        display(['proc_tracxBYmask: The ' num2str(ii) 'th iteration filepath: ' '' list_MASKS{ii} '' ]);
+                        display(['\nIn: ' '' in_txtfname '' ' does not exist. Please change!'])
+                        error('Returning...')
+                        return
+                    end
+                end
+            end
+            %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+            
+            %%%%%%%%%%%%%% START IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Init exec_cmd
+            exec_cmd{:} = ['STARTING proc_tracxBYmask for ' tracx_name ]  ;
+           
+            
+            
+            %IMPLEMENTATION STARTS HERE:
+            %Loading fMRI object for reverse normalization:
+            obj.Params.tracxBYmask.all_masks.(tracx_name).in.fmri_matfile = [obj.root '../restingState/' obj.sessionname '.mat'];
+            fMRI_mat = obj.Params.tracxBYmask.all_masks.(tracx_name).in.fmri_matfile ; 
+            
+            if ~exist(fMRI_mat, 'file' )
+                error(['fMRI object mat file: ''' fMRI_mat  ''' does not exist. Please CHECK or run fMRI object!' ]);
+            end
+            fMRI_object=load(fMRI_mat);
+            %Make sure this process is good:
+            fMRI_object.obj.proc_t1_spm();
+            
+            
+            %Check if b0 is gzipped...
+            [ tmp_b0_dirname tmp_b0_fname  tmp_b0_ext ] = fileparts(in_b0);
+            if strcmp(tmp_b0_ext,'.gz')
+                exec_cmd{:,end+1} = ['gunzip ' in_b0 ] ;
+                obj.RunBash(exec_cmd{end});
+                touse_b0= [ tmp_b0_dirname filesep tmp_b0_fname ];
+            else
+                touse_b0=in_b0;
+            end
+            
+            
+            %Create coreg_directory:
+            exec_cmd{:,end+1} = ['mkdir -p '   coreg_dir ] ;
+            obj.RunBash(exec_cmd{end});
+            
+            
+            %Loop for every mask created
+            for ii=1:numel(list_MASKS)
+                %Fileparts the mask (always assing touse_curmask as nii):
+                [ tmp_curmask_dir tmp_curmask_fname tmp_curmask_ext ] = fileparts(list_MASKS{ii});
+                if strcmp(tmp_curmask_ext,'.gz')
+                    touse_curmask = [coreg_dir filesep tmp_curmask_fname ] ;
+                elseif strcmp(tmp_curmask_ext,'.nii')
+                    touse_curmask = [coreg_dir filesep tmp_curmask_fname tmp_curmask_ext ] ;
+                else
+                    error(['Mask file in the ' num2str(ii) 'th iteration of the *.txt file is not in *.nii or *.nii.gz format. Please check!']);
+                end
+                
+                if ~exist(touse_curmask,'file')
+                    %Copy file:
+                    exec_cmd{:,end+1} = ['cp ' list_MASKS{ii} ' ' coreg_dir ] ;
+                    obj.RunBash(exec_cmd{end});
+                    
+                    %Check if cur_mask is gzipped:
+                    if strcmp(tmp_curmask_ext,'.gz')
+                        exec_cmd{:,end+1} = ['gunzip ' coreg_dir filesep tmp_curmask_fname tmp_curmask_ext   ] ;
+                        obj.RunBash(exec_cmd{end});
+                    end
+                end
+                
+                %Assing the out.coreg_in mask list
+                obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_in{ii} = touse_curmask;
+                    
+                
+                %Save information about what masks were extracted
+                obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_in{ii} = ...
+                        touse_curmask;
+                
+                
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.movefiles = out_dir;
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.fn = touse_mask;
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.targ = touse_b0;
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.regfile = obj.Params.spmT1_Proc.out.iregfile;
+                fMRI_object.obj.proc_apply_reservsenorm_new();
+            end
+            
+            
+            %Gzip again:
+            if strcmp(tmp_b0_ext,'.gz')
+                exec_cmd{:,end+1} = ['gzip ' tmp_b0_dirname  filesep tmp_b0_fname ];
+                obj.RunBash(exec_cmd{end});
+            end
+            
+            
+            %~~%%%%%%%%%%% END OF MKDIR AND COREG %%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+        end
+        
         function obj = trkland_fx(obj)
             wasRun = false ;
             fprintf('\n%s\n', 'PERFORMING TRKLAND FORNIX: TRKLAND_FX():');
