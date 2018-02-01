@@ -1,6 +1,6 @@
 classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     %%% Written by:
-    %%%             Rodrigo Perea (rpereacamargo@mgh.harvard.edu) 
+    %%%             Rodrigo Perea (rpereacamargo@mgh.harvard.edu)
     %%%             Aaron Schultz (aschultz@martinos.org)
     %%
     %%      Dependencies (and tested in):
@@ -348,7 +348,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %             obj.Params.SurfRend.shading =  'mixed';
             %             obj.Params.SurfRend.shadingrange = [-2 2];
             %             obj.Params.SurfRend.Nsurfs = 2;
-      
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%% BEGIN Things %%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -626,7 +626,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 clear outfile
                 obj.Params.Bet2.out.skull{ii} = [ outpath obj.Params.Bet2.in.prefix  b c ];
                 obj.Params.Bet2.out.mask{ii} = strrep(obj.Params.Bet2.out.skull{ii},'.nii.gz','_mask.nii.gz');
-                %EXEC command to store: 
+                %EXEC command to store:
                 [~, to_exec] =system(['which bet2']);
                 exec_cmd{ii,1} = [  strtrim(to_exec) ' ' obj.Params.Bet2.in.fn{ii} ' ' obj.Params.Bet2.out.skull{ii}  ' -m -f ' num2str(obj.Params.Bet2.in.fracthrsh) ];
                 if exist( obj.Params.Bet2.out.mask{ii},'file')==0
@@ -646,7 +646,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if ~isfield(obj.Params.Bet2,'history_saved') || wasRun == true
                 obj.Params.Bet2.history_saved = 0 ;
             end
-            if obj.Params.Bet2.history_saved == 0 
+            if obj.Params.Bet2.history_saved == 0
                 obj.Params.Bet2.history_saved = 1 ;
                 obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd);
             end
@@ -670,7 +670,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %(dependency) Attempting to create acqp file:
                 obj.Params.Eddy.out.fn_acqp{ii}= [ outpath 'acqp.txt' ] ;
-               
+                
                 exec_cmd{ii,1}=['echo " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
                 if exist(obj.Params.Eddy.out.fn_acqp{ii},'file')==0
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_acqp{ii}  ]);
@@ -691,7 +691,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Eddy.out.bvecs{ii} = [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','.eddy_rotated_bvecs') ];
                 
                 
-                %EXEC command to store: 
+                %EXEC command to store:
                 [~, to_exec] =system(['which eddy_openmp']);
                 exec_cmd{ii,3}=[  strtrim(to_exec) ' --imain=' obj.Params.Eddy.in.fn{ii} ...
                     ' --mask=' obj.Params.Eddy.in.mask{ii} ...
@@ -1097,7 +1097,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %Attempting to create B0means:
                     [~, to_exec] =system(['which fslroi']);
                     exec_cmd{ii,1}=[  strtrim(to_exec) ' ' cur_fn ' ' obj.Params.B0mean.out.allb0s{ii} ' 0 ' ...
-                            num2str(obj.Params.B0mean.in.b0_nvols)  ];
+                        num2str(obj.Params.B0mean.in.b0_nvols)  ];
                     if exist( obj.Params.B0mean.out.allb0s{ii},'file')==0
                         fprintf(['\nMerging all b0s from : ' cur_fn]);
                         obj.RunBash(exec_cmd{ii,1});
@@ -1174,7 +1174,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{ii,2} = [ 'bet2 ' obj.Params.MaskAfterEddy.in.b0{ii} ' ' obj.Params.MaskAfterEddy.out.brainonly{ii}  ' -m -f ' num2str(obj.Params.MaskAfterEddy.in.fracthrsh) ];
                 exec_cmd{ii,3} = ['mv ' obj.Params.MaskAfterEddy.out.brainonly{ii} '_mask.nii.gz ' obj.Params.MaskAfterEddy.out.initmask{ii} ];
                 exec_cmd{ii,4} = [ 'fslmaths ' obj.Params.MaskAfterEddy.in.b0{ii} ' -thr 10 -bin -mas ' ...
-                        obj.Params.MaskAfterEddy.out.initmask{ii} ' '  obj.Params.MaskAfterEddy.out.finalmask{ii} ];
+                    obj.Params.MaskAfterEddy.out.initmask{ii} ' '  obj.Params.MaskAfterEddy.out.finalmask{ii} ];
                 if exist( obj.Params.MaskAfterEddy.out.finalmask{ii},'file')==0
                     fprintf(['\nExtracting the brain only using bet2 for : ' obj.Params.MaskAfterEddy.in.b0{ii} ]);
                     %Initial mask creted:
@@ -1182,7 +1182,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     obj.RunBash(exec_cmd{ii,3});
                     %Final mask created (for --wls in dtifit!)
                     obj.RunBash(exec_cmd{ii,4});
-                    wasRun=true;                    
+                    wasRun=true;
                 else
                     [~, bb, cc] = fileparts(obj.Params.MaskAfterEddy.out.finalmask{ii});
                     fprintf(['File ' bb cc ' is now complete. \n']) ;
@@ -1436,7 +1436,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         obj.RunBash(exec_cmd{ii,1},44);
                         fprintf('...done');
                         wasRun=true;
-
+                        
                         %Coopy L1 to AxD:
                         obj.RunBash(exec_cmd{ii,2});
                     else
@@ -1466,7 +1466,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
             end
-                        
+            
             %Update history if possible
             if ~isfield(obj.Params.Dtifit,'history_saved') || wasRun == true
                 obj.Params.Dtifit.history_saved = 0 ;
@@ -1498,8 +1498,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Attempting to create b_table:
                 temp_bvecs{ii}=[ outpath 'temp.txt' ];
                 exec_cmd{ii,1}=[' paste ' obj.Params.GQI.in.bvals{ii} ' ' ...
-                        temp_bvecs{ii} ' | sed ''s/\t/ /g'' >' obj.Params.GQI.out.btable{ii}  ];
-                    
+                    temp_bvecs{ii} ' | sed ''s/\t/ /g'' >' obj.Params.GQI.out.btable{ii}  ];
+                
                 if exist(obj.Params.GQI.out.btable{ii},'file')==0
                     [~, nrow ]=system(['cat ' obj.Params.GQI.in.bvecs{ii} ' | wc -l | awk  '' {print $1} '' '  ] );
                     nrow=str2num(nrow);
@@ -1523,10 +1523,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.GQI.out.src_fn{ii} = [ outpath obj.Params.GQI.in.prefix '.src.gz' ];
                 [~, to_exec ] = system('which dsi_studio_run');
                 exec_cmd{ii,2}=[ strtrim(to_exec) ' --action=src ' ...
-                        ' --source=' obj.Params.GQI.in.fn{ii} ...
-                        ' --b_table=' obj.Params.GQI.out.btable{ii} ...
-                        ' --output=' obj.Params.GQI.out.src_fn{ii} ];
-                    
+                    ' --source=' obj.Params.GQI.in.fn{ii} ...
+                    ' --b_table=' obj.Params.GQI.out.btable{ii} ...
+                    ' --output=' obj.Params.GQI.out.src_fn{ii} ];
+                
                 if exist(obj.Params.GQI.out.src_fn{ii},'file')==0
                     fprintf('\nSource gz file reconstruction...');
                     obj.RunBash(exec_cmd{ii,2},1); %for some reason system exist with 1 :/
@@ -1538,19 +1538,19 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['The file ' bb cc ' is complete\n']);
                 end
                 
-               try
+                try
                     obj.Params.GQI.out.fibs_fn{ii} = ls([outpath '*.fib.gz' ] );
                 catch
                     obj.Params.GQI.out.fibs_fn{ii} = '';
                 end
                 %Attempting to create the fib.fz file:
                 [~, to_exec ] = system('which dsi_studio_run');
-                 exec_cmd{ii,3}=[ strtrim(to_exec) '  --action=rec ' ...
-                        ' --source=' obj.Params.GQI.out.src_fn{ii} ...
-                        ' --method=' obj.Params.GQI.in.method ...
-                        ' --num_fiber=' obj.Params.GQI.in.num_fiber ...
-                        ' --param0=' obj.Params.GQI.in.param0 ...
-                        ' --mask=' obj.Params. GQI.in.mask{ii} ];
+                exec_cmd{ii,3}=[ strtrim(to_exec) '  --action=rec ' ...
+                    ' --source=' obj.Params.GQI.out.src_fn{ii} ...
+                    ' --method=' obj.Params.GQI.in.method ...
+                    ' --num_fiber=' obj.Params.GQI.in.num_fiber ...
+                    ' --param0=' obj.Params.GQI.in.param0 ...
+                    ' --mask=' obj.Params. GQI.in.mask{ii} ];
                 if isempty(strtrim(obj.Params.GQI.out.fibs_fn{ii}))
                     fprintf('\nFib gz file reconstruction...');
                     obj.RunBash(exec_cmd{ii,3},1);
@@ -1577,7 +1577,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         ' --export=' obj.Params.GQI.out.export ]);
                     obj.RunBash(exec_cmd{ii,4},1);
                     wasRun=true;
-               
+                    
                 end
             end
             
@@ -1611,14 +1611,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.AntsReg.out.fn{ii} = [ outpath obj.Params.AntsReg.in.prefix 'Warped.nii.gz' ];
                 [~, to_exec ] = system('which antsRegistrationSyN.sh');
                 exec_cmd{ii,1}=[ strtrim(to_exec) ' '  ...
-                        ' -d '  obj.Params.AntsReg.in.dim ...
-                        ' -n '  obj.Params.AntsReg.in.threads ...
-                        ' -t '  obj.Params.AntsReg.in.transform ...
-                        ' -r '  obj.Params.AntsReg.in.radius  ...
-                        ' -p '  obj.Params.AntsReg.in.precision ...
-                        ' -f '  obj.Params.AntsReg.in.ref ...
-                        ' -m '  obj.Params.AntsReg.in.fn{ii} ...
-                        ' -o '  [ outpath obj.Params.AntsReg.in.prefix]  ];
+                    ' -d '  obj.Params.AntsReg.in.dim ...
+                    ' -n '  obj.Params.AntsReg.in.threads ...
+                    ' -t '  obj.Params.AntsReg.in.transform ...
+                    ' -r '  obj.Params.AntsReg.in.radius  ...
+                    ' -p '  obj.Params.AntsReg.in.precision ...
+                    ' -f '  obj.Params.AntsReg.in.ref ...
+                    ' -m '  obj.Params.AntsReg.in.fn{ii} ...
+                    ' -o '  [ outpath obj.Params.AntsReg.in.prefix]  ];
                 
                 if exist(obj.Params.AntsReg.out.fn{ii},'file')==0
                     fprintf('\nCoregistering Ants to reference... ');
@@ -1656,13 +1656,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
                         ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
                     %MD:
-                     exec_cmd{ii,5}=[ strtrim(to_exec) ' 3 ' ...
-                            ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','MD')  ...
-                            ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','MD') ...
-                            ' -R '  obj.Params.AntsReg.in.ref ...
-                            ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                            ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                       
+                    exec_cmd{ii,5}=[ strtrim(to_exec) ' 3 ' ...
+                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','MD')  ...
+                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','MD') ...
+                        ' -R '  obj.Params.AntsReg.in.ref ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                    
                     if  exist(obj.Params.AntsReg.out.FA{ii},'file')==0
                         fprintf('\n Warping dtifit metrics...');
                         %FA:
@@ -1988,9 +1988,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %BBreg dwi (b0) to FS:
                     [~, to_exec ] = system('which bbregister');
                     exec_cmd{1}=[ export_shell ...
-                            strtrim(to_exec) ' --s ' obj.sessionname ...
-                            ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                            ' --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS ' --dti --init-fsl '];
+                        strtrim(to_exec) ' --s ' obj.sessionname ...
+                        ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                        ' --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS ' --dti --init-fsl '];
                     if exist(obj.Params.FS2dwi.out.xfm_dwi2FS,'file') == 0
                         %bbreg b0 to FS_T1:
                         disp('proc_FS2dwi: Running bbreg dwi2FS_T1...')
@@ -2002,9 +2002,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %Aparc+aseg to dwi:
                     [~, to_exec ] = system('which mri_vol2vol');
                     exec_cmd{2}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                            ' --targ ' obj.Params.FS2dwi.in.aparcaseg ...
-                            ' --o ' obj.Params.FS2dwi.out.fn_aparc ...
-                            ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
+                        ' --targ ' obj.Params.FS2dwi.in.aparcaseg ...
+                        ' --o ' obj.Params.FS2dwi.out.fn_aparc ...
+                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
                     if exist(obj.Params.FS2dwi.out.fn_aparc,'file') == 0
                         %bbreg b0 to FS_T1:
                         disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
@@ -2019,8 +2019,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         tmp_curname{ff} = [ outpath  'aparc_aseg' filesep 'dwi_' name_aparc{ff} '.nii.gz'];
                         [~, to_exec ] = system('which fslmaths');
                         exec_3{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.fn_aparc ...
-                                ' -uthr ' num_aparc{ff} ' -thr ' num_aparc{ff} ...
-                                ' -div '  num_aparc{ff} ' ' tmp_curname{ff} ] ;
+                            ' -uthr ' num_aparc{ff} ' -thr ' num_aparc{ff} ...
+                            ' -div '  num_aparc{ff} ' ' tmp_curname{ff} ] ;
                         if exist(strtrim(tmp_curname{ff}), 'file') == 0
                             fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
                             obj.RunBash(exec_3{ff});
@@ -2096,8 +2096,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         tmp_curname{ff} = [ outpath  'hippos' filesep 'dwi_lh_' name_hippo_lh{ff} '.nii.gz' ];
                         [~, to_exec ] = system('which fslmaths');
                         exec_7{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_left ...
-                                ' -uthr ' num_hippo_lh{ff} ' -thr ' num_hippo_lh{ff} ...
-                                ' -div '  num_hippo_lh{ff} ' ' tmp_curname{ff} ] ;
+                            ' -uthr ' num_hippo_lh{ff} ' -thr ' num_hippo_lh{ff} ...
+                            ' -div '  num_hippo_lh{ff} ' ' tmp_curname{ff} ] ;
                         if exist(strtrim(tmp_curname{ff}), 'file') == 0
                             fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
                             obj.RunBash(exec_7{ff});
@@ -2106,14 +2106,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     end
                     %Values to be stored in history:
                     exec_cmd{7}=exec_7';
-                elseif strcmp(obj.Params.FS2dwi.in.hippofield_left ,'nothing') 
+                elseif strcmp(obj.Params.FS2dwi.in.hippofield_left ,'nothing')
                     display(['No hippofield_lh found in this processing. Skipping  for now...']);
                 else
                     fprintf(['Need to run (or try): \n '  'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
                         ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
                         ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; ' ...
                         ' recon-all -s ' obj.sessionname ' -hippocampal-subfields-T2 ' obj.Params.FreeSurfer.in.T2 ...
-                        ' T2' 
+                        ' T2'
                         ])
                     error([ 'in proc_FS2dwi(obj): FS hippofield_left (supposely) located in: ' obj.Params.FS2dwi.in.hippofield_left ' does not exist'])
                 end
@@ -2153,24 +2153,24 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     end
                     %Values to be stored in history:
                     exec_cmd{9}=exec_9';
-                 elseif strcmp(obj.Params.FS2dwi.in.hippofield_right ,'nothing') 
+                elseif strcmp(obj.Params.FS2dwi.in.hippofield_right ,'nothing')
                     display(['No hippofield_lh found in this processing. Skipping  for now...']);
-               else
+                else
                     error([ 'in proc_FS2dwi(obj): FS hippofield_right (supposely) located in: ' obj.Params.FS2dwi.in.hippofield_right ' does not exist'])
                 end
                 fprintf('hippofield_rh extraction complete\n')
             end
-              
+            
             %Update history if possible
             if ~isfield(obj.Params.FS2dwi,'history_saved') || wasRun == true
                 obj.Params.FS2dwi.history_saved = 0 ;
             end
             if obj.Params.FS2dwi.history_saved == 0
                 obj.Params.FS2dwi.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.FS2dwi,'proc_FS2dwi', tmp_curname{ff} , wasRun,exec_cmd); %no file is created in this step but update it iteratively 
+                obj.UpdateHist_v2(obj.Params.FS2dwi,'proc_FS2dwi', tmp_curname{ff} , wasRun,exec_cmd); %no file is created in this step but update it iteratively
             end
             clear exec_cmd to_exec wasRun;
-          
+            
         end
         
         function obj = proc_FROIS2dwi(obj)
@@ -2252,7 +2252,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = getdata_FreeSurfer(obj)
-         
+            
             files = {[obj.FS_location filesep obj.sessionname filesep 'stats' filesep 'lh.aparc.stats'];
                 [obj.FS_location filesep obj.sessionname filesep 'stats' filesep 'rh.aparc.stats'];
                 [obj.FS_location filesep obj.sessionname filesep 'stats' filesep 'aseg.stats']};
@@ -2282,7 +2282,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     end
                 end
                 
-                %Getting estimated measures 
+                %Getting estimated measures
                 if zz == 3 %In aparc.stats
                     col_estimatedMeas=tmp_all(contains('^# Measure',tmp_all));
                     for jj=1:numel(col_estimatedMeas)
@@ -2343,7 +2343,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
                     obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
                     obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No WMLprobmap!' , wasRun,'');
-                    return 
+                    return
                 end
             end
             
@@ -2386,7 +2386,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     obj.RunBash(exec_cmd{:,end});
                     fprintf('..done\n');
                 end
-
+                
             end
             
             %Gunzip b0 (if necessary) and coreg:
@@ -2440,7 +2440,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     warning('obj.Params.WMLs2DWI.out.dwi_WMLprobmap does not exist!')
                 end
                 wasRun=true;
-                 obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
+                obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
             end
             
         end
@@ -2544,144 +2544,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
-        function obj = proc_tracxBYmask(obj,tracx_name)
-            wasRun=false;
-            fprintf('\n%s\n', 'PERFORMING PROC_TRACXBYMASK():');
-            
-            
-            %INIT VARIABLES
-            %Introducing local variable for ease of method implementation
-            in_b0           = obj.Params.tracxBYmask.all_masks.(tracx_name).in.b0;
-            in_txtfname     = obj.Params.tracxBYmask.all_masks.(tracx_name).in.txt_fname;
-            in_bedp_dir     = obj.Params.tracxBYmask.all_masks.(tracx_name).in.bedp_dir;
-            in_movefiles    = obj.Params.tracxBYmask.all_masks.(tracx_name).in.movefiles;
-            %Creating working directory and assigning a short name:
-            obj.Params.tracxBYmask.all_masks.(tracx_name).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
-            out_dir = obj.Params.tracxBYmask.all_masks.(tracx_name).out.dir;%short-naming
-          
-            obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_dir =  [ out_dir filesep 'coreg' ];
-            coreg_dir = obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_dir; %short-naming
-            %~~~
-            
-            %%%%%%%%%%%%%% FILE CHECKING IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
-            for tohide=1:1
-                %Check b0 exists:
-                if ~exist(in_b0,'file');
-                    error(['proc_tracxBYmask: b0 file ' '' in_b0 '' ' does not exist. Returning...']);
-                    return
-                end
-                %Check if txt_mask_name exists
-                if ~exist(in_txtfname,'file');
-                    error(['proc_tracxBYmask: txt filename ' '' in_txtfname''  ' does not exist. Returning...']);
-                    return
-                end
-                
-                %Check to see that all filepaths and image exist in in_txtfname
-                fileID=fopen(in_txtfname);
-                %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
-                tmp_txtscan=textscan(fileID,'%s');
-                list_MASKS=tmp_txtscan{1};
-                for ii=1:numel(list_MASKS)
-                    if ~exist(list_MASKS{ii})
-                        fprintf('\n\n')
-                        display(['proc_tracxBYmask: The ' num2str(ii) 'th iteration filepath: ' '' list_MASKS{ii} '' ]);
-                        display(['\nIn: ' '' in_txtfname '' ' does not exist. Please change!'])
-                        error('Returning...')
-                        return
-                    end
-                end
-            end
-            %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            
-            
-            %%%%%%%%%%%%%% START IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Init exec_cmd
-            exec_cmd{:} = ['STARTING proc_tracxBYmask for ' tracx_name ]  ;
-           
-            
-            
-            %IMPLEMENTATION STARTS HERE:
-            %Loading fMRI object for reverse normalization:
-            obj.Params.tracxBYmask.all_masks.(tracx_name).in.fmri_matfile = [obj.root '../restingState/' obj.sessionname '.mat'];
-            fMRI_mat = obj.Params.tracxBYmask.all_masks.(tracx_name).in.fmri_matfile ; 
-            
-            if ~exist(fMRI_mat, 'file' )
-                error(['fMRI object mat file: ''' fMRI_mat  ''' does not exist. Please CHECK or run fMRI object!' ]);
-            end
-            fMRI_object=load(fMRI_mat);
-            %Make sure this process is good:
-            fMRI_object.obj.proc_t1_spm();
-            
-            
-            %Check if b0 is gzipped...
-            [ tmp_b0_dirname tmp_b0_fname  tmp_b0_ext ] = fileparts(in_b0);
-            if strcmp(tmp_b0_ext,'.gz')
-                exec_cmd{:,end+1} = ['gunzip ' in_b0 ] ;
-                obj.RunBash(exec_cmd{end});
-                touse_b0= [ tmp_b0_dirname filesep tmp_b0_fname ];
-            else
-                touse_b0=in_b0;
-            end
-            
-            
-            %Create coreg_directory:
-            exec_cmd{:,end+1} = ['mkdir -p '   coreg_dir ] ;
-            obj.RunBash(exec_cmd{end});
-            
-            
-            %Loop for every mask created
-            for ii=1:numel(list_MASKS)
-                %Fileparts the mask (always assing touse_curmask as nii):
-                [ tmp_curmask_dir tmp_curmask_fname tmp_curmask_ext ] = fileparts(list_MASKS{ii});
-                if strcmp(tmp_curmask_ext,'.gz')
-                    touse_curmask = [coreg_dir filesep tmp_curmask_fname ] ;
-                elseif strcmp(tmp_curmask_ext,'.nii')
-                    touse_curmask = [coreg_dir filesep tmp_curmask_fname tmp_curmask_ext ] ;
-                else
-                    error(['Mask file in the ' num2str(ii) 'th iteration of the *.txt file is not in *.nii or *.nii.gz format. Please check!']);
-                end
-                
-                if ~exist(touse_curmask,'file')
-                    %Copy file:
-                    exec_cmd{:,end+1} = ['cp ' list_MASKS{ii} ' ' coreg_dir ] ;
-                    obj.RunBash(exec_cmd{end});
-                    
-                    %Check if cur_mask is gzipped:
-                    if strcmp(tmp_curmask_ext,'.gz')
-                        exec_cmd{:,end+1} = ['gunzip ' coreg_dir filesep tmp_curmask_fname tmp_curmask_ext   ] ;
-                        obj.RunBash(exec_cmd{end});
-                    end
-                end
-                
-                %Assing the out.coreg_in mask list
-                obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_in{ii} = touse_curmask;
-                    
-                
-                %Save information about what masks were extracted
-                obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_in{ii} = ...
-                        touse_curmask;
-                
-                
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.movefiles = out_dir;
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.fn = touse_mask;
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.targ = touse_b0;
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.regfile = obj.Params.spmT1_Proc.out.iregfile;
-                fMRI_object.obj.proc_apply_reservsenorm_new();
-            end
-            
-            
-            %Gzip again:
-            if strcmp(tmp_b0_ext,'.gz')
-                exec_cmd{:,end+1} = ['gzip ' tmp_b0_dirname  filesep tmp_b0_fname ];
-                obj.RunBash(exec_cmd{end});
-            end
-            
-            
-            %~~%%%%%%%%%%% END OF MKDIR AND COREG %%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            
-        end
         
         function obj = trkland_fx(obj)
             wasRun = false ;
@@ -2696,7 +2558,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.Trks = [];
             end
             if ~isfield(obj.Trkland.fx,'data')
-                obj.Trkland.fx.data=[] ; 
+                obj.Trkland.fx.data=[] ;
             end
             if ~isfield(obj.Trkland.fx.data,'lh_done')
                 obj.Trkland.fx.data.lh_done = 0 ;
@@ -2705,7 +2567,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %Initialize outputs:
             obj.initoutputsTRKLAND('fx',obj.Trkland.root);
-
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %MATFILE TRANSFORMATION SECTION:
@@ -2880,7 +2742,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 if exist(obj.Trkland.fx.out.raw_lh,'file') == 0
                                     obj.RunBash(exec_cmd{13},144);
                                     wasRun=true;
-
+                                    
                                 end
                             end
                         else
@@ -2925,15 +2787,15 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_fx. Skipping and removing data points...')
-%                         RefreshFields(obj,'fx','rh')
+                        %                         RefreshFields(obj,'fx','rh')
                     end
                 else
                     display('QC_flag_bil found in trklnad_fx. Skipping and removing data points...')
-%                     RefreshFields(obj,'fx','bil')
+                    %                     RefreshFields(obj,'fx','bil')
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-           
+            
             
             %CLEAN UP OF THE TRACT, EXTRACTING CENTERLINE AND GET DATA
             %For left side (centerline approach):
@@ -2942,7 +2804,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %For right side (centerline approach):
             obj.applyTRKLAND('fx','rh');
             obj.getdataTRKLAND('fx','rh');%getting the rh data
-               
+            
             %Update history if possible
             exec_cmd{end+1} = 'THIS COMMAND HISTORY DOES NOT SHOW THE CLEANING PROCESSES.';
             exec_cmd{end+1} = 'REFER TO obj.Trkland.Trks FOR ADDITIONAL INFORMATION.';
@@ -2966,8 +2828,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             clear exec_cmd to_exec wasRun;
         end
-                
-        %trkland_hippocing needs to (maybe) define different 
+        
+        %trkland_hippocing needs to (maybe) define different
         % regions of avoidance (same hollow criteria as trkland_fx)
         function obj = trkland_hippocing(obj)
             fprintf('\n%s\n', 'PERFORMING TRKLAND HIPPOCAMPAL CINGULUM: TRKLAND_HIPPOCING():');
@@ -3005,7 +2867,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %left:
                 [~, to_exec ] = system('which fslmaths');
                 exec_cmd{1} = [strtrim(to_exec) ' ' obj.Trkland.hippocing.in.hippo_lh ...
-                        ' -dilM ' tmp_roi_hippocing_hippo_lh  ];
+                    ' -dilM ' tmp_roi_hippocing_hippo_lh  ];
                 if exist(tmp_roi_hippocing_hippo_lh , 'file') == 0
                     fprintf('\n Dilating Hippocampus_lh...')
                     obj.RunBash(exec_cmd{1});
@@ -3020,7 +2882,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 %right:
                 exec_cmd{3} = [strtrim(to_exec) ' ' obj.Trkland.hippocing.in.hippo_rh ...
-                        ' -dilM '  tmp_roi_hippocing_hippo_rh  ];
+                    ' -dilM '  tmp_roi_hippocing_hippo_rh  ];
                 if exist( tmp_roi_hippocing_hippo_rh , 'file') == 0
                     fprintf('\n Dilating Hippocampus_rh...')
                     obj.RunBash(exec_cmd{3});
@@ -3044,7 +2906,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %left:
                     [~, to_exec ] = system('which fslmaths');
                     exec_cmd{5} = [ strtrim(to_exec) ' ' obj.Trkland.hippocing.in.postcing_lh ...
-                            ' -dilM ' tmp_roi_hippocing_postcing_lh   ];
+                        ' -dilM ' tmp_roi_hippocing_postcing_lh   ];
                     if exist(tmp_roi_hippocing_postcing_lh  , 'file') == 0
                         fprintf('\n Dilating Posterior cingulate_lh...')
                         obj.RunBash(exec_cmd{5});
@@ -3061,7 +2923,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %right:
                     [~, to_exec ] = system('which fslmaths');
                     exec_cmd{7} = [strtrim(to_exec) ' ' obj.Trkland.hippocing.in.postcing_lh ...
-                            ' -dilM ' tmp_roi_hippocing_postcing_rh   ];
+                        ' -dilM ' tmp_roi_hippocing_postcing_rh   ];
                     if exist(tmp_roi_hippocing_postcing_rh  , 'file') == 0
                         fprintf('\n Dilating Posterior cingulate_lh...')
                         obj.RunBash(exec_cmd{7});
@@ -3069,7 +2931,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     end
                     %
                     exec_cmd{8} = ['fslmaths ' tmp_roi_hippocing_postcing_rh ...
-                            ' -dilM ' obj.Trkland.hippocing.in.roi_postcing_rh   ];
+                        ' -dilM ' obj.Trkland.hippocing.in.roi_postcing_rh   ];
                     if exist(obj.Trkland.hippocing.in.roi_postcing_rh  , 'file') == 0
                         fprintf('\n Dilating Posterior cingulate_rh...')
                         obj.RunBash(exec_cmd{8});
@@ -3092,7 +2954,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     
                     %right:
                     exec_cmd{6} = ['fslmaths ' obj.Trkland.hippocing.in.postcing_rh ...
-                            ' -dilM ' obj.Trkland.hippocing.in.roi_postcing_rh   ];
+                        ' -dilM ' obj.Trkland.hippocing.in.roi_postcing_rh   ];
                     if exist(obj.Trkland.hippocing.in.roi_postcing_rh  , 'file') == 0
                         fprintf('\n Dilating Posterior cingulate_rh...')
                         obj.RunBash(exec_cmd{6});
@@ -3127,10 +2989,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist(obj.Trkland.hippocing.QCfile_rh, 'file') == 0
                         [~, to_exec ] = system('which dsi_studio_run');
                         exec_cmd{10} = [strtrim(to_exec) ' --action=trk --source=' obj.Trkland.fx.in.fib ...
-                                ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
-                                ' --seed=' obj.Trkland.hippocing.in.seed_hippo_rh ' --roi=' obj.Trkland.hippocing.in.roi_postcing_rh ...
-                                ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250  --fiber_count=500 ' ...
-                                ' --output=' obj.Trkland.hippocing.out.raw_rh ];
+                            ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
+                            ' --seed=' obj.Trkland.hippocing.in.seed_hippo_rh ' --roi=' obj.Trkland.hippocing.in.roi_postcing_rh ...
+                            ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250  --fiber_count=500 ' ...
+                            ' --output=' obj.Trkland.hippocing.out.raw_rh ];
                         if exist(obj.Trkland.hippocing.out.raw_rh,'file') == 0
                             for dd=1:4 %trying 4 times to get a trk. If not, quit!
                                 if exist(obj.Trkland.hippocing.out.raw_rh,'file') == 0
@@ -3138,7 +3000,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 end
                             end
                             wasRun=true;
-                         end
+                        end
                     else
                         display('QC_flag_rh found in trkland_hippocing. Skipping tracking...')
                     end
@@ -3186,7 +3048,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %Initialize output files:
             obj.initoutputsTRKLAND('cingulum',obj.Trkland.root);
-          
+            
             %Initialize hippocing Trks storage/data variables:
             if ~isfield(obj.Trkland,'Trks')
                 obj.Trkland.Trks = [];
@@ -3198,8 +3060,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.cingulum.data.lh_done = 0 ;
                 obj.Trkland.cingulum.data.rh_done = 0 ;
             end
-           
-           
+            
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %ROIs/SEEDs PREPARATION
             for tohide=1:1
@@ -3213,7 +3075,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.cingulum.in.seed_postcing_rh = [ obj.Trkland.root 'cingulum_seed_postcingulate_rh.nii.gz' ] ;
                 
                 %left:
-                [~, to_exec ] = system('which fslmaths'); 
+                [~, to_exec ] = system('which fslmaths');
                 exec_cmd{1} = [strtrim(to_exec) ' '  obj.Trkland.cingulum.in.rostantcing_lh ...
                     ' -dilM ' tmp_roi_antroscing_lh  ];
                 exec_cmd{2} = [strtrim(to_exec) ' '  tmp_roi_antroscing_lh ...
@@ -3226,7 +3088,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
                 exec_cmd{3} = ['cp ' obj.Trkland.cingulum.in.postcing_lh ...
-                        ' ' obj.Trkland.cingulum.in.seed_postcing_lh  ];
+                    ' ' obj.Trkland.cingulum.in.seed_postcing_lh  ];
                 if exist(obj.Trkland.cingulum.in.seed_postcing_lh , 'file') == 0
                     fprintf('\n Working on posterior cingulate_lh...')
                     obj.RunBash(exec_cmd{3});
@@ -3247,17 +3109,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 
                 exec_cmd{6} = ['cp ' obj.Trkland.cingulum.in.postcing_rh ...
-                        ' ' obj.Trkland.cingulum.in.seed_postcing_rh  ];
+                    ' ' obj.Trkland.cingulum.in.seed_postcing_rh  ];
                 if exist(obj.Trkland.cingulum.in.seed_postcing_rh , 'file') == 0
                     fprintf('\n Working on posterior cingulate_rh...')
                     obj.RunBash(exec_cmd{6});
                     fprintf('...done \n');
                 end
             end
-        
+            
             %TRACKING STARS HERE:
             for tohide=1:1
-               if exist(obj.Trkland.cingulum.QCfile_bil, 'file') == 0
+                if exist(obj.Trkland.cingulum.QCfile_bil, 'file') == 0
                     %Left side trking:
                     if exist(obj.Trkland.cingulum.QCfile_lh, 'file') == 0
                         [~, to_exec ] = system('which dsi_studio_run');
@@ -3276,17 +3138,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_cingulum. Skipping and removing data points...')
-                   end
+                    end
                     
                     %Right side trking:
                     if exist(obj.Trkland.cingulum.QCfile_rh, 'file') == 0
                         [~, to_exec ] = system('which dsi_studio_run');
                         exec_cmd{8} = [strtrim(to_exec) ' --action=trk --source=' obj.Trkland.fx.in.fib ...
-                                ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
-                                ' --seed=' obj.Trkland.cingulum.in.seed_postcing_rh ' --roi=' obj.Trkland.cingulum.in.roi_antroscing_rh ...
-                                ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250  --fiber_count=500 ' ...
-                                ' --output=' obj.Trkland.cingulum.out.raw_rh ];
-                            
+                            ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
+                            ' --seed=' obj.Trkland.cingulum.in.seed_postcing_rh ' --roi=' obj.Trkland.cingulum.in.roi_antroscing_rh ...
+                            ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250  --fiber_count=500 ' ...
+                            ' --output=' obj.Trkland.cingulum.out.raw_rh ];
+                        
                         if exist(obj.Trkland.cingulum.out.raw_rh,'file') == 0
                             for dd=1:4 %trying 4 times to get a trk. If not, quit!
                                 if exist(obj.Trkland.cingulum.out.raw_rh,'file') == 0
@@ -3294,14 +3156,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 end
                             end
                             wasRun=true;
-                             obj.UpdateHist(obj.Trkland.cingulum,'trkland_cingulum', obj.Trkland.cingulum.out.raw_rh,wasRun);
+                            obj.UpdateHist(obj.Trkland.cingulum,'trkland_cingulum', obj.Trkland.cingulum.out.raw_rh,wasRun);
                         end
                     else
                         display('QC_flag_rh found in trkland_cingulum. Skipping and removing data points...')
-                   end
+                    end
                 else
                     display('QC_flag_bil found in trkland_cingulum. Skipping and removing data points...')
-               end
+                end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
@@ -3328,10 +3190,222 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             clear exec_cmd to_exec wasRun;
         end
         
+        %~~~~ON THE WORKS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        %old code that replaced creation of ants_coreg protected method
+        function obj = proc_tracxBYmask(obj,tmp_txtfname)
+            display('COMMENTED OUT');
+            wasRun=false;
+            %INIT exec_cmd:
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = 'FIRST INIT proc_tracxBYmask';
+            end
+            
+            
+            %##########FIRST, DEALING WITH T1 <--> DWI DEPENDENCES ########
+            %COREGISTERING T1 to DWI
+            obj.Params.tracxBYmask.T1coregDWI.dir = [obj.root 'post_tracx' filesep 'T1_coreg_dwi' ];
+            obj.Params.tracxBYmask.T1coregDWI.in_T1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'orig_T1.nii' ];
+            obj.Params.tracxBYmask.T1coregDWI.out_dwiT1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'coreg2dwi_orig_T1.nii' ];
+            obj.Params.tracxBYmask.T1coregDWI.in_b0 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'b0.nii' ];
+            obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'CoReg.mat' ];
+            %check if files exist:
+            %directory:
+            if exist(obj.Params.tracxBYmask.T1coregDWI.dir,'dir') == 0
+                exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.T1coregDWI.dir ];
+                obj.RunBash(exec_cmd{end});
+            end
+            %T1:
+            if exist( obj.Params.tracxBYmask.T1coregDWI.in_T1, 'file') == 0
+                display('Copying the T1...')
+                exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_T1  ];
+                obj.RunBash(exec_cmd{end});
+            end
+            %B0:
+            if exist( obj.Params.tracxBYmask.T1coregDWI.in_b0, 'file') == 0
+                if strcmp(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0(end-6:end),'.nii.gz')
+                    display('Copying the b0...')
+                    exec_cmd{:,end+1} = ['cp ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
+                    obj.RunBash(exec_cmd{end});
+                    exec_cmd{:,end+1} = ['gunzip ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
+                    obj.RunBash(exec_cmd{end});
+                    
+                elseif strcmp(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0(end-3:end),'.nii')
+                    display('Copying the b0...')
+                    exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0  ];
+                    obj.RunBash(exec_cmd{end});
+                end
+            end
+            
+            %Coregistering now...
+            if exist(obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat,'file') == 0
+                exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj,obj.Params.tracxBYmask.T1coregDWI.in_T1,obj.Params.tracxBYmask.T1coregDWI.in_b0,obj.Params.tracxBYmask.T1coregDWI.dir)'
+                eval(exec_cmd{end})
+            end
+            
+            if exist(obj.Params.tracxBYmask.T1coregDWI.out_dwiT1,'file') == 0
+                exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0)';
+                eval(exec_cmd{end})
+            end
+            %END OF COREGISTRERING T1 to DWI
+            %~~~
+            
+            
+            %PROCESSING T1 BASED ON SPM. 
+            obj.Params.tracxBYmask.coregT12DWI.dir = [obj.root 'post_tracx' filesep 'coregT1_spm_proc' ];
+            obj.Params.tracxBYmask.coregT12DWI.in_T1 = obj.Params.tracxBYmask.T1coregDWI.out_dwiT1;
+            obj.Params.tracxBYmask.coregT12DWI.in_Affinemat = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'Affine.mat' ];
+            %check if files exist:
+            %directory:
+            if exist(obj.Params.tracxBYmask.coregT12DWI.dir,'dir') == 0
+                exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.coregT12DWI.dir ];
+                obj.RunBash(exec_cmd{end});
+            end
+            
+            obj.proc_t1_spm(obj.Params.tracxBYmask.coregT12DWI.in_T1,obj.Params.tracxBYmask.coregT12DWI.dir);
+            
+            
+            
+            
+            %##########END OF DEALING WITH T1 <--> DWI DEPENDENCES ########
+            %##############################################################
+            
+            
+            
+            
+            %INIT VARIABLES
+            %Introducing local variable for ease of method implementation
+            in_b0           = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0;
+            in_txtfname     = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname;
+            in_bedp_dir     = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.bedp_dir;
+            in_movefiles    = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles;
+            %Creating working directory and assigning a short name:
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
+            out_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir;%short-naming
+            
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_dir =  [ out_dir filesep 'coreg' ];
+            coreg_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_dir ;  %short-naming
+            %~~~
+            
+            %%%%%%%%%%%%%% FILE CHECKING: IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
+            for tohide=1:1
+                %Check b0 exists:
+                if ~exist(in_b0,'file');
+                    error(['proc_tracxBYmask: b0 file ' '' in_b0 '' ' does not exist. Returning...']);
+                    return
+                end
+                %Check if txt_mask_name exists
+                if ~exist(in_txtfname,'file');
+                    error(['proc_tracxBYmask: txt filename ' '' in_txtfname''  ' does not exist. Returning...']);
+                    return
+                end
+                
+                %Check to see that all filepaths/nii.gzs exist in the
+                %in_txtfname:
+                fileID=fopen(in_txtfname);
+                %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+                tmp_txtscan=textscan(fileID,'%s');
+                list_MASKS=tmp_txtscan{1};
+                for ii=1:numel(list_MASKS)
+                    if ~exist(list_MASKS{ii})
+                        fprintf('\n\n')
+                        display(['proc_tracxBYmask: The ' num2str(ii) 'th iteration filepath: ' '' list_MASKS{ii} '' ]);
+                        display(['\nIn: ' '' in_txtfname '' ' does not exist. Please check/change!'])
+                        error('Returning...')
+                        return
+                    end
+                end
+            end
+            %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+            
+            %%%%%%%%%%%%%% START TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Init exec_cmd
+            exec_cmd{:} = ['STARTING proc_tracxBYmask for ' tmp_txtfname ]  ;
+            
+            
+            
+            %IMPLEMENTATION STARTS HERE:
+            %Create coreg_directory:
+            exec_cmd{:,end+1} = ['mkdir -p '   coreg_dir ] ;
+            obj.RunBash(exec_cmd{end});
+            
+            
+            %Loop for every mask created
+            display('LOOPING THORUGH THE TXT_FILE....');
+            display('MAKE SURE FILENAMES ARE IN THE SAME SPACE AS THE FIRST FILENAME/MASK');
+            fprintf('*Supporting only *.nii.gz for now.\n\n')
+            pause(2)
+            
+            %assigning coreg template (always the first on the list)
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.mv_img=list_MASKS{1};
+            [ TMP_dirname , TMP_fname , TMP_ext ] = fileparts(list_MASKS{1});
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.ref_img=in_b0;
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_prefix=[strrep(strrep(TMP_fname,'_',''),'.nii','') '_2_b0'];
+            
+            %OUTS:
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_warped=[ coreg_dir filesep TMP_fname TMP_ext 'Warped.nii.gz'] ;
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_reversewarped='';
+            
+            if ~exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_warped, 'file')
+                exec_cmd{:,end+1} = [ ' obj.proc_ants_RegSyN(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.ref_img, ' ...
+                    'obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.mv_img, ' ...
+                    'obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_dir, ' ...
+                    'obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_prefix , '' -d 3 -n 1 -t b -r 4 -p d '' ) '];
+                eval(exec_cmd{end});
+                
+            end
+            %
+            
+            for ii=1:numel(list_MASKS)
+                %Fileparts the mask (always assing touse_curmask as nii):
+                [ tmp_curmask_dir tmp_curmask_fname tmp_curmask_ext ] = fileparts(list_MASKS{ii});
+                if strcmp(tmp_curmask_ext,'.gz')
+                    touse_curmask = [coreg_dir filesep tmp_curmask_fname ] ;
+                elseif strcmp(tmp_curmask_ext,'.nii')
+                    touse_curmask = [coreg_dir filesep tmp_curmask_fname tmp_curmask_ext ] ;
+                else
+                    error(['Mask file in the ' num2str(ii) 'th iteration of the *.txt file is not in *.nii or *.nii.gz format. Please check!']);
+                end
+                
+                if ~exist(touse_curmask,'file')
+                    %Copy file:
+                    exec_cmd{:,end+1} = ['cp ' list_MASKS{ii} ' ' coreg_dir ] ;
+                    obj.RunBash(exec_cmd{end});
+                    
+                    %Check if cur_mask is gzipped:
+                    if strcmp(tmp_curmask_ext,'.gz')
+                        exec_cmd{:,end+1} = ['gunzip ' coreg_dir filesep tmp_curmask_fname tmp_curmask_ext   ] ;
+                        obj.RunBash(exec_cmd{end});
+                    end
+                end
+                
+                %Save information about what masks were extracted
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.coreg_in{ii} = touse_curmask;
+                
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.movefiles = coreg_dir;
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.fn = touse_curmask;
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.targ = touse_b0;
+                fMRI_object.obj.Params.ApplyReverseNormNew.in.regfile = obj.Params.spmT1_Proc.out.iregfile;
+                fMRI_object.obj.proc_apply_reservsenorm_new();
+            end
+            
+            
+            %Gzip again:
+            if strcmp(tmp_b0_ext,'.gz')
+                exec_cmd{:,end+1} = ['gzip ' tmp_b0_dirname  filesep tmp_b0_fname ];
+                obj.RunBash(exec_cmd{end});
+            end
+            
+            
+            %~~%%%%%%%%%%% END OF MKDIR AND COREG %%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            
+        end
         
-        %~~~~~~~~~~~~~~~ON TH WORKS (METHODS NOT FINISHED YET)~~~~~~~~~~~~~
+        %~~~~~~~~~~~~~~OBSOLETES~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         %proc_AFQ on the works (not finished/used yet)
-        function obj = proc_AFQ(obj)
+        function obj = obsolete_proc_AFQ(obj)
             % try
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_AFQ():');
@@ -3353,124 +3427,124 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         %trkland_atr won't work as isolating a centerline is useless in this tract
-        function obj = trkland_atr(obj)
+        function obj = obsolete_trkland_atr(obj)
             display( 'trkland_atr implementation has not been. Please check before using it (improvements were given to trimmmed_clean and ordeing so check. Dat stamped 10162017!!!');
             display('Skipping trkland_atr() ...')
             
-%             wasRun = false;
-%             %Create trkland directory (if doesn't exist)
-%             exec_cmd = [ 'mkdir -p ' obj.Trkland.root ];
-%             obj.RunBash(exec_cmd);
-%             outpath=obj.Trkland.root;
-%             
-%             %ROIs/SEEDs PREPARATION
-%             
-%             obj.Trkland.atr.in.roi_antroscing_lh = [ obj.Trkland.root 'atr_roi_antrostralcingulateDil1_lh.nii.gz' ] ;
-%             obj.Trkland.atr.in.roi_antroscing_rh = [ obj.Trkland.root 'atr_roi_antrostralcingulateDil1_rh.nii.gz' ] ;
-%             
-%             obj.Trkland.atr.in.seed_thalamus_lh = [ obj.Trkland.root 'atr_seed_thalamusDil1_lh.nii.gz' ] ;
-%             obj.Trkland.atr.in.seed_thalamus_rh = [ obj.Trkland.root 'atr_seed_thalamusDil1_rh.nii.gz' ] ;
-%             for tohide=1:1
-%                 %anterior cingulate dilation:
-%                 if exist(obj.Trkland.atr.in.roi_antroscing_lh , 'file') == 0
-%                     fprintf('\ntrkland_atr(): Working on anterior cingulate_lh...')
-%                     exec_cmd = ['fslmaths '  obj.Trkland.atr.in.rostantcing_lh ...
-%                         ' -dilM ' obj.Trkland.atr.in.roi_antroscing_lh  ];
-%                     obj.RunBash(exec_cmd);
-%                     fprintf('...done \n');
-%                 end
-%                 
-%                 if exist(obj.Trkland.atr.in.roi_antroscing_rh , 'file') == 0
-%                     fprintf('\ntrkland_atr(): Working on anterior cingulate_rh...')
-%                     exec_cmd = ['fslmaths '  obj.Trkland.atr.in.rostantcing_rh ...
-%                         ' -dilM ' obj.Trkland.atr.in.roi_antroscing_rh  ];
-%                     obj.RunBash(exec_cmd);
-%                     fprintf('...done \n');
-%                 end
-%                 
-%                 %Thalamus dilation
-%                 if exist(obj.Trkland.atr.in.seed_thalamus_lh , 'file') == 0
-%                     fprintf('\n Working on posterior cingulate_lh...')
-%                     exec_cmd = ['fslmaths ' obj.Trkland.atr.in.thalamus_lh ...
-%                         ' -dilM ' obj.Trkland.atr.in.seed_thalamus_lh  ];
-%                     obj.RunBash(exec_cmd);
-%                     fprintf('...done \n');
-%                 end
-%                 if exist(obj.Trkland.atr.in.seed_thalamus_rh , 'file') == 0
-%                     fprintf('\n Working on posterior cingulate_rh...')
-%                     exec_cmd = ['fslmaths ' obj.Trkland.atr.in.thalamus_rh ...
-%                         ' -dilM ' obj.Trkland.atr.in.seed_thalamus_rh  ];
-%                     obj.RunBash(exec_cmd);
-%                     fprintf('...done \n');
-%                 end
-%                 
-%             end
-%             
-%             %CLEANUP OF THE TRACTS
-%             
-%             %TRACKING STARS HERE:
-%             for tohide=1:1
-%                 obj.Trkland.atr.out.trk_lh = [ obj.Trkland.root  'trkk_atr_lh.trk.gz'];
-%                 obj.Trkland.atr.out.trk_rh = [ obj.Trkland.root  'trkk_atr_rh.trk.gz'];
-%                 if exist(obj.Trkland.atr.cingulum.QCfile_bil,'file') == 0
-%                     %Left side trking:
-%                     if exist( obj.Trkland.atr.cingulum.QCfile_lh,'file')==0
-%                         if exist(obj.Trkland.atr.out.trk_lh,'file') == 0
-%                             exec_cmd = ['dsi_studio_run --action=trk --source=' obj.Trkland.fx.in.fib ...
-%                                 ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
-%                                 ' --seed=' obj.Trkland.atr.in.seed_thalamus_lh ' --roi=' obj.Trkland.atr.in.roi_antroscing_lh ...
-%                                 ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250 ' ...
-%                                 ' --output=' obj.Trkland.atr.out.trk_lh ];
-%                             for dd=1:4 %trying 4 times to get a trk. If not, quit!
-%                                 if exist(obj.Trkland.atr.out.trk_lh,'file') == 0
-%                                     obj.RunBash(exec_cmd,144);
-%                                 end
-%                             end
-%                             wasRun=true;
-%                             obj.UpdateHist(obj.Trkland.atr,'trkland_atr', obj.Trkland.atr.out.trk_lh,wasRun);
-%                         end
-%                     else
-%                         display('QC_flag_rh found in trkland_atr. Skipping and removing data points...')
-%                         RefreshFields(obj,'atr','rh')
-%                     end
-%                     %Right side trking:
-%                     if exist( obj.Trkland.atr.cingulum.QCfile_rh,'file')==0
-%                         if exist(obj.Trkland.atr.out.trk_rh,'file') == 0
-%                             exec_cmd = ['dsi_studio_run --action=trk --source=' obj.Trkland.fx.in.fib ...
-%                                 ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
-%                                 ' --seed=' obj.Trkland.atr.in.seed_thalamus_rh ' --roi=' obj.Trkland.atr.in.roi_antroscing_rh ...
-%                                 ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250 ' ...
-%                                 ' --output=' obj.Trkland.atr.out.trk_rh ];
-%                             
-%                             for dd=1:4 %trying 4 times to get a trk. If not, quit!
-%                                 if exist(obj.Trkland.atr.out.trk_rh,'file') == 0
-%                                     obj.RunBash(exec_cmd,144);
-%                                 end
-%                             end
-%                             wasRun=true;
-%                             obj.UpdateHist(obj.Trkland.atr,'trkland_atr', obj.Trkland.atr.out.trk_rh,wasRun);
-%                             
-%                         end
-%                     else
-%                         display('QC_flag_lh found in trkland_atr. Skipping and removing data points...')
-%                         RefreshFields(obj,'atr','rh')
-%                     end
-%                 else
-%                     display('QC_flag_bil found in trkland_atr. Skipping and removing data points...')
-%                     RefreshFields(obj,'atr','bil')
-%                 end
-%             end
-%             
-%             
-%             %LEFT SIDE:
-%            
-%             
-%             %RIGHT SIDE:
-%             
+            %             wasRun = false;
+            %             %Create trkland directory (if doesn't exist)
+            %             exec_cmd = [ 'mkdir -p ' obj.Trkland.root ];
+            %             obj.RunBash(exec_cmd);
+            %             outpath=obj.Trkland.root;
+            %
+            %             %ROIs/SEEDs PREPARATION
+            %
+            %             obj.Trkland.atr.in.roi_antroscing_lh = [ obj.Trkland.root 'atr_roi_antrostralcingulateDil1_lh.nii.gz' ] ;
+            %             obj.Trkland.atr.in.roi_antroscing_rh = [ obj.Trkland.root 'atr_roi_antrostralcingulateDil1_rh.nii.gz' ] ;
+            %
+            %             obj.Trkland.atr.in.seed_thalamus_lh = [ obj.Trkland.root 'atr_seed_thalamusDil1_lh.nii.gz' ] ;
+            %             obj.Trkland.atr.in.seed_thalamus_rh = [ obj.Trkland.root 'atr_seed_thalamusDil1_rh.nii.gz' ] ;
+            %             for tohide=1:1
+            %                 %anterior cingulate dilation:
+            %                 if exist(obj.Trkland.atr.in.roi_antroscing_lh , 'file') == 0
+            %                     fprintf('\ntrkland_atr(): Working on anterior cingulate_lh...')
+            %                     exec_cmd = ['fslmaths '  obj.Trkland.atr.in.rostantcing_lh ...
+            %                         ' -dilM ' obj.Trkland.atr.in.roi_antroscing_lh  ];
+            %                     obj.RunBash(exec_cmd);
+            %                     fprintf('...done \n');
+            %                 end
+            %
+            %                 if exist(obj.Trkland.atr.in.roi_antroscing_rh , 'file') == 0
+            %                     fprintf('\ntrkland_atr(): Working on anterior cingulate_rh...')
+            %                     exec_cmd = ['fslmaths '  obj.Trkland.atr.in.rostantcing_rh ...
+            %                         ' -dilM ' obj.Trkland.atr.in.roi_antroscing_rh  ];
+            %                     obj.RunBash(exec_cmd);
+            %                     fprintf('...done \n');
+            %                 end
+            %
+            %                 %Thalamus dilation
+            %                 if exist(obj.Trkland.atr.in.seed_thalamus_lh , 'file') == 0
+            %                     fprintf('\n Working on posterior cingulate_lh...')
+            %                     exec_cmd = ['fslmaths ' obj.Trkland.atr.in.thalamus_lh ...
+            %                         ' -dilM ' obj.Trkland.atr.in.seed_thalamus_lh  ];
+            %                     obj.RunBash(exec_cmd);
+            %                     fprintf('...done \n');
+            %                 end
+            %                 if exist(obj.Trkland.atr.in.seed_thalamus_rh , 'file') == 0
+            %                     fprintf('\n Working on posterior cingulate_rh...')
+            %                     exec_cmd = ['fslmaths ' obj.Trkland.atr.in.thalamus_rh ...
+            %                         ' -dilM ' obj.Trkland.atr.in.seed_thalamus_rh  ];
+            %                     obj.RunBash(exec_cmd);
+            %                     fprintf('...done \n');
+            %                 end
+            %
+            %             end
+            %
+            %             %CLEANUP OF THE TRACTS
+            %
+            %             %TRACKING STARS HERE:
+            %             for tohide=1:1
+            %                 obj.Trkland.atr.out.trk_lh = [ obj.Trkland.root  'trkk_atr_lh.trk.gz'];
+            %                 obj.Trkland.atr.out.trk_rh = [ obj.Trkland.root  'trkk_atr_rh.trk.gz'];
+            %                 if exist(obj.Trkland.atr.cingulum.QCfile_bil,'file') == 0
+            %                     %Left side trking:
+            %                     if exist( obj.Trkland.atr.cingulum.QCfile_lh,'file')==0
+            %                         if exist(obj.Trkland.atr.out.trk_lh,'file') == 0
+            %                             exec_cmd = ['dsi_studio_run --action=trk --source=' obj.Trkland.fx.in.fib ...
+            %                                 ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
+            %                                 ' --seed=' obj.Trkland.atr.in.seed_thalamus_lh ' --roi=' obj.Trkland.atr.in.roi_antroscing_lh ...
+            %                                 ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250 ' ...
+            %                                 ' --output=' obj.Trkland.atr.out.trk_lh ];
+            %                             for dd=1:4 %trying 4 times to get a trk. If not, quit!
+            %                                 if exist(obj.Trkland.atr.out.trk_lh,'file') == 0
+            %                                     obj.RunBash(exec_cmd,144);
+            %                                 end
+            %                             end
+            %                             wasRun=true;
+            %                             obj.UpdateHist(obj.Trkland.atr,'trkland_atr', obj.Trkland.atr.out.trk_lh,wasRun);
+            %                         end
+            %                     else
+            %                         display('QC_flag_rh found in trkland_atr. Skipping and removing data points...')
+            %                         RefreshFields(obj,'atr','rh')
+            %                     end
+            %                     %Right side trking:
+            %                     if exist( obj.Trkland.atr.cingulum.QCfile_rh,'file')==0
+            %                         if exist(obj.Trkland.atr.out.trk_rh,'file') == 0
+            %                             exec_cmd = ['dsi_studio_run --action=trk --source=' obj.Trkland.fx.in.fib ...
+            %                                 ' --seed_count=20000 --smoothing=0.01 --method=0 --interpolation=0 --thread_count=10' ...
+            %                                 ' --seed=' obj.Trkland.atr.in.seed_thalamus_rh ' --roi=' obj.Trkland.atr.in.roi_antroscing_rh ...
+            %                                 ' --step_size=1 --turning_angle=40 --min_length=110 --max_length=250 ' ...
+            %                                 ' --output=' obj.Trkland.atr.out.trk_rh ];
+            %
+            %                             for dd=1:4 %trying 4 times to get a trk. If not, quit!
+            %                                 if exist(obj.Trkland.atr.out.trk_rh,'file') == 0
+            %                                     obj.RunBash(exec_cmd,144);
+            %                                 end
+            %                             end
+            %                             wasRun=true;
+            %                             obj.UpdateHist(obj.Trkland.atr,'trkland_atr', obj.Trkland.atr.out.trk_rh,wasRun);
+            %
+            %                         end
+            %                     else
+            %                         display('QC_flag_lh found in trkland_atr. Skipping and removing data points...')
+            %                         RefreshFields(obj,'atr','rh')
+            %                     end
+            %                 else
+            %                     display('QC_flag_bil found in trkland_atr. Skipping and removing data points...')
+            %                     RefreshFields(obj,'atr','bil')
+            %                 end
+            %             end
+            %
+            %
+            %             %LEFT SIDE:
+            %
+            %
+            %             %RIGHT SIDE:
+            %
         end
         
         %post-processing after TRACULA. Results not ideal at this point...
-        function obj = proc_tracx2thal11(obj)
+        function obj = obsolete_proc_tracx2thal11(obj)
             % Make sure you
             wasRun=false;
             %Creating Proc specific Directory:
@@ -3641,7 +3715,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.resave
             
         end
-        function obj = proc_tracx2papez(obj)
+        function obj = obsolete_proc_tracx2papez(obj)
             % Make sure you
             wasRun=false;
             %Creating Proc specific Directory:
@@ -3815,9 +3889,264 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
         end
         
-        %~~~~ON THE WORKS......
+        function obj = obsolete_proc_tracxBYmask(obj,tracx_name)
+            %COMMENTED OUT. CHECK THE NON_OBSOLETE METHOD:
+            
+            %             wasRun=false;
+            %             fprintf('\n%s\n', 'PERFORMING PROC_TRACXBYMASK():');
+            %
+            %             %COREGISTERING T1 to DWI
+            %             obj.Params.tracxBYmask.T1coregDWI.dir = '' ;
+            %
+            
+            %
+            %             %LINE BELOW WILL MAKE SURE MNI IS IN THE SAME SPACE AS THE
+            %             %MASKS!
+            %             %             [m h] = openIMG('mask_100_v1.nii'); h2 = spm_vol('MNI152_T1_2mm.nii'); h.fname = 'test.nii'; h.mat = h2.mat; spm_write_vol(h,m);
+            %
+            %
+            %
+            % %INIT VARIABLES
+            %             %Introducing local variable for ease of method implementation
+            %             in_b0           = obj.Params.tracxBYmask.all_masks.(tracx_name).in.b0;
+            %             in_txtfname     = obj.Params.tracxBYmask.all_masks.(tracx_name).in.txt_fname;
+            %             in_bedp_dir     = obj.Params.tracxBYmask.all_masks.(tracx_name).in.bedp_dir;
+            %             in_movefiles    = obj.Params.tracxBYmask.all_masks.(tracx_name).in.movefiles;
+            %             %Creating working directory and assigning a short name:
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
+            %             out_dir = obj.Params.tracxBYmask.all_masks.(tracx_name).out.dir;%short-naming
+            %
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).coreg.out_dir =  [ out_dir filesep 'coreg' ];
+            %             coreg_dir = obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_dir; %short-naming
+            %             %~~~
+            %
+            %             %%%%%%%%%%%%%% FILE CHECKING: IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
+            %             for tohide=1:1
+            %                 %Check b0 exists:
+            %                 if ~exist(in_b0,'file');
+            %                     error(['proc_tracxBYmask: b0 file ' '' in_b0 '' ' does not exist. Returning...']);
+            %                     return
+            %                 end
+            %                 %Check if txt_mask_name exists
+            %                 if ~exist(in_txtfname,'file');
+            %                     error(['proc_tracxBYmask: txt filename ' '' in_txtfname''  ' does not exist. Returning...']);
+            %                     return
+            %                 end
+            %
+            %                 %Check to see that all filepaths and image exist in in_txtfname
+            %                 fileID=fopen(in_txtfname);
+            %                 %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+            %                 tmp_txtscan=textscan(fileID,'%s');
+            %                 list_MASKS=tmp_txtscan{1};
+            %                 for ii=1:numel(list_MASKS)
+            %                     if ~exist(list_MASKS{ii})
+            %                         fprintf('\n\n')
+            %                         display(['proc_tracxBYmask: The ' num2str(ii) 'th iteration filepath: ' '' list_MASKS{ii} '' ]);
+            %                         display(['\nIn: ' '' in_txtfname '' ' does not exist. Please change!'])
+            %                         error('Returning...')
+            %                         return
+            %                     end
+            %                 end
+            %             end
+            %             %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %
+            %
+            %
+            %             %%%%%%%%%%%%%% START IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %             %Init exec_cmd
+            %             exec_cmd{:} = ['STARTING proc_tracxBYmask for ' tracx_name ]  ;
+            %
+            %
+            %
+            %             %IMPLEMENTATION STARTS HERE:
+            %             %Loading fMRI object for reverse normalization:
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).in.fmri_matfile = [obj.root '../restingState/' obj.sessionname '.mat'];
+            %             fMRI_mat = obj.Params.tracxBYmask.all_masks.(tracx_name).in.fmri_matfile ;
+            %
+            %             if ~exist(fMRI_mat, 'file' )
+            %                 error(['fMRI object mat file: ''' fMRI_mat  ''' does not exist. Please CHECK or run fMRI object!' ]);
+            %             end
+            %             fMRI_object=load(fMRI_mat);
+            %             %Make sure this process is good:
+            %             fMRI_object.obj.proc_t1_spm();
+            %
+            %
+            %             %Check if b0 is gzipped...
+            %             [ tmp_b0_dirname tmp_b0_fname  tmp_b0_ext ] = fileparts(in_b0);
+            %             if strcmp(tmp_b0_ext,'.gz')
+            %                 exec_cmd{:,end+1} = ['gunzip ' in_b0 ] ;
+            %                 obj.RunBash(exec_cmd{end});
+            %                 touse_b0= [ tmp_b0_dirname filesep tmp_b0_fname ];
+            %             else
+            %                 touse_b0=in_b0;
+            %             end
+            %
+            %
+            %             %Create coreg_directory:
+            %             exec_cmd{:,end+1} = ['mkdir -p '   coreg_dir ] ;
+            %             obj.RunBash(exec_cmd{end});
+            %
+            %
+            %             %Loop for every mask created
+            %             display('LOOPING THORUGH THE TXT_FILE. MAKE SURE');
+            %             display('THEY ARE IN THE SAME SPACE AS THE FIRST FILENAME/MASK');
+            %             pause(2)
+            %
+            %             %assigning coreg template (always the first on the list)
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).coreg.mv_img=list_MASKS{1};
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).coreg.ref_img=''
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).coreg.out_dir=''
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).coreg.out_warped=''
+            %             obj.Params.tracxBYmask.all_masks.(tracx_name).coreg.out_warped=''
+            %
+            %             %
+            %
+            %             for ii=1:numel(list_MASKS)
+            %                 %Fileparts the mask (always assing touse_curmask as nii):
+            %                 [ tmp_curmask_dir tmp_curmask_fname tmp_curmask_ext ] = fileparts(list_MASKS{ii});
+            %                 if strcmp(tmp_curmask_ext,'.gz')
+            %                     touse_curmask = [coreg_dir filesep tmp_curmask_fname ] ;
+            %                 elseif strcmp(tmp_curmask_ext,'.nii')
+            %                     touse_curmask = [coreg_dir filesep tmp_curmask_fname tmp_curmask_ext ] ;
+            %                 else
+            %                     error(['Mask file in the ' num2str(ii) 'th iteration of the *.txt file is not in *.nii or *.nii.gz format. Please check!']);
+            %                 end
+            %
+            %                 if ~exist(touse_curmask,'file')
+            %                     %Copy file:
+            %                     exec_cmd{:,end+1} = ['cp ' list_MASKS{ii} ' ' coreg_dir ] ;
+            %                     obj.RunBash(exec_cmd{end});
+            %
+            %                     %Check if cur_mask is gzipped:
+            %                     if strcmp(tmp_curmask_ext,'.gz')
+            %                         exec_cmd{:,end+1} = ['gunzip ' coreg_dir filesep tmp_curmask_fname tmp_curmask_ext   ] ;
+            %                         obj.RunBash(exec_cmd{end});
+            %                     end
+            %                 end
+            %
+            %                 %Save information about what masks were extracted
+            %                 obj.Params.tracxBYmask.all_masks.(tracx_name).out.coreg_in{ii} = touse_curmask;
+            %
+            %                 fMRI_object.obj.Params.ApplyReverseNormNew.in.movefiles = coreg_dir;
+            %                 fMRI_object.obj.Params.ApplyReverseNormNew.in.fn = touse_curmask;
+            %                 fMRI_object.obj.Params.ApplyReverseNormNew.in.targ = touse_b0;
+            %                 fMRI_object.obj.Params.ApplyReverseNormNew.in.regfile = obj.Params.spmT1_Proc.out.iregfile;
+            %                 fMRI_object.obj.proc_apply_reservsenorm_new();
+            %             end
+            %
+            %
+            %             %Gzip again:
+            %             if strcmp(tmp_b0_ext,'.gz')
+            %                 exec_cmd{:,end+1} = ['gzip ' tmp_b0_dirname  filesep tmp_b0_fname ];
+            %                 obj.RunBash(exec_cmd{end});
+            %             end
+            %
+            %
+            %             %~~%%%%%%%%%%% END OF MKDIR AND COREG %%%%%%%%%%%%%%%%%%%%%%%%%
+            %
+            
+        end
+        
+        %Having problem with using ants for dwi2MNI....hence deprecated!
+        function obj = obsolete_proc_ants_dwi2MNI(obj)
+            wasRun=false;
+            fprintf('\n%s\n', 'PERFORMING PROC_ANTS_DWI2MNI():');
+            %First, select the ref_files needed:
+            [a b c ] = fileparts(obj.Params.ants_dwi2MNI.in.b0_fn);
+            obj.Params.ants_dwi2MNI.out.dir=obj.getPath(a,obj.Params.ants_dwi2MNI.in.movefiles);
+            
+            
+            %Check if input exists:
+            if ~exist(obj.Params.ants_dwi2MNI.in.b0_fn, 'file')
+                error('PROC_ANTS_dwi2MINI: b0 dwi (obj.Params.ants_dwi2MNI.in.b0_fn) not found. please check!')
+            end
+            if ~exist(obj.Params.ants_dwi2MNI.in.MNI_tocopy, 'file')
+                error('PROC_ANTS_dwi2MINI: MNI image (obj.Params.ants_dwi2MNI.in.MNI_tocopy) not found. please check!')
+            end
+            
+            
+            
+            %INITIALIZE OUTPUT:
+            %output filename
+            obj.Params.ants_dwi2MNI.out.dwi2mni_fn = [obj.Params.ants_dwi2MNI.out.dir ...
+                filesep obj.Params.ants_dwi2MNI.in.output_prefix '.nii.gz' ];
+            %output MNI template (to be copied)
+            [~, tmp_MNI_mask_fname, tmp_mask_ext ] = fileparts(obj.Params.ants_dwi2MNI.in.MNI_tocopy); %MNI to be copied into output_dir
+            obj.Params.ants_dwi2MNI.in.mni_template = [obj.Params.ants_dwi2MNI.out.dir ...
+                filesep tmp_MNI_mask_fname tmp_mask_ext ] ;
+            exec_cmd{:} = 'INITIALIZING PROC_ANTS_DWI2MNI() EXEC_CMD';
+            
+            %IMPLEMENTATION STARTS HERE
+            %copying location of MNI to actual MNI to be used:
+            if ~exist(obj.Params.ants_dwi2MNI.in.mni_template, 'file')
+                exec_cmd{:,end+1} = ['cp ' obj.Params.ants_dwi2MNI.in.MNI_tocopy ...
+                    ' ' obj.Params.ants_dwi2MNI.in.mni_template ];
+                obj.RunBash(exec_cmd{end});
+            end
+            
+            %Check if warped filename has been created
+            if exist( obj.Params.ants_dwi2MNI.out.dwi2mni_fn ,'file') == 0
+                %First, cd to current directory:
+                exec_cmd{:,end+1} = ['cd ' obj.Params.ants_dwi2MNI.out.dir ];
+                tmp_PWD=pwd;
+                cd(obj.Params.ants_dwi2MNI.out.dir);
+                fprintf(['\n\n' 'ANTSREG NOT WORKING. NEED TO IMPLEMENT A BETTER COREG '   '\n\n'])
+                [~ , ants_exec ] = system('which antsRegistrationSyN.sh');
+                exec_cmd{:,end+1}=([strtrim(ants_exec) ' -d 3 -n 1 -t b -r 4 -p d ' ...
+                    ' -m ' obj.Params.ants_dwi2MNI.in.b0_fn ...
+                    ' -f ' obj.Params.ants_dwi2MNI.in.mni_template ...
+                    ' -o ' obj.Params.ants_dwi2MNI.in.output_prefix ]);
+                tic
+                obj.RunBash(exec_cmd{end},44);
+                obj.Params.ants_dwi2MNI.out.time_completion=[ num2str(toc) ' seconds '];
+                wasRun = true;
+                cd(PWD);
+            end
+            obj.UpdateHist_v2(obj.Params.ants_dwi2MNI,'proc_ants_dwi2MNI', obj.Params.ants_dwi2MNI.out.dwi2mni_fn,wasRun,exec_cmd);
+            fprintf(' proc_ants_dwi2MNI(obj) is complete\n');
+        end
+        
+        function obj = obsolete_proc_ants_RegSyN(obj,fixed_img,mov_img,out_dir,out_prefix,other_args)
+            if nargin < 5
+                error('In obj.proc_ants_RegSyN(): not enough arguments')
+            end
+            if nargin < 6
+                fprintf('In obj.proc_ants_RegSyN(): applying default optional arguments...\n')
+                other_args=' -d 3 -n 1 -t b -r 4 -p d  ';
+            end
+            
+            %Check if files input exist:
+            if ~exist(fixed_img, 'file')
+                error('In obj.proc_ants_RegSyN(): fixed_img not found. please check!')
+            end
+            if ~exist(mov_img, 'file')
+                error('In obj.proc_ants_RegSyN(): mov_img not found. please check!')
+            end
+            
+            %Navigate to directory:
+            PWD=pwd;
+            cd(out_dir)
+            warped_img = [ out_prefix '.nii.gz'];
+            if exist(warped_img,'file')  ~= 0
+                fprintf(['Warped_img: ' out_dir filesep warped_img ' exists. Returning...\n'])
+                return
+            else
+                [~ , ants_exec ] = system('which antsRegistrationSyN.sh');
+                exec_cmd=([ strtrim(ants_exec) ' ' other_args ' -m ' mov_img ' -f ' fixed_img ' -o '  out_prefix ]);
+                fprintf('\n\n');
+                display(exec_cmd);
+                fprintf('\n\n');
+                fprintf(['Starting coreg in 3 seconds...'])
+                pause(3)
+                obj.RunBash(exec_cmd,44);
+            end
+            cd(PWD);
+            
+        end
+        
+        
         %Trying Aaron Schultz methods
-        function obj = proc_normalize_new(obj,fn)
+        function obj = obsolete_proc_normalize_new(obj,fn)
             fprintf('\n%s\n', 'NORMALIZING IMAGES USING SPM12 METHOD:');
             %%% MODULE IS COMPLETE
             wasRun = false;
@@ -3913,8 +4242,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.UpdateHist(obj.Params.NormNew,'proc_normalize_new',reg,wasRun);
             
         end
-            
-        function obj = proc_applynorm_new(obj,fn,regfile)
+        
+        function obj = obsolete_proc_applynorm_new(obj,fn,regfile)
             %How to run it:
             %obj.proc_applynorm_new( obj.Params.NormNew.in.nn.channel.vols,  obj.Params.NormNew.out.regfile)
             
@@ -3934,7 +4263,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.ApplyNormNew.in.pars.comp{2}.idbbvox.bb = obj.bb;
             obj.Params.ApplyNormNew.in.pars.out{1}.pull.fnames  = []; % files to normalize
             obj.Params.ApplyNormNew.in.pars.out{1}.pull.savedir.savesrc = 1;
-            %NOT SURE WHAt INTERPORDER IS! 
+            %NOT SURE WHAt INTERPORDER IS!
             obj.Params.ApplyNormNew.in.pars.out{1}.pull.interp=5 %obj.interporder;
             obj.Params.ApplyNormNew.in.pars.out{1}.pull.mask=1;
             obj.Params.ApplyNormNew.in.pars.out{1}.pull.fwhm=[0 0 0];
@@ -3945,7 +4274,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %%% MODULE IS COMPLETE
             wasRun = false;
-
+            
             if nargin < 2
                 fn = obj.Params.ApplyNormNew.in.fn;
             else
@@ -3960,7 +4289,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             if ischar(fn)
                 fn = cellstr(fn);
-            end            
+            end
             
             [a b c] = fileparts(fn{1});
             outpath = obj.getPath(a,obj.Params.ApplyNormNew.in.movefiles);
@@ -3975,7 +4304,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 ff = regexprep([outpath obj.Params.ApplyNormNew.in.prefix b c],[filesep filesep],filesep);
                 nfn{end+1,1} = ff;
             end
-                        
+            
             check = 0;
             for ii = 1:numel(nfn)
                 if exist(nfn{ii},'file')>0
@@ -3988,7 +4317,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 defs = obj.Params.ApplyNormNew.in.pars;
                 defs.comp{1}.def = {regfile};
                 defs.out{1}.pull.fnames  = fn(:)';
-                spm_deformations(defs);               
+                spm_deformations(defs);
                 
                 nfn = [];
                 for ii = 1:numel(fn);
@@ -4004,21 +4333,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %[a b c] = fileparts(obj.Params.Reslice.out.meanimage);
             %outpath = obj.getPath(a,obj.Params.ApplyNormNew.in.movefiles);
             %if exist(outpath,'dir')==0; mkdir(outpath); end
-%             if ~exist([outpath obj.Params.ApplyNormNew.in.prefix b c])
-%                 defs = obj.Params.ApplyNormNew.in.pars;
-%                 defs.comp{1}.def = {regfile};
-%                 defs.out{1}.pull.fnames  = {obj.Params.Reslice.out.meanimage};
-%                 
-%                 spm_deformations(defs);  
-%                 
-%                 ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
-%                 movefile([a filesep 'w' b c], ff);
-%                 
-%                 obj.Params.ApplyNormNew.out.normmean = ff;
-%             else
-%                 ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
-%                 obj.Params.ApplyNormNew.out.normmean = ff;
-%             end
+            %             if ~exist([outpath obj.Params.ApplyNormNew.in.prefix b c])
+            %                 defs = obj.Params.ApplyNormNew.in.pars;
+            %                 defs.comp{1}.def = {regfile};
+            %                 defs.out{1}.pull.fnames  = {obj.Params.Reslice.out.meanimage};
+            %
+            %                 spm_deformations(defs);
+            %
+            %                 ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
+            %                 movefile([a filesep 'w' b c], ff);
+            %
+            %                 obj.Params.ApplyNormNew.out.normmean = ff;
+            %             else
+            %                 ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
+            %                 obj.Params.ApplyNormNew.out.normmean = ff;
+            %             end
             
             disp('Applying Normalization is complete');
             obj.Params.ApplyNormNew.out.fn = nfn;
@@ -4027,7 +4356,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('\n');
         end
         
-        function obj = proc_apply_reservsenorm_new(obj,fn,regfile,targ)
+        function obj = obsolete_proc_apply_reservsenorm_new(obj,fn,regfile,targ)
             %        obj.Params.ApplyReverseNormNew.in.movefiles = '/autofs/eris/bang/ADRC/Sessions/141015_8CS00118/restingState/';
             % obj.Params.ApplyReverseNormNew.in.fn = '/cluster/brutha/MATLAB_Scripts/PET/FROIs/DMN_PCC.nii';
             % obj.Params.ApplyReverseNormNew.in.targ = '/autofs/eris/bang/ADRC/FreeSurfer6.0/141015_8CS00118/mri/spm12/orig.nii';
@@ -4087,7 +4416,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             
             
-      
+            
             
             [a b c] = fileparts(obj.Params.ApplyReverseNormNew.in.regfile);
             outpath = obj.getPath(a,'reverseNorm') %obj.Params.ApplyReverseNormNew.in.movefiles);
@@ -4206,7 +4535,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         obj.Trkland.Trks.([TOI '_trimmed_' HEMI]) = rotrk_trimmedbyTOI(obj.Trkland.Trks.([ TOI '_raw_' HEMI]), ...
                             [ {obj.Trkland.(TOI).in.(['hippo_' HEMI ])} {obj.Trkland.(TOI).in.(['roi_postcing_' HEMI ])} ], ['postcing_' HEMI]);
                     end
-                        
+                    
                     %Saving trimmed tracts:
                     rotrk_write(obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).header,...
                         obj.Trkland.Trks.([TOI '_trimmed_' HEMI]).sstr,obj.Trkland.(TOI).out.(['trimmed_' HEMI ]));
@@ -4333,7 +4662,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %split data to see whether we want to change the lh
                     %or rh data...[ NOTE: we could've use contains() but conflict
                     %occurs between local function and updated function in
-                    %Matlab2017a ] 
+                    %Matlab2017a ]
                     splits=strsplit(data_trks{ii},'_');
                     for jj=1:numel(splits)
                         if strcmp(splits(jj),HEMI)
@@ -4365,7 +4694,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     
                                 end
                             end
-                        end 
+                        end
                     end
                 end
                 clear data_trks
@@ -4435,10 +4764,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         function obj = UpdateHist_v2(obj,Params,process_to_update,checkFile,wasRun,exec_cmd)
-           
+            
             
             if isempty(exec_cmd)
-                  info = regexprep(sprintf('%-30s%s', [process_to_update ':'], [checkFile]),'\n','')
+                info = regexprep(sprintf('%-30s%s', [process_to_update ':'], [checkFile]),'\n','')
             else
                 if wasRun
                     info = regexprep(sprintf('%-30s%s', [process_to_update ':'], obj.UserTime),'\n','');
@@ -4478,7 +4807,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             if nargin > 3
                 for ijk=1:numel(list_applyxforms)
-                    if exist(list_applyxforms{ijk},'file') == 0 
+                    if exist(list_applyxforms{ijk},'file') == 0
                         error(['proc_QuickCoReg: ' list_applyxforms{ijk} ' not found!' ]);
                     end
                 end
@@ -4545,7 +4874,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
         end
-        
         function obj = proc_remove_spm_nans(obj,f_name)
             %Replaces NaNs with 0s so images can be viewed in other non-spm
             %related viewers (e.g. fslview)
@@ -4561,6 +4889,82 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             spm_write_vol(V,Y);
             fprintf(' ...done\n');
         end
+        function obj = proc_coreg2dwib0(obj,source,target,outdir)
+            fprintf('\n%s\n', 'PERFORMING COREGISTRATION');
+            wasRun = false;
+            
+            if nargin<4
+                error('Invalid number of arguments. Please enter the source and target images');
+            end
+            
+            [a b c] = fileparts(source);
+            outpath2 = obj.getPath(outdir,'./');
+            disp('USING SPM:');
+            if exist([outpath2 'CoReg.mat'],'file')==0
+                wasRun=true;
+                
+                VG = spm_vol(target);
+                VF = spm_vol(source);
+                
+                %flags (copy from obj.Params.Coreg.in.spm):
+                flags.sep = [4  2 ] ;
+                params = [ 0 0 0 0 0 0 ];
+                cost_func = 'nmi'
+                tol = [0.0200 0.0200 0.0200 1.0000e-03 1.0000e-03 1.0000e-03 0.0100 0.0100 0.0100 1.0000e-03 1.0000e-03 1.0000e-03] ;
+                fwhm = [ 7 7 ] ;
+                graphics = 1;
+                
+                x = spm_coreg(VG,VF,flags);
+                M  = spm_matrix(x);
+                save([outpath2 'CoReg.mat'],'x','M');
+            else
+                load([outpath2 'CoReg.mat']);
+            end
+            
+            disp('Coregistration has been applied to the mean image:');
+        end
+        function obj = proc_apply_coreg2dwib0(obj,fn,reslice)
+            fprintf('\n%s\n', 'PERFORMING COREGISTRATION TO B0...');
+            wasRun = false;
+            if ischar(fn)
+                fn = cellstr(fn);
+            end
+            
+            if nargin < 3
+                reslice = 0;
+            end
+            
+            [a b c] = fileparts(fn{1});
+            if isempty(a); a = pwd; end;
+            outpath2 = obj.getPath(a,'./');
+            
+            disp('    USING SPM:');
+            load([outpath2 'CoReg.mat']);
+            
+            for ii = 1:numel(fn)
+                [a b c] = fileparts(fn{ii});
+                if isempty(a); a = pwd; end
+                nfn{ii,1} = [outpath2 'coreg2dwi_' b c];
+                if exist(nfn{ii},'file')==0
+                    wasRun=true;
+                    copyfile(fn{ii},nfn{ii});
+                    MM = spm_get_space(nfn{ii});
+                    spm_get_space(nfn{ii}, M\MM);
+                    if reslice == 1
+                        h1 = spm_vol(obj.Params.tracxBYmask.T1coregDWI.in_b0);
+                        h2 = spm_vol(nfn{ii});
+                        m = resizeVol2(h2,h1,[3 0 ]);
+                        h1.fname = h2.fname;
+                        h1.dt = h2.dt;
+                        spm_write_vol(h1,m);
+                    end
+                end
+                disp('Coregistration has been applied to the run:');
+            end
+            fprintf('\n');
+        end
+        
+        
         
         %MISC FUNCTIONALITIES
         function outpath = getPath(obj,a,movefiles)
@@ -4704,10 +5108,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.resave;
         end
         
-        
-        
-        %~~~~~~~~~~~~~~~ON TH WORKS (METHODS NOT FINISHED YET)~~~~~~~~~~~~~
-        %DataCentral uploads (not 100% tested)
+        %DATACENTRAL UPLOADS (TBSS)
         function obj = UploadData_DWI(obj)
             id = obj.sessionname;
             if isempty(id);
@@ -4802,7 +5203,124 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             disp('skelTOIs values have been uploaded to DataCentral');
         end
-        function obj = UploadData_Trkland(obj)
+        
+        
+        %~~~~~ ONTHEWORKS
+        function obj = proc_t1_spm(obj,coreg2dwi_T1,outdir)
+            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
+            wasRun = false;
+            
+            if nargin <3
+                error('Not enough arguments. Please check. Exiting...');
+            end
+            
+            if exist(coreg2dwi_T1,'file') == 0
+                error(['No ' '' coreg2dwi_T1 '' 'exists. Exiting...'])
+            end
+            
+            root = outdir;
+            root = regexprep(root,'//','/');
+            
+         
+            [a b c] = fileparts(coreg2dwi_T1);
+
+            %%%
+            if exist([root filesep 'Affine.mat'],'file')==0
+                %%% could put something in here to redo subseuqent steps if
+                %%% this step is not complete.
+                wasRun=true;
+                
+                %Flag parameters copied from fMRI_Session.m object:
+                %---> in = obj.Params.spmT1_Proc.in.pars; (from
+                %fMRI_Session.m)
+                in.samp =2; in.fwhm1=16; in.fwhm=0; in.regtype='mni';
+                %
+                in.P = coreg2dwi_T1;
+                %---> in.tpm = spm_load_priors8(obj.Params.spmT1_Proc.in.tpm);
+                in.tpm = spm_load_priors8([ obj.dependencies_dir filesep 'MNI_masks' filesep 'TPM.nii' ]);
+                
+                [Affine,h] = spm_maff8(in.P,in.samp,in.fwhm1,in.tpm,in.M,in.regtype);
+                in.M = Affine;
+                [Affine,h] = spm_maff8(in.P,in.samp,in.fwhm2,in.tpm,in.M,in.regtype);
+                save([a filesep 'Affine.mat'],'Affine');
+            else
+                load([a filesep 'Affine.mat']);
+            end
+            fprintf('%s\n', 'Affine Registration is complete:');
+            
+            
+            if exist([a filesep 'Norm_Seg8.mat'],'file')==0
+                wasRun=true;
+                %Again, copy params from fmri_Session.m
+                %--> NormPars = obj.Params.spmT1_Proc.in.NormPars;
+                NormPars.fwhm = 0;
+                NormPars.biasreg=1.0000e-04;
+                NormPars.biasfwhm= 60; 
+                NormPars.reg= [0 1.0000e-03 0.5000 0.0500 0.2000] ;
+                NormPars.samp = 2; 
+                NormPars.image = spm_vol(coreg2dwi_T1);
+                NormPars.Affine = Affine;
+                %--> NormPars.tpm = spm_load_priors8(obj.Params.spmT1_Proc.in.tpm);
+                NormPars.tpm = spm_load_priors8([ obj.dependencies_dir filesep 'MNI_masks' filesep 'TPM.nii' ]);
+                results = spm_preproc8(NormPars);
+                save([a filesep 'Norm_Seg8.mat'],'results');
+            else
+                load([a filesep 'Norm_Seg8.mat']);
+            end
+            fprintf('%s\n', 'Normalization computation is complete:');
+            
+            c = regexprep(c,',1','');
+            
+            if exist([a filesep 'y_' b c],'file')==0
+                %%% I forget what some of these static options do.  Will leave
+                %%% them fixed as is for now.
+                wasRun=true;
+                %replaced from fMRI_Session.m parameters below
+                %--> [cls,M1] = spm_preproc_write8(results,obj.Params.spmT1_Proc.in.rflags.writeopts,[1 1],[1 1],0,1,obj.Params.spmT1_Proc.in.rflags.bb,obj.Params.spmT1_Proc.in.rflags.vox);
+                bb= [ -78  -112   -70
+                        78    76    90 ] ;
+                [cls,M1] = spm_preproc_write8(results,ones(6,4),[1 1],[1 1],0,1,bb,1);
+            end
+            fprintf('%s\n', 'Normalization files have been written out:');
+
+            if exist([a filesep 'w' b c],'file')==0
+                wasRun=true;
+                %Replaced params with fMRI_Session.m standars:
+                %--> defs = obj.Params.spmT1_Proc.in.defs;
+                defs.out{1}.pull.interp=5;
+                defs.out{1}.pull.mask=1;
+                defs.out{1}.pull.fwhm=[0 0 0];
+                
+                defs.comp{2}.idbbvox.vox= [1 1 1];
+                defs.comp{2}.idbbvox.bb= [ -78  -112   -70
+                                            78    76    90 ] ; 
+                defs.comp{1}.def = {[a filesep 'y_' b c]};
+                
+                defs.out{1}.pull.fnames = {coreg2dwi_T1};
+                
+                
+                spm_deformations(defs);
+            end
+%             obj.Params.spmT1_Proc.out.normT1 = [a filesep 'w' b c];
+            fprintf('%s\n', 'Normalization has been applied to the T1:');
+%             
+%             obj.Params.spmT1_Proc.out.estTPM{1,1} = [a filesep 'c1' b c];
+%             obj.Params.spmT1_Proc.out.estTPM{2,1} = [a filesep 'c2' b c];
+%             obj.Params.spmT1_Proc.out.estTPM{3,1} = [a filesep 'c3' b c];
+%             obj.Params.spmT1_Proc.out.estTPM{4,1} = [a filesep 'c4' b c];
+%             obj.Params.spmT1_Proc.out.estTPM{5,1} = [a filesep 'c5' b c];
+%             obj.Params.spmT1_Proc.out.estTPM{6,1} = [a filesep 'c6' b c];
+%             
+%             obj.Params.spmT1_Proc.out.regfile = [a filesep 'y_' b c];
+%             obj.Params.spmT1_Proc.out.iregfile = [a filesep 'iy_' b c];
+            
+            fprintf('\n');
+        end
+        
+        
+        
+        %~~~~~~~~~~~~~~~DEPRECATED METHODS~~~~~~~~~~~~~
+        function obj = deprecated_UploadData_Trkland(obj)
             id = obj.sessionname;
             if isempty(id);
                 disp('No Session_ID.  Cannot upload data');
@@ -4928,9 +5446,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             disp('skelTOIs values have been uploaded to DataCentral');
         end
         
-        %Methods that can be accessed by other methods only
-        %%NOT TESTED --> proc_as_coreg()
-        function obj = proc_as_coreg(obj,source,target,list_toxform,coreg_tech)
+        
+        function obj = deprecated_proc_as_coreg(obj,source,target,list_toxform,coreg_tech)
             %              fprintf('\n%s\n', 'PERFORMING COREGISTRATION');
             %              wasRun = false;
             %

@@ -60,7 +60,7 @@ if strcmp(ext_mov,'.gz')
     system(['gzip ' mov ]);
 end
 
-if nargin==3 && ~isempty(list_applyxforms)
+if nargin>3 && ~isempty(list_applyxforms)
     for ii=1:numel(list_applyxforms)
         %Now reslicing...
         P{2} = list_applyxforms{ii};
