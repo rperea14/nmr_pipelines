@@ -3193,93 +3193,22 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %~~~~ON THE WORKS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         %old code that replaced creation of ants_coreg protected method
         function obj = proc_tracxBYmask(obj,tmp_txtfname)
-            display('COMMENTED OUT');
             wasRun=false;
             %INIT exec_cmd:
             if ~exist('exec_cmd','var')
                 exec_cmd{:} = 'FIRST INIT proc_tracxBYmask';
             end
-            
-            
-            %##########FIRST, DEALING WITH T1 <--> DWI DEPENDENCES ########
-            %COREGISTERING T1 to DWI
-            obj.Params.tracxBYmask.T1coregDWI.dir = [obj.root 'post_tracx' filesep 'T1_coreg_dwi' ];
-            obj.Params.tracxBYmask.T1coregDWI.in_T1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'orig_T1.nii' ];
-            obj.Params.tracxBYmask.T1coregDWI.out_dwiT1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'coreg2dwi_orig_T1.nii' ];
-            obj.Params.tracxBYmask.T1coregDWI.in_b0 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'b0.nii' ];
-            obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'CoReg.mat' ];
-            %check if files exist:
-            %directory:
-            if exist(obj.Params.tracxBYmask.T1coregDWI.dir,'dir') == 0
-                exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.T1coregDWI.dir ];
-                obj.RunBash(exec_cmd{end});
-            end
-            %T1:
-            if exist( obj.Params.tracxBYmask.T1coregDWI.in_T1, 'file') == 0
-                display('Copying the T1...')
-                exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_T1  ];
-                obj.RunBash(exec_cmd{end});
-            end
-            %B0:
-            if exist( obj.Params.tracxBYmask.T1coregDWI.in_b0, 'file') == 0
-                if strcmp(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0(end-6:end),'.nii.gz')
-                    display('Copying the b0...')
-                    exec_cmd{:,end+1} = ['cp ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
-                    obj.RunBash(exec_cmd{end});
-                    exec_cmd{:,end+1} = ['gunzip ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
-                    obj.RunBash(exec_cmd{end});
-                    
-                elseif strcmp(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0(end-3:end),'.nii')
-                    display('Copying the b0...')
-                    exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0  ];
-                    obj.RunBash(exec_cmd{end});
-                end
-            end
-            
-            %Coregistering now...
-            if exist(obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat,'file') == 0
-                exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj,obj.Params.tracxBYmask.T1coregDWI.in_T1,obj.Params.tracxBYmask.T1coregDWI.in_b0,obj.Params.tracxBYmask.T1coregDWI.dir)'
-                eval(exec_cmd{end})
-            end
-            
-            if exist(obj.Params.tracxBYmask.T1coregDWI.out_dwiT1,'file') == 0
-                exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0)';
-                eval(exec_cmd{end})
-            end
-            %END OF COREGISTRERING T1 to DWI
-            %~~~
-            
-            
-            %PROCESSING T1 BASED ON SPM. 
-            keyboard
-            obj.Params.tracxBYmask.coregT12DWI.dir = [obj.root 'post_tracx' filesep 'coregT12DWI_spm_proc' ];
-            obj.Params.tracxBYmask.coregT12DWI.in_T1 = obj.Params.tracxBYmask.coregT12DWI.out_dwiT1;
-            obj.Params.tracxBYmask.coregT12DWI.in_Affinemat = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'Affine.mat' ];
-            %check if files exist:
-            %directory:
-            if exist(obj.Params.tracxBYmask.coregT12DWI.dir,'dir') == 0
-                exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.coregT12DWI.dir ];
-                obj.RunBash(exec_cmd{end});
-            end
-            
-            %##########END OF DEALING WITH T1 <--> DWI DEPENDENCES ########
-            %##############################################################
-            
-            
-            
-            
+              
             %INIT VARIABLES
             %Introducing local variable for ease of method implementation
-            in_b0           = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0;
+            in_bedp_dir     = obj.Params.tracxBYmask.tracula.bedp_dir;
+            in_b0           = obj.Params.tracxBYmask.tracula.b0;
             in_txtfname     = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname;
-            in_bedp_dir     = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.bedp_dir;
             in_movefiles    = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles;
             %Creating working directory and assigning a short name:
             obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
-            out_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir;%short-naming
+            out_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir; %short-naming
             
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_dir =  [ out_dir filesep 'coreg' ];
-            coreg_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_dir ;  %short-naming
             %~~~
             
             %%%%%%%%%%%%%% FILE CHECKING: IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3312,90 +3241,240 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
             %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            
-            
-            %%%%%%%%%%%%%% START TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Init exec_cmd
-            exec_cmd{:} = ['STARTING proc_tracxBYmask for ' tmp_txtfname ]  ;
-            
-            
-            
-            %IMPLEMENTATION STARTS HERE:
-            %Create coreg_directory:
-            exec_cmd{:,end+1} = ['mkdir -p '   coreg_dir ] ;
-            obj.RunBash(exec_cmd{end});
-            
-            
-            %Loop for every mask created
-            display('LOOPING THORUGH THE TXT_FILE....');
-            display('MAKE SURE FILENAMES ARE IN THE SAME SPACE AS THE FIRST FILENAME/MASK');
-            fprintf('*Supporting only *.nii.gz for now.\n\n')
-            pause(2)
-            
-            %assigning coreg template (always the first on the list)
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.mv_img=list_MASKS{1};
-            [ TMP_dirname , TMP_fname , TMP_ext ] = fileparts(list_MASKS{1});
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.ref_img=in_b0;
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_prefix=[strrep(strrep(TMP_fname,'_',''),'.nii','') '_2_b0'];
-            
-            %OUTS:
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_warped=[ coreg_dir filesep TMP_fname TMP_ext 'Warped.nii.gz'] ;
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_reversewarped='';
-            
-            if ~exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_warped, 'file')
-                exec_cmd{:,end+1} = [ ' obj.proc_ants_RegSyN(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.ref_img, ' ...
-                    'obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.mv_img, ' ...
-                    'obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_dir, ' ...
-                    'obj.Params.tracxBYmask.list_masks.(tmp_txtfname).coreg.out_prefix , '' -d 3 -n 1 -t b -r 4 -p d '' ) '];
-                eval(exec_cmd{end});
                 
-            end
-            %
             
-            for ii=1:numel(list_MASKS)
-                %Fileparts the mask (always assing touse_curmask as nii):
-                [ tmp_curmask_dir tmp_curmask_fname tmp_curmask_ext ] = fileparts(list_MASKS{ii});
-                if strcmp(tmp_curmask_ext,'.gz')
-                    touse_curmask = [coreg_dir filesep tmp_curmask_fname ] ;
-                elseif strcmp(tmp_curmask_ext,'.nii')
-                    touse_curmask = [coreg_dir filesep tmp_curmask_fname tmp_curmask_ext ] ;
-                else
-                    error(['Mask file in the ' num2str(ii) 'th iteration of the *.txt file is not in *.nii or *.nii.gz format. Please check!']);
-                end
-                
-                if ~exist(touse_curmask,'file')
-                    %Copy file:
-                    exec_cmd{:,end+1} = ['cp ' list_MASKS{ii} ' ' coreg_dir ] ;
+            
+            %%%%%%%%%%%%%% START T1<-->DWI IMPLEMENTATION %%%%
+            %%%%%%%%%%%%
+            %%%%%%%%%%%%            
+            %##########FIRST, DEALING WITH T1 <--> DWI DEPENDENCES ########
+            for tohide=1:1
+                %COREGISTERING T1 to DWI
+                obj.Params.tracxBYmask.T1coregDWI.dir = [obj.root 'post_tracx' filesep 'T1_coreg_dwi' ];
+                obj.Params.tracxBYmask.T1coregDWI.in_T1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'orig_T1.nii' ];
+                obj.Params.tracxBYmask.T1coregDWI.out_dwiT1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'coreg2dwi_orig_T1.nii' ];
+                obj.Params.tracxBYmask.T1coregDWI.in_b0 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'b0.nii' ];
+                obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'CoReg.mat' ];
+                %check if files exist:
+                %directory:
+                if exist(obj.Params.tracxBYmask.T1coregDWI.dir,'dir') == 0
+                    exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.T1coregDWI.dir ];
                     obj.RunBash(exec_cmd{end});
-                    
-                    %Check if cur_mask is gzipped:
-                    if strcmp(tmp_curmask_ext,'.gz')
-                        exec_cmd{:,end+1} = ['gunzip ' coreg_dir filesep tmp_curmask_fname tmp_curmask_ext   ] ;
+                end
+                %T1:
+                if exist( obj.Params.tracxBYmask.T1coregDWI.in_T1, 'file') == 0
+                    display('Copying the T1...');
+                    exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_T1  ];
+                    obj.RunBash(exec_cmd{end});
+                end
+                %B0:
+                if exist( obj.Params.tracxBYmask.T1coregDWI.in_b0, 'file') == 0
+                    if strcmp(obj.Params.tracxBYmask.tracula.b0(end-6:end),'.nii.gz')
+                        display('Copying the b0...');
+                        exec_cmd{:,end+1} = ['cp ' obj.Params.tracxBYmask.tracula.b0 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
+                        obj.RunBash(exec_cmd{end});
+                        exec_cmd{:,end+1} = ['gunzip ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
+                        obj.RunBash(exec_cmd{end});
+                        
+                    elseif strcmp(obj.Params.tracxBYmask.tracula.b0(end-3:end),'.nii')
+                        display('Copying the b0...')
+                        exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0  ];
                         obj.RunBash(exec_cmd{end});
                     end
                 end
                 
-                %Save information about what masks were extracted
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.coreg_in{ii} = touse_curmask;
+                %Coregistering now...
+                if exist(obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat,'file') == 0
+                    exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,obj.Params.tracxBYmask.T1coregDWI.in_b0,obj.Params.tracxBYmask.T1coregDWI.dir);';
+                    eval(exec_cmd{end});
+                end
                 
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.movefiles = coreg_dir;
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.fn = touse_curmask;
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.targ = touse_b0;
-                fMRI_object.obj.Params.ApplyReverseNormNew.in.regfile = obj.Params.spmT1_Proc.out.iregfile;
-                fMRI_object.obj.proc_apply_reservsenorm_new();
+                if exist(obj.Params.tracxBYmask.T1coregDWI.out_dwiT1,'file') == 0
+                    exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0);';
+                    eval(exec_cmd{end});
+                end
+                %END OF COREGISTRERING T1 to DWI
+                %~~~
+                
+                
+                %PROCESSING T1 BASED ON SPM.
+                obj.Params.tracxBYmask.coregT12DWI.dir = [obj.root 'post_tracx' filesep 'coregT1_spm_proc' ];
+                obj.Params.tracxBYmask.coregT12DWI.in_T1 = obj.Params.tracxBYmask.T1coregDWI.out_dwiT1;
+                obj.Params.tracxBYmask.coregT12DWI.in_Affinemat = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'Affine.mat' ];
+                
+                [~, tmp_coT1_bname, tmp_cT1_ext ] = fileparts(obj.Params.tracxBYmask.coregT12DWI.in_T1);
+                obj.Params.tracxBYmask.coregT12DWI.out_regfile = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'iy_' tmp_coT1_bname, tmp_cT1_ext  ];
+                %check if files exist:
+                %directory:
+                if exist(obj.Params.tracxBYmask.coregT12DWI.dir,'dir') == 0
+                    exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.coregT12DWI.dir ];
+                    obj.RunBash(exec_cmd{end});
+                end
+                %regile:
+                if exist(obj.Params.tracxBYmask.coregT12DWI.out_regfile) == 0
+                    exec_cmd{:,end+1} = 'obj.proc_t1_spm(obj.Params.tracxBYmask.coregT12DWI.in_T1,obj.Params.tracxBYmask.coregT12DWI.dir);' ;
+                    eval(exec_cmd{end});
+                end
+            end
+            %##########END OF DEALING WITH T1 <--> DWI DEPENDENCES ########
+            %##############################################################
+            
+            
+            %%%%%%%%%%%%%% START TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %IMPLEMENTATION STARTS HERE:
+            fprintf('\n\nLOOPING THORUGH THE TXT_FILE....\n');
+            display('MAKE SURE FILENAMES ARE IN THE SAME SPACE AS THE FIRST FILENAME/MASK');
+            fprintf('*Supporting only *.nii for now.\n\n');
+            pause(2)
+         
+            %Loop for every mask created
+            for ii=1:numel(list_MASKS)
+                %Split parts:
+                [curmask_dir , curmask_bname, curmask_ext ] = fileparts(list_MASKS{ii});
+                
+                
+                %Check if masks are aligned to MNI. If not, align 
+                [m_TMP h_TMP] = openIMG(obj.Params.tracxBYmask.T1_tmp); 
+                [m_curMASK h_curMASK] = openIMG(list_MASKS{ii}); 
+                if isequal(h_curMASK.dim,h_TMP.dim)
+                    %If *.mats differ, copy the same MNI:
+                    if ~isequal(h_curMASK.mat,h_TMP.mat)
+                        fprintf(['In txt iteration ' '' num2str(ii) ''  ' Correcting h.matrix to match header...'])
+                        h_curMASK.mat= h_TMP.mat;
+                        spm_write_vol(h_curMASK,m_curMASK);
+                        fprintf('..done\n')
+                    end
+                else
+                    error([' Template: obj.Params.tracxBYmask.T1_tmp has different dimenisions than mask at iteration: ' num2str(ii) ]);
+                end
+                
+                %Create split mask directory for each mask
+                cur_split_dir{ii}= [out_dir filesep 'split_' curmask_bname filesep];
+                cur_split_dir{ii}=regexprep(cur_split_dir{ii},[filesep filesep], filesep);
+                system(['mkdir -p ' cur_split_dir{ii} ]);
+                
+                %Reverse normalize the mask so its align with T1 or b0
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.revN{ii}= [ cur_split_dir{ii} 'revN_' curmask_bname curmask_ext];
+                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.revN{ii},'file') == 0
+                    exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(list_MASKS{ii}, ' ...
+                        ' obj.Params.tracxBYmask.coregT12DWI.out_regfile,in_b0, cur_split_dir{ii}, ''revN_'' );'] ;
+                    eval(exec_cmd{end});
+                end
+                %QuickReslice:
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii}= [ cur_split_dir{ii} 'resliced_revN_' curmask_bname curmask_ext];
+                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii},'file') == 0
+                    exec_cmd{:,end+1} = 'obj.proc_reslice([ cur_split_dir{ii} ''revN_'' curmask_bname curmask_ext ],in_b0,'''', ''resliced_'' );';
+                    eval(exec_cmd{end});
+                end
+                
+                %Splitting the reversed normalized, resliced mask:
+                [~, obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} ] = ...
+                system(['fslstats  ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ' -R | awk ''{print $2}'' ' ]);
+                %making it a number (instead of a character class):
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} = str2num(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii});
+                
+                %Pad the last mask number with zeros:
+                if obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 10
+                    pad_lastmask{ii} = [ '000' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
+                elseif obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 100
+                    pad_lastmask{ii} = [ '00' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
+                elseif obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 1000
+                    pad_lastmask{ii} = [ '0' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
+                else
+                    pad_lastmask{ii} = [ num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
+                end
+                
+                %Splitting the mask by intensity:
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.last_mask{ii} = [ cur_split_dir{ii} 'split_' pad_lastmask{ii} '_' curmask_bname '.nii.gz'];
+                
+                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.last_mask{ii},'file') == 0
+                    %Then, we will redo the split...first remove previous
+                    %splits:
+                    display(['Removing previous split_* for ' cur_split_dir{ii}]);
+                    [~, b] = system(['rm ' cur_split_dir{ii} 'split*']);
+                    
+                    %then split by mask
+                    fprintf(['\nSplitting ' curmask_bname '...'])
+                    display('In iteration: ' )
+                    exec_cmd{:,end+1} = ['Splitting mask: ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ' using fslmaths -thr -uthr arguments.'];
+                    for ss=1:obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii}
+                        %padding zeros:
+                        if ss < 10 
+                            idx = [ '000' num2str(ss)];
+                        elseif ss < 100
+                            idx = [ '00' num2str(ss)];
+                        elseif ss < 1000
+                            idx = [ '0' num2str(ss)];
+                        else
+                            idx = [ num2str(ss)];
+                        end
+                        system(['fslmaths ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ...
+                            ' -uthr ' idx ' -thr ' idx ' ' cur_split_dir{ii} 'split_' idx '_' curmask_bname ]);
+                        fprintf([ idx ' ']);
+                        if ~mod(ss,20); fprintf('\n'); end
+                    end
+                    fprintf('..done \n');
+                end
+
+                %Is the txt file created? 
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii} = [ cur_split_dir{ii} 'seeds_' curmask_bname '.txt'];
+                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii},'file') 
+                    system(['rm ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii}  ])
+                end
+                %Creating the file:
+                fprintf('\nInitializing the seeds_*.txt file')
+                system(['touch ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii}])
+                
+                
+                %Creating a list of the split*
+                [~, tmp_list{ii} ] = system(['ls -1 ' cur_split_dir{ii} 'split*']);
+                %Write to txt now:
+                fileID=fopen(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii},'w');
+                fprintf(fileID,'%s',tmp_list{ii}) ; fclose(fileID);
+                fprintf('..done \n')
+                
+                %Move probtracx2 directory if it exists:
+                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} = [ cur_split_dir{ii} 'probtrackx2'];
+                %unless it has already been moved:
+                if exist([obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date],'dir') ~= 0
+                    error(['Cannot move ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ' to a backup directory. The date already exists! ']);
+                end
+                %if not, move it                                
+                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii},'dir') ~= 0
+                    system(['mv ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ' ' ...
+                         obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date]);
+                end
+                system('mkdir -p ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii});
+                
+                
+                %Create a shell script with the necessary commands in this specific mask:
+                curmask_exec_cmd{ii} = ['/usr/pubsw/packages/fsl/5.0.9/bin/probtrackx2 --network -x  ' ...
+                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii} ' ' ...
+                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).probtracx2_args ' ' ...
+                    ' -s ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'merged' ...
+                    ' -m ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'nodif_brain_mask' ...
+                    ' --dir=' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ...
+                    ];
             end
             
-            
-            %Gzip again:
-            if strcmp(tmp_b0_ext,'.gz')
-                exec_cmd{:,end+1} = ['gzip ' tmp_b0_dirname  filesep tmp_b0_fname ];
-                obj.RunBash(exec_cmd{end});
+            %Integrate the probtracx commands in here:
+            obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun = [ out_dir 'probtracx2_cmd_to_run.sh'];
+            fprintf('\nIntegrating the probtrackx2 command into a shell script\n');
+            fprintf('\nRun the following script from command line: \n');
+            fprintf(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun);
+            if exist(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun,'file') ~= 0
+                system(['mv ' obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun ' ' ...
+                    obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun '_bak_' date]);
             end
-            
-            
-            %~~%%%%%%%%%%% END OF MKDIR AND COREG %%%%%%%%%%%%%%%%%%%%%%%%%
-            
+            system(['touch ' obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun ]);
+            %Write to sh now:
+            fileID=fopen(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun,'w');
+            for ii=1:numel(list_MASKS)
+                fprintf(fileID,'%s',curmask_exec_cmd{ii}) 
+                
+            end
+            fclose(fileID); fprintf('..done \n')
+            %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
             
         end
         
@@ -4789,8 +4868,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         %COREG METHODS:
-        function obj = proc_QuickCoReg(obj,mov,ref,list_applyxforms, prefix)
-            %function proc_QuickCoReg(mov,ref,list_applyxforms, prefix)
+        function obj = proc_reslice(obj,mov,ref,list_applyxforms, prefix)
+            %function proc_reslice(mov,ref,list_applyxforms, prefix)
             
             %Check if files exists!
             if exist(ref,'file') == 0
@@ -4959,7 +5038,215 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             fprintf('\n');
         end
+        function obj = proc_t1_spm(obj,coreg2dwi_T1,outdir)
+            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
+            wasRun = false;
+            
+            if nargin <3
+                error('Not enough arguments. Please check. Exiting...');
+            end
+            
+            if exist(coreg2dwi_T1,'file') == 0
+                error(['No ' '' coreg2dwi_T1 '' 'exists. Exiting...'])
+            end
+            
+            root = outdir;
+            root = regexprep(root,'//','/');
+            
+            
+            [a b c] = fileparts(coreg2dwi_T1);
+            
+            %Copying coreg2dwi_T1 to ourdir if it's not already there:
+            %Check that '//' doesnt occur:
+            if strcmp(outdir(end),filesep)
+                outdir = outdir(1:end-1);
+            end
+            %Check if outdir and dir of T1 are the same:
+            if ~strcmp(outdir,a)
+                if exist([outdir filesep b c], 'file')
+                    %Check if existing file and coreg2dwi_T1 are equal, if
+                    %not send a error
+                    [sys_1, sys_2] = system(['diff ' [outdir filesep b c] ' ' coreg2dwi_T1   ]);
+                    if ~isempty(sys_2)
+                        error(sys_2);
+                    end
+                else
+                    display(['Copying ' coreg2dwi_T1 ' to ' a filesep '...']);
+                    system(['cp ' coreg2dwi_T1 ' ' outdir filesep]) ;
+                end
+                coreg2dwi_T1 =  [ outdir filesep b c ];
+            end
+            
+            %%%
+            if exist([root filesep 'Affine.mat'],'file')==0
+                %%% could put something in here to redo subseuqent steps if
+                %%% this step is not complete.
+                wasRun=true;
+                
+                %Flag parameters copied from fMRI_Session.m object:
+                %---> in = obj.Params.spmT1_Proc.in.pars; (from
+                %fMRI_Session.m)
+                in.samp =2; in.fwhm1=16; in.fwhm2=0; in.regtype='mni';
+                %
+                in.P = coreg2dwi_T1;
+                %---> in.tpm = spm_load_priors8(obj.Params.spmT1_Proc.in.tpm);
+                in.tpm = spm_load_priors8([ obj.dependencies_dir filesep 'MNI_masks' filesep 'TPM.nii' ]);
+                in.M=[];
+                [Affine,h] = spm_maff8(in.P,in.samp,in.fwhm1,in.tpm,in.M,in.regtype);
+                in.M = Affine;
+                [Affine,h] = spm_maff8(in.P,in.samp,in.fwhm2,in.tpm,in.M,in.regtype);
+                save([outdir filesep 'Affine.mat'],'Affine');
+            else
+                load([outdir filesep 'Affine.mat']);
+            end
+            fprintf('%s\n', 'Affine Registration is complete:');
+            
+            
+            if exist([outdir filesep 'Norm_Seg8.mat'],'file')==0
+                wasRun=true;
+                %Again, copy params from fmri_Session.m
+                %--> NormPars = obj.Params.spmT1_Proc.in.NormPars;
+                NormPars.fwhm = 0;
+                NormPars.biasreg=1.0000e-04;
+                NormPars.biasfwhm= 60;
+                NormPars.reg= [0 1.0000e-03 0.5000 0.0500 0.2000] ;
+                NormPars.samp = 2;
+                NormPars.lkp =  [];
+                NormPars.image = spm_vol(coreg2dwi_T1);
+                NormPars.Affine = Affine;
+                %--> NormPars.tpm = spm_load_priors8(obj.Params.spmT1_Proc.in.tpm);
+                NormPars.tpm = spm_load_priors8([ obj.dependencies_dir filesep 'MNI_masks' filesep 'TPM.nii' ]);
+                results = spm_preproc8(NormPars);
+                save([outdir filesep 'Norm_Seg8.mat'],'results');
+            else
+                load([outdir filesep 'Norm_Seg8.mat']);
+            end
+            fprintf('%s\n', 'Normalization computation is complete:');
+            
+            c = regexprep(c,',1','');
+            
+            if exist([root filesep 'y_' b c],'file')==0
+                %%% I forget what some of these static options do.  Will leave
+                %%% them fixed as is for now.
+                wasRun=true;
+                %replaced from fMRI_Session.m parameters below
+                %--> [cls,M1] = spm_preproc_write8(results,obj.Params.spmT1_Proc.in.rflags.writeopts,[1 1],[1 1],0,1,obj.Params.spmT1_Proc.in.rflags.bb,obj.Params.spmT1_Proc.in.rflags.vox);
+                bb= [ -78  -112   -70
+                    78    76    90 ] ;
+                
+                [cls,M1] = spm_preproc_write8(results,ones(6,4),[1 1],[1 1],0,1,bb,1);
+            end
+            fprintf('%s\n', 'Normalization files have been written out:');
+            
+            if exist([root filesep 'w' b c],'file')==0
+                wasRun=true;
+                %Replaced params with fMRI_Session.m standars:
+                %--> defs = obj.Params.spmT1_Proc.in.defs;
+                defs.out{1}.pull.interp=5;
+                defs.out{1}.pull.mask=1;
+                defs.out{1}.pull.fwhm=[0 0 0];
+                defs.out{1}.pull.savedir.savesrc = 1 ;
+                defs.comp{2}.idbbvox.vox= [1 1 1];
+                defs.comp{2}.idbbvox.bb= [ -78  -112   -70
+                    78    76    90 ] ;
+                defs.comp{1}.def = {[outdir filesep 'y_' b c]};
+                
+                defs.out{1}.pull.fnames = {coreg2dwi_T1};
+                
+                
+                spm_deformations(defs);
+            end
+            %             obj.Params.spmT1_Proc.out.normT1 = [a filesep 'w' b c];
+            fprintf('%s\n', 'Normalization has been applied to the T1:');
+            %
+            %             obj.Params.spmT1_Proc.out.estTPM{1,1} = [a filesep 'c1' b c];
+            %             obj.Params.spmT1_Proc.out.estTPM{2,1} = [a filesep 'c2' b c];
+            %             obj.Params.spmT1_Proc.out.estTPM{3,1} = [a filesep 'c3' b c];
+            %             obj.Params.spmT1_Proc.out.estTPM{4,1} = [a filesep 'c4' b c];
+            %             obj.Params.spmT1_Proc.out.estTPM{5,1} = [a filesep 'c5' b c];
+            %             obj.Params.spmT1_Proc.out.estTPM{6,1} = [a filesep 'c6' b c];
+            %
+            %             obj.Params.spmT1_Proc.out.regfile = [a filesep 'y_' b c];
+            %             obj.Params.spmT1_Proc.out.iregfile = [a filesep 'iy_' b c];
+            
+            fprintf('\n');
+        end
+        function obj = proc_apply_resversenorm(obj,fn,regfile,targ,outdir,prefix)
+            fprintf('\n%s\n', 'APPLYING SPM12 STYLE REVERSE NORMALIZATION:');
+            wasRun = false;
+            if nargin <6
+                prefix = '' ;
+            end
+            if nargin <5
+                error('Incorrect number of arguments. Please enter at least 5');
+            end
+            
+            
+            if ischar(fn)
+                fn = cellstr(fn);
+            end
+            
+            outpath = outdir;
+            if exist(outpath,'dir')==0
+                mkdir(outpath);
+            end
+            
+            nfn = [];
+            for ii = 1:numel(fn);
+                [a1 b1 c1] = fileparts(fn{ii});
+                ff = regexprep([outpath prefix b1 c1],[filesep filesep],filesep);
+                nfn{end+1,1} = ff;
+            end
+            
+            check = 0;
+            for ii = 1:numel(nfn)
+                if exist(nfn{ii},'file')>0
+                    check = check+1;
+                end
+            end
+            
+            if check ~= (numel(fn))
+                wasRun = true;
+                [targ_dir, targ_bname,  targ_ext ] = fileparts(targ);
+                
+                if strcmp(targ_ext,'.gz')
+                    system(['gunzip ' targ ]);
+                    targ=[targ_dir filesep targ_bname ] ;
+                end
+                h = spm_vol(targ);
+                if strcmp(targ_ext,'.gz')
+                    system(['gzip ' targ ]);
+                end
+                x = spm_imatrix(h.mat);
+                
+                %defs = obj.Params.ApplyNormNew.in.pars;
+                %defs = obj.Params.ApplyReverseNormNew.in.pars;
+                defs.comp{1}.def = {regfile};
+                defs.out{1}.pull.fnames  = fn(:)';
+                
+                defs.out{1}.pull.savedir.savesrc=1;
+                defs.out{1}.pull.interp=0;
+                defs.out{1}.pull.mask=1;
+                defs.out{1}.pull.fwhm=[0 0 0];
+                defs.comp{2}.idbbvox.vox = abs(x(7:9));
+                defs.comp{2}.idbbvox.bb = world_bb(h);
+                
+                spm_deformations(defs);
+                
+                nfn = [];
+                for ii = 1:numel(fn);
+                    [a1 b1 c1] = fileparts(fn{ii});
+                    ff = [outpath prefix b1 c1];
+                    movefile([a1 filesep 'w' b1 c1], ff);
+                    obj.proc_remove_spm_nans(ff);
+                    nfn{end+1,1} = ff;
+                end
+            end
+            disp('Applying Normalization is complete');
+            fprintf('\n');
+        end
         
+       
         
         
         %MISC FUNCTIONALITIES
@@ -5202,118 +5489,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         
         %~~~~~ ONTHEWORKS
-        function obj = proc_t1_spm(obj,coreg2dwi_T1,outdir)
-            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
-            wasRun = false;
-            
-            if nargin <3
-                error('Not enough arguments. Please check. Exiting...');
-            end
-            
-            if exist(coreg2dwi_T1,'file') == 0
-                error(['No ' '' coreg2dwi_T1 '' exists. 'Exiting...'])
-            end
-            
-            root = outdir;
-            root = regexprep(root,'//','/');
-            
-         
-            [a b c] = fileparts(coreg2dwi_T1);
-
-            %%%
-            if exist([root filesep 'Affine.mat'],'file')==0
-                %%% could put something in here to redo subseuqent steps if
-                %%% this step is not complete.
-                wasRun=true;
-                
-                %Flag parameters copied from fMRI_Session.m object:
-                %---> in = obj.Params.spmT1_Proc.in.pars; (from
-                %fMRI_Session.m)
-                in.samp =2; in.fwhm1=16; in.fwhm=0; in.regtype='mni';
-                %
-                in.P = coreg2dwi_T1;
-                %---> in.tpm = spm_load_priors8(obj.Params.spmT1_Proc.in.tpm);
-                in.tpm = spm_load_priors8([ obj.dependencies_dir filesep 'MNI_masks' filesep 'TPM.nii' ]);
-                
-                [Affine,h] = spm_maff8(in.P,in.samp,in.fwhm1,in.tpm,in.M,in.regtype);
-                in.M = Affine;
-                [Affine,h] = spm_maff8(in.P,in.samp,in.fwhm2,in.tpm,in.M,in.regtype);
-                save([a filesep 'Affine.mat'],'Affine');
-            else
-                load([a filesep 'Affine.mat']);
-            end
-            fprintf('%s\n', 'Affine Registration is complete:');
-            
-            
-            if exist([a filesep 'Norm_Seg8.mat'],'file')==0
-                wasRun=true;
-                %Again, copy params from fmri_Session.m
-                %--> NormPars = obj.Params.spmT1_Proc.in.NormPars;
-                NormPars.fwhm = 0;
-                NormPars.biasreg=1.0000e-04;
-                NormPars.biasfwhm= 60; 
-                NormPars.reg= [0 1.0000e-03 0.5000 0.0500 0.2000] ;
-                NormPars.samp = 2; 
-                NormPars.image = spm_vol(coreg2dwi_T1);
-                NormPars.Affine = Affine;
-                %--> NormPars.tpm = spm_load_priors8(obj.Params.spmT1_Proc.in.tpm);
-                NormPars.tpm = spm_load_priors8([ obj.dependencies_dir filesep 'MNI_masks' filesep 'TPM.nii' ]);
-                results = spm_preproc8(NormPars);
-                save([a filesep 'Norm_Seg8.mat'],'results');
-            else
-                load([a filesep 'Norm_Seg8.mat']);
-            end
-            fprintf('%s\n', 'Normalization computation is complete:');
-            
-            c = regexprep(c,',1','');
-            
-            if exist([a filesep 'y_' b c],'file')==0
-                %%% I forget what some of these static options do.  Will leave
-                %%% them fixed as is for now.
-                wasRun=true;
-                %replaced from fMRI_Session.m parameters below
-                %--> [cls,M1] = spm_preproc_write8(results,obj.Params.spmT1_Proc.in.rflags.writeopts,[1 1],[1 1],0,1,obj.Params.spmT1_Proc.in.rflags.bb,obj.Params.spmT1_Proc.in.rflags.vox);
-                bb= [ -78  -112   -70
-                        78    76    90 ] ;
-                [cls,M1] = spm_preproc_write8(results,ones(6,4),[1 1],[1 1],0,1,bb,1);
-            end
-            fprintf('%s\n', 'Normalization files have been written out:');
-
-            if exist([a filesep 'w' b c],'file')==0
-                wasRun=true;
-                %Replaced params with fMRI_Session.m standars:
-                %--> defs = obj.Params.spmT1_Proc.in.defs;
-                defs.out{1}.pull.interp=5;
-                defs.out{1}.pull.mask=1;
-                defs.out{1}.pull.fwhm=[0 0 0];
-                
-                defs.comp{2}.idbbvox.vox= [1 1 1];
-                defs.comp{2}.idbbvox.bb= [ -78  -112   -70
-                                            78    76    90 ] ; 
-                defs.comp{1}.def = {[a filesep 'y_' b c]};
-                
-                defs.out{1}.pull.fnames = {coreg2dwi_T1};
-                
-                
-                spm_deformations(defs);
-            end
-%             obj.Params.spmT1_Proc.out.normT1 = [a filesep 'w' b c];
-            fprintf('%s\n', 'Normalization has been applied to the T1:');
-%             
-%             obj.Params.spmT1_Proc.out.estTPM{1,1} = [a filesep 'c1' b c];
-%             obj.Params.spmT1_Proc.out.estTPM{2,1} = [a filesep 'c2' b c];
-%             obj.Params.spmT1_Proc.out.estTPM{3,1} = [a filesep 'c3' b c];
-%             obj.Params.spmT1_Proc.out.estTPM{4,1} = [a filesep 'c4' b c];
-%             obj.Params.spmT1_Proc.out.estTPM{5,1} = [a filesep 'c5' b c];
-%             obj.Params.spmT1_Proc.out.estTPM{6,1} = [a filesep 'c6' b c];
-%             
-%             obj.Params.spmT1_Proc.out.regfile = [a filesep 'y_' b c];
-%             obj.Params.spmT1_Proc.out.iregfile = [a filesep 'iy_' b c];
-            
-            fprintf('\n');
-        end
-        
-        
         
         %~~~~~~~~~~~~~~~DEPRECATED METHODS~~~~~~~~~~~~~
         function obj = deprecated_UploadData_Trkland(obj)

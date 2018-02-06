@@ -384,7 +384,8 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Params.WMLs2DWI.in.FLAIR = [obj.Params.WMLs2DWI.in.dir 'm' obj.sessionname '_FLAIR.nii' ];
                 obj.Params.WMLs2DWI.in.WMLprobmap = [obj.Params.WMLs2DWI.in.dir 'ples_lpa_m' ...
                     obj.sessionname '_FLAIR.nii' ];
-                obj.proc_WMLs2DWI(); obj.resave();
+                display('PROC_WMLs2DWI NEED TO FIX THE COREG OPTION. I REPLACED proc_QuicCoReg() with proc_reslice. PLEASE CALL COREG INSTEAD). ' );;
+                %obj.proc_WMLs2DWI(); obj.resave();
             end
             
             %~~~~~~ TRKLAND PROCESSING:
@@ -631,7 +632,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 %Check to see what mask_txt file is inputted
                 if nargin <2
-                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir 'try_masks_one.txt' ] ;
+                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
                 else
                     tmp_txt_fullpath =[ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
                 end
@@ -641,12 +642,19 @@ classdef dwi_ADRC < dwiMRI_Session
             
             %%%%%%%%%%%%%%%%%% VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%%
             %VARIABLE INITIALIZATION:
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
+            %TRACULA related:            
+            obj.Params.tracxBYmask.tracula.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
+            obj.Params.tracxBYmask.T1_tmp = [fileparts(which('spm')) '/canonical/single_subj_T1.nii'];;
+            obj.Params.tracxBYmask.tracula.b0 = [obj.Params.tracxBYmask.tracula.bedp_dir ... 
+                filesep '..' filesep 'dmri' filesep 'lowb.nii.gz' ];
+            
+            
+            %TXT file related:
             obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
             obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep tmp_txtfname ];
             
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
-            
+            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).probtracx2_args = ...
+                ' -l --onewaycondition --omatrix1 -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
             
             proc_tracxBYmask(obj,tmp_txtfname); %obj.resave()
             %%%%%%%%%%%%%%% END VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%
