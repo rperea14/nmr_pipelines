@@ -3203,11 +3203,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Introducing local variable for ease of method implementation
             in_bedp_dir     = obj.Params.tracxBYmask.tracula.bedp_dir;
             in_b0           = obj.Params.tracxBYmask.tracula.b0;
-            in_txtfname     = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname;
-            in_movefiles    = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles;
+            in_txtfname     = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname;
+            in_movefiles    = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles;
             %Creating working directory and assigning a short name:
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
-            out_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir; %short-naming
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
+            out_dir = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir; %short-naming
             
             %~~~
             
@@ -3327,153 +3327,161 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('*Supporting only *.nii for now.\n\n');
             pause(2)
          
+            
             %Loop for every mask created
             for ii=1:numel(list_MASKS)
                 %Split parts:
                 [curmask_dir , curmask_bname, curmask_ext ] = fileparts(list_MASKS{ii});
                 
+                %Initialize the probtracx shell command.
+                %If created, we can skip all these loops
+                %Integrate the probtracx commands in here:
+                obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} = [ out_dir 'torun_probtracx2_' curmask_bname  '.sh'];
                 
-                %Check if masks are aligned to MNI. If not, align 
-                [m_TMP h_TMP] = openIMG(obj.Params.tracxBYmask.T1_tmp); 
-                [m_curMASK h_curMASK] = openIMG(list_MASKS{ii}); 
-                if isequal(h_curMASK.dim,h_TMP.dim)
-                    %If *.mats differ, copy the same MNI:
-                    if ~isequal(h_curMASK.mat,h_TMP.mat)
-                        fprintf(['In txt iteration ' '' num2str(ii) ''  ' Correcting h.matrix to match header...'])
-                        h_curMASK.mat= h_TMP.mat;
-                        spm_write_vol(h_curMASK,m_curMASK);
-                        fprintf('..done\n')
-                    end
-                else
-                    error([' Template: obj.Params.tracxBYmask.T1_tmp has different dimenisions than mask at iteration: ' num2str(ii) ]);
-                end
-                
-                %Create split mask directory for each mask
-                cur_split_dir{ii}= [out_dir filesep 'split_' curmask_bname filesep];
-                cur_split_dir{ii}=regexprep(cur_split_dir{ii},[filesep filesep], filesep);
-                system(['mkdir -p ' cur_split_dir{ii} ]);
-                
-                %Reverse normalize the mask so its align with T1 or b0
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.revN{ii}= [ cur_split_dir{ii} 'revN_' curmask_bname curmask_ext];
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.revN{ii},'file') == 0
-                    exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(list_MASKS{ii}, ' ...
-                        ' obj.Params.tracxBYmask.coregT12DWI.out_regfile,in_b0, cur_split_dir{ii}, ''revN_'' );'] ;
-                    eval(exec_cmd{end});
-                end
-                %QuickReslice:
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii}= [ cur_split_dir{ii} 'resliced_revN_' curmask_bname curmask_ext];
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii},'file') == 0
-                    exec_cmd{:,end+1} = 'obj.proc_reslice([ cur_split_dir{ii} ''revN_'' curmask_bname curmask_ext ],in_b0,'''', ''resliced_'' );';
-                    eval(exec_cmd{end});
-                end
-                
-                %Splitting the reversed normalized, resliced mask:
-                [~, obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} ] = ...
-                system(['fslstats  ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ' -R | awk ''{print $2}'' ' ]);
-                %making it a number (instead of a character class):
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} = str2num(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii});
-                
-                %Pad the last mask number with zeros:
-                if obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 10
-                    pad_lastmask{ii} = [ '000' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
-                elseif obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 100
-                    pad_lastmask{ii} = [ '00' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
-                elseif obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 1000
-                    pad_lastmask{ii} = [ '0' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
-                else
-                    pad_lastmask{ii} = [ num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
-                end
-                
-                %Splitting the mask by intensity:
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.last_mask{ii} = [ cur_split_dir{ii} 'split_' pad_lastmask{ii} '_' curmask_bname '.nii.gz'];
-                
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.last_mask{ii},'file') == 0
-                    %Then, we will redo the split...first remove previous
-                    %splits:
-                    display(['Removing previous split_* for ' cur_split_dir{ii}]);
-                    [~, b] = system(['rm ' cur_split_dir{ii} 'split*']);
-                    
-                    %then split by mask
-                    fprintf(['\nSplitting ' curmask_bname '...'])
-                    display('In iteration: ' )
-                    exec_cmd{:,end+1} = ['Splitting mask: ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ' using fslmaths -thr -uthr arguments.'];
-                    for ss=1:obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii}
-                        %padding zeros:
-                        if ss < 10 
-                            idx = [ '000' num2str(ss)];
-                        elseif ss < 100
-                            idx = [ '00' num2str(ss)];
-                        elseif ss < 1000
-                            idx = [ '0' num2str(ss)];
-                        else
-                            idx = [ num2str(ss)];
+                if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii},'file') == 0
+                    %Check if masks are aligned to MNI. If not, align
+                    [m_TMP h_TMP] = openIMG(obj.Params.tracxBYmask.T1_tmp);
+                    [m_curMASK h_curMASK] = openIMG(list_MASKS{ii});
+                    if isequal(h_curMASK.dim,h_TMP.dim)
+                        %If *.mats differ, copy the same MNI:
+                        if ~isequal(h_curMASK.mat,h_TMP.mat)
+                            fprintf(['In txt iteration ' '' num2str(ii) ''  ' Correcting h.matrix to match header...']);
+                            h_curMASK.mat= h_TMP.mat;
+                            spm_write_vol(h_curMASK,m_curMASK);
+                            fprintf('..done\n');
                         end
-                        system(['fslmaths ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ...
-                            ' -uthr ' idx ' -thr ' idx ' ' cur_split_dir{ii} 'split_' idx '_' curmask_bname ]);
-                        fprintf([ idx ' ']);
-                        if ~mod(ss,20); fprintf('\n'); end
+                    else
+                        error([' Template: obj.Params.tracxBYmask.T1_tmp has different dimenisions than mask at iteration: ' num2str(ii) ]);
                     end
+                    
+                    %Create split mask directory for each mask
+                    cur_split_dir{ii}= [out_dir filesep 'split_' curmask_bname filesep];
+                    cur_split_dir{ii}=regexprep(cur_split_dir{ii},[filesep filesep], filesep);
+                    system(['mkdir -p ' cur_split_dir{ii} ]);
+                    
+                    %Reverse normalize the mask so its align with T1 or b0
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.revN{ii}= [ cur_split_dir{ii} 'revN_' curmask_bname curmask_ext];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.revN{ii},'file') == 0
+                        exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(list_MASKS{ii}, ' ...
+                            ' obj.Params.tracxBYmask.coregT12DWI.out_regfile,in_b0, cur_split_dir{ii}, ''revN_'' );'] ;
+                        eval(exec_cmd{end});
+                    end
+                    %QuickReslice:
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii}= [ cur_split_dir{ii} 'resliced_revN_' curmask_bname curmask_ext];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii},'file') == 0
+                        exec_cmd{:,end+1} = 'obj.proc_reslice([ cur_split_dir{ii} ''revN_'' curmask_bname curmask_ext ],in_b0,'''', ''resliced_'' );';
+                        eval(exec_cmd{end});
+                    end
+                    
+                    %Splitting the reversed normalized, resliced mask:
+                    [~, obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} ] = ...
+                        system(['fslstats  ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii} ' -R | awk ''{print $2}'' ' ]);
+                    %making it a number (instead of a character class):
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} = str2num(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii});
+                    
+                    %Pad the last mask number with zeros:
+                    if obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} < 10
+                        pad_lastmask{ii} = [ '000' num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    elseif obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} < 100
+                        pad_lastmask{ii} = [ '00' num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    elseif obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} < 1000
+                        pad_lastmask{ii} = [ '0' num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    else
+                        pad_lastmask{ii} = [ num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    end
+                    
+                    %Splitting the mask by intensity:
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.last_mask{ii} = [ cur_split_dir{ii} 'split_' pad_lastmask{ii} '_' curmask_bname '.nii.gz'];
+                    
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.last_mask{ii},'file') == 0
+                        %Then, we will redo the split...first remove previous
+                        %splits:
+                        display(['Removing previous split_* for ' cur_split_dir{ii}]);
+                        [~, b] = system(['rm ' cur_split_dir{ii} 'split*']);
+                        
+                        %then split by mask
+                        fprintf(['\nSplitting ' curmask_bname '...'])
+                        display('In iteration: ' )
+                        exec_cmd{:,end+1} = ['Splitting mask: ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii} ' using fslmaths -thr -uthr arguments.'];
+                        for ss=1:obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii}
+                            %padding zeros:
+                            if ss < 10
+                                idx = [ '000' num2str(ss)];
+                            elseif ss < 100
+                                idx = [ '00' num2str(ss)];
+                            elseif ss < 1000
+                                idx = [ '0' num2str(ss)];
+                            else
+                                idx = [ num2str(ss)];
+                            end
+                            system(['fslmaths ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii} ...
+                                ' -uthr ' idx ' -thr ' idx ' ' cur_split_dir{ii} 'split_' idx '_' curmask_bname ]);
+                            fprintf([ idx ' ']);
+                            if ~mod(ss,20); fprintf('\n'); end
+                        end
+                        fprintf('..done \n');
+                    end
+                    
+                    %Is the txt file created?
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii} = [ cur_split_dir{ii} 'seeds_' curmask_bname '.txt'];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii},'file')
+                        system(['rm ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii}  ]);
+                    end
+                    %Creating the file:
+                    fprintf(['\nInitializing the seeds_*.txt file for mask: ' tmp_txtfname ' in filename' curmask_bname  ' (iteration: ' num2str(ii) ' )']);
+                    system(['touch ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii}]);
+                    
+                    
+                    %Creating a list of the split*
+                    [~, tmp_list{ii} ] = system(['ls -1 ' cur_split_dir{ii} 'split*']);
+                    %Write to txt now:
+                    fileID=fopen(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii},'w');
+                    fprintf(fileID,'%s',tmp_list{ii}) ; fclose(fileID);
                     fprintf('..done \n');
+                    
+                    %Move probtracx2 directory if it exists:
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} = [ cur_split_dir{ii} 'probtrackx2_out'];
+                    %unless it has already been moved:
+                    if exist([obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date],'dir') ~= 0
+                        error(['Cannot move ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} ' to a backup directory. The date already exists! ']);
+                    end
+                    %if not, move it
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii},'dir') ~= 0
+                        system(['mv ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} ' ' ...
+                            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date]);
+                    end
+                    system(['mkdir -p ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii}]);
+                    
+                    
+                    %Create a shell script with the necessary commands in this specific mask:
+                    curmask_exec_cmd{ii} = ['/usr/pubsw/packages/fsl/5.0.9/bin/probtrackx2 --network -x  ' ...
+                        obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii} ' ' ...
+                        obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args ' ' ...
+                        ' -s ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'merged' ...
+                        ' -m ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'nodif_brain_mask' ...
+                        ' --dir=' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} ...
+                        ];
+                    
+                    
+                    %Writing out the command shell needed:
+                    fprintf(['\nIntegrating the probtrackx2 command into a shell script. txt_mask_fname line iteratoin: ' num2str(ii) '\n']);
+                    fprintf('\nRun the following script from command line: \n');
+                    fprintf(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii});
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii},'file') ~= 0
+                        system(['mv ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} ' ' ...
+                            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} '_bak_' date]);
+                    end
+                    system(['touch ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} ]);
+                    %Write to sh now:
+                    fileID=fopen(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii},'w');
+                    fprintf(fileID,'%s',curmask_exec_cmd{ii}) ;
+                    fprintf(fileID,'\n\n');
+                    fclose(fileID); fprintf('..done \n');
+                    
                 end
-
-                %Is the txt file created? 
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii} = [ cur_split_dir{ii} 'seeds_' curmask_bname '.txt'];
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii},'file') 
-                    system(['rm ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii}  ])
-                end
-                %Creating the file:
-                fprintf('\nInitializing the seeds_*.txt file')
-                system(['touch ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii}]);
-                
-                
-                %Creating a list of the split*
-                [~, tmp_list{ii} ] = system(['ls -1 ' cur_split_dir{ii} 'split*']);
-                %Write to txt now:
-                fileID=fopen(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii},'w');
-                fprintf(fileID,'%s',tmp_list{ii}) ; fclose(fileID);
-                fprintf('..done \n');
-                
-                %Move probtracx2 directory if it exists:
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} = [ cur_split_dir{ii} 'probtrackx2'];
-                %unless it has already been moved:
-                if exist([obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date],'dir') ~= 0
-                    error(['Cannot move ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ' to a backup directory. The date already exists! ']);
-                end
-                %if not, move it                                
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii},'dir') ~= 0
-                    system(['mv ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ' ' ...
-                         obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date]);
-                end
-                system(['mkdir -p ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii}]);
-                
-                
-                %Create a shell script with the necessary commands in this specific mask:
-                curmask_exec_cmd{ii} = ['/usr/pubsw/packages/fsl/5.0.9/bin/probtrackx2 --network -x  ' ...
-                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii} ' ' ...
-                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).probtracx2_args ' ' ...
-                    ' -s ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'merged' ...
-                    ' -m ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'nodif_brain_mask' ...
-                    ' --dir=' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ...
-                    ];
             end
             
-            %Integrate the probtracx commands in here:
-            obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun = [ out_dir 'probtracx2_cmd_to_run.sh'];
-            fprintf('\nIntegrating the probtrackx2 command into a shell script\n');
-            fprintf('\nRun the following script from command line: \n');
-            fprintf(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun);
-            if exist(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun,'file') ~= 0
-                system(['mv ' obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun ' ' ...
-                    obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun '_bak_' date]);
-            end
-            system(['touch ' obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun ]);
-            %Write to sh now:
-            fileID=fopen(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun,'w');
-            for ii=1:numel(list_MASKS)
-                fprintf(fileID,'%s',curmask_exec_cmd{ii}) ;
-                fprintf(fileID,'\n\n');
-            end
-            fclose(fileID); fprintf('..done \n');
+          
             %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
             
         end

@@ -557,12 +557,11 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR RPOB TRACTOGRAPHY%
             for tohide=1:1
                 if nargin<2 || isempty(masktxt_fname)
-                    masktxt_fname = 'try_masks_one';
-                    masktxt_dir='';
-                    
+                    masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
+                    masktxt_fname = 'default_mask'; %obj.dep_dir / fMRI_masks/maskt_txt/default_mask.txt
                 end
                 
-                %Verify you don't want to reaplace the processing of the
+                %Verify you don't want to replace the processing of the
                 %specific mask:
                 if nargin <4
                     replace_masktxt_info=false;
@@ -613,29 +612,21 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir = masktxt_dir;
             for tohide=1:1
                 %Check to see whether a mask directory locations is input
-                if nargin < 3 || isempty(masktxt_dir) %Check for directory
-                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir = [obj.dependencies_dir ...
-                        'fMRI_masks' filesep 'mask_txt' filesep ];
-                else
-                    
-                    %Checking whether the last charcater is a '/' (linux) or
-                    %'/' (windows). filesep = file separator character
-                    if ~strcmp(masktxt_dir(end),filesep)
-                        obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir = masktxt_dir;
-                    else
-                        obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir = [ masktxt_dir filesep ];
-                    end
-                end
-                
-                
                 %Check to see what mask_txt file is inputted
                 if nargin <2
-                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
+                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
+                    display(['DENOTING: ' tmp_txt_fullpath ' as the default mask filename to process (no arguments passed).'])
+                    pause(1)
+                    
                 else
-                    tmp_txt_fullpath =[ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
+                    tmp_txt_fullpath =[ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
+                    display(['DEFAULT MASK FILENAME: ' tmp_txt_fullpath])
                 end
+                
+                %
             end
             %%%%%%%%%%%%%%%END CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
             
@@ -650,10 +641,11 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %TXT file related:
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep tmp_txtfname ];
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles = ...
+                ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'all_masks' filesep  tmp_txtfname ];
             
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).probtracx2_args = ...
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args = ...
                 ' -l --onewaycondition --omatrix1 -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
             
             proc_tracxBYmask(obj,tmp_txtfname); %obj.resave()
