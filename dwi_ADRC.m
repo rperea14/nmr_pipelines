@@ -5,43 +5,32 @@ classdef dwi_ADRC < dwiMRI_Session
     %%  Created by:
     %%              Rodrigo D. Perea grandrigo@gmail.com
     %%
-    
     properties
         %root directoy where raw data lives:
+        object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
         session_location='/eris/bang/ADRC/Sessions/';
         dcm_location = '/eris/bang/ADRC/DICOM_Archive/';
         gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
         dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
-        
         %sh dependencies:
         sh_gradfile=[ '/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5 '];
         b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
         init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
         col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        
-        
         %FreeSurfer Dependencies
         FS_location='/eris/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
-        
         %trkland dependencies:
         fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
-        
-        %frois dependencies
-        FROIS_dir = '/eris/bang/ADRC/TEMPLATES/FROIS/'
-        
-        %Related to T1 (maybe optional?)
-        bb = [-78 -112 -70; 78 76 90];
-        T1_vox = [ 1 1 1 ] ;
+       
     end
-    
     
     methods
         function obj = dwi_ADRC(sessionname,opt)
             %For compiler code:
             if ~isdeployed()
-                addpath(genpath('/autofs/space/kant_004/users/rdp20/scripts/matlab'));
+                addpath(genpath(obj.object_dir));
             end
             
             %%%  If opt is passed, then the root Sessions folder will be
@@ -108,7 +97,6 @@ classdef dwi_ADRC < dwiMRI_Session
             %             obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii.gz' ] );
             %
         end
-        
         
         function resave(obj)
             save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
@@ -358,8 +346,6 @@ classdef dwi_ADRC < dwiMRI_Session
         function obj = CommonPostProc(obj)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %
-            
-            
             %~~~~~~~ TRACULA (and implicit functionality of bedpostx):
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -373,7 +359,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 
               %  obj.proc_tracula(); obj.resave();
             end
-            
             
             %~~~~~~~ White matter Lesions 2 DWI space:
             for tohide=1:1
@@ -460,7 +445,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.fx.in.n_interp=40; %According to average value on previous studies in connectome!
                 obj.trkland_fx(); obj.resave();
             end
-            
             % [TO MODIFY ROIs/ROAs] TRKLAND_HIPPOCING:
             for tohide=1:1
                 obj.Trkland.hippocing.in.hippo_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Hippocampus.nii.gz');
@@ -472,7 +456,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.hippocing.in.n_interp=33;
                 obj.trkland_hippocing(); obj.resave();
             end
-            
             %  [TO MODIFY ROIs/ROAs] TRKLAND_CINGULUM:
             for tohide=1:1
                 obj.Trkland.cingulum.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
@@ -487,10 +470,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.cingulum.in.n_interp = 32;
                 trkland_cingulum(obj); obj.resave();
             end
-            
-            
-            
-            
             
             %% [ DEPRECATED METHODS ]
             %~~~~~~ TRKLAND_DEPENDENT:
@@ -551,7 +530,6 @@ classdef dwi_ADRC < dwiMRI_Session
             
         end
         
-        
         %UNDER DEVELOPMENT
         function obj = post_tracx_by_txt(obj,masktxt_fname,masktxt_dir,replace_masktxt_info)
             %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR RPOB TRACTOGRAPHY%
@@ -559,6 +537,9 @@ classdef dwi_ADRC < dwiMRI_Session
                 if nargin<2 || isempty(masktxt_fname)
                     masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
                     masktxt_fname = 'default_mask'; %obj.dep_dir / fMRI_masks/maskt_txt/default_mask.txt
+                end
+                if nargin < 3 || isempty(masktxt_dir)
+                     masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
                 end
                 
                 %Verify you don't want to replace the processing of the
@@ -609,9 +590,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%% END DEALING WITH VARIABLE NUMBER OF MASK FOR TRACX%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            
-            
-            %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+          %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
             obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir = masktxt_dir;
             for tohide=1:1
                 %Check to see whether a mask directory locations is input
@@ -620,7 +599,6 @@ classdef dwi_ADRC < dwiMRI_Session
                     tmp_txt_fullpath = [ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
                     display(['DENOTING: ' tmp_txt_fullpath ' as the default mask filename to process (no arguments passed).'])
                     pause(1)
-                    
                 else
                     tmp_txt_fullpath =[ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
                     display(['DEFAULT MASK FILENAME: ' tmp_txt_fullpath])
@@ -656,9 +634,6 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%%%%%%%%%%%%%% END OF IMPLEMENTATION  %%%%%%%%%%%%%%%%%%%%%
             
         end
-        
-        
-        
     end
     methods ( Access = protected )
         function obj = getDCM2nii(obj,torun)
