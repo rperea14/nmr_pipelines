@@ -41,7 +41,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         objectHome = '';
         T1 = '' ;
         projectID = ''
-      
+        history=[] ; 
         pth = [];
         dbentry = [];
         Params = [];

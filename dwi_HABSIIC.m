@@ -44,7 +44,6 @@ classdef dwi_HABSIIC < fMRI_Session
         end
         
         function obj=setMyParams(obj)
-            
             obj.rawfiles = dir_wfp([obj.root 'Orig/*.nii']);
             obj.fsdir='/autofs/eris/bang/ADRC/FreeSurfer6.0/';
             obj.fsubj=obj.sessionname;

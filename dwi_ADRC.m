@@ -1,5 +1,4 @@
 classdef dwi_ADRC < dwiMRI_Session
-    %%  classdef dwi_ADRC < dwiMRI_Session
     %%  This class is a subclass of its parent class dwi_MRI_Session.m
     %%  (where it will inherent other methods).
     %%  Created by:
@@ -23,7 +22,6 @@ classdef dwi_ADRC < dwiMRI_Session
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
         fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
-       
     end
     
     methods
@@ -332,14 +330,16 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %FROIS2dwi:
-            obj.Params.FROIS2dwi.in.movefiles = [ '..' filesep '07_FROIS2dwi' ];
-            obj.Params.FROIS2dwi.in.fn = obj.Params.CoRegMultiple.out.combined_bet;
-            obj.Params.FROIS2dwi.in.prefix = 'MNIT1_2_dwi' ; %Double check this so you prefix the version of DSISTUDIO!
-            obj.Params.FROIS2dwi.in.FROIS_dir = obj.FROIS_dir;
-            obj.Params.FROIS2dwi.in.MNI_T1 = [ obj.FROIS_dir 'template' filesep 'MNI152_T1_1mm_brain.nii.gz' ] ;
+            %OBSOLETE - ONTHEWORKS
             
-            %On the works....
+            %FROIS2dwi (redefine):
+            %             obj.Params.FROIS2dwi.in.movefiles = [ '..' filesep '07_FROIS2dwi' ];
+            %             obj.Params.FROIS2dwi.in.fn = obj.Params.CoRegMultiple.out.combined_bet;
+            %             obj.Params.FROIS2dwi.in.prefix = 'MNIT1_2_dwi' ; %Double check this so you prefix the version of DSISTUDIO!
+            %             obj.Params.FROIS2dwi.in.FROIS_dir = obj.FROIS_dir;
+            %             obj.Params.FROIS2dwi.in.MNI_T1 = [ obj.FROIS_dir 'template' filesep 'MNI152_T1_1mm_brain.nii.gz' ] ;
+            %
+            %             %On the works....
             %obj.proc_FROIS2dwi();
         end
         

@@ -1,47 +1,34 @@
 classdef dwi_ADRC < dwiMRI_Session
-    %%  classdef dwi_ADRC < dwiMRI_Session
     %%  This class is a subclass of its parent class dwi_MRI_Session.m
     %%  (where it will inherent other methods).
     %%  Created by:
     %%              Rodrigo D. Perea grandrigo@gmail.com
     %%
-    
     properties
         %root directoy where raw data lives:
+        object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
         session_location='/eris/bang/ADRC/Sessions/';
         dcm_location = '/eris/bang/ADRC/DICOM_Archive/';
         gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
         dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
-        
         %sh dependencies:
         sh_gradfile=[ '/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5 '];
         b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
         init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
         col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        
-        
         %FreeSurfer Dependencies
         FS_location='/eris/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
-        
         %trkland dependencies:
         fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
-        
-        %frois dependencies
-        FROIS_dir = '/eris/bang/ADRC/TEMPLATES/FROIS/'
-        
-        %Related to T1 (maybe optional?)
-        bb = [-78 -112 -70; 78 76 90];
-        T1_vox = [ 1 1 1 ] ;
     end
-    
     
     methods
         function obj = dwi_ADRC(sessionname,opt)
             %For compiler code:
             if ~isdeployed()
-                addpath(genpath('/autofs/space/kant_004/users/rdp20/scripts/matlab'));
+                addpath(genpath(obj.object_dir));
             end
             
             %%%  If opt is passed, then the root Sessions folder will be
@@ -108,7 +95,6 @@ classdef dwi_ADRC < dwiMRI_Session
             %             obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii.gz' ] );
             %
         end
-        
         
         function resave(obj)
             save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
@@ -344,22 +330,22 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %FROIS2dwi:
-            obj.Params.FROIS2dwi.in.movefiles = [ '..' filesep '07_FROIS2dwi' ];
-            obj.Params.FROIS2dwi.in.fn = obj.Params.CoRegMultiple.out.combined_bet;
-            obj.Params.FROIS2dwi.in.prefix = 'MNIT1_2_dwi' ; %Double check this so you prefix the version of DSISTUDIO!
-            obj.Params.FROIS2dwi.in.FROIS_dir = obj.FROIS_dir;
-            obj.Params.FROIS2dwi.in.MNI_T1 = [ obj.FROIS_dir 'template' filesep 'MNI152_T1_1mm_brain.nii.gz' ] ;
+            %OBSOLETE - ONTHEWORKS
             
-            %On the works....
+            %FROIS2dwi (redefine):
+            %             obj.Params.FROIS2dwi.in.movefiles = [ '..' filesep '07_FROIS2dwi' ];
+            %             obj.Params.FROIS2dwi.in.fn = obj.Params.CoRegMultiple.out.combined_bet;
+            %             obj.Params.FROIS2dwi.in.prefix = 'MNIT1_2_dwi' ; %Double check this so you prefix the version of DSISTUDIO!
+            %             obj.Params.FROIS2dwi.in.FROIS_dir = obj.FROIS_dir;
+            %             obj.Params.FROIS2dwi.in.MNI_T1 = [ obj.FROIS_dir 'template' filesep 'MNI152_T1_1mm_brain.nii.gz' ] ;
+            %
+            %             %On the works....
             %obj.proc_FROIS2dwi();
         end
         
         function obj = CommonPostProc(obj)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %
-            
-            
             %~~~~~~~ TRACULA (and implicit functionality of bedpostx):
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -373,7 +359,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 
               %  obj.proc_tracula(); obj.resave();
             end
-            
             
             %~~~~~~~ White matter Lesions 2 DWI space:
             for tohide=1:1
@@ -460,7 +445,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.fx.in.n_interp=40; %According to average value on previous studies in connectome!
                 obj.trkland_fx(); obj.resave();
             end
-            
             % [TO MODIFY ROIs/ROAs] TRKLAND_HIPPOCING:
             for tohide=1:1
                 obj.Trkland.hippocing.in.hippo_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Hippocampus.nii.gz');
@@ -472,7 +456,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.hippocing.in.n_interp=33;
                 obj.trkland_hippocing(); obj.resave();
             end
-            
             %  [TO MODIFY ROIs/ROAs] TRKLAND_CINGULUM:
             for tohide=1:1
                 obj.Trkland.cingulum.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
@@ -487,10 +470,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.cingulum.in.n_interp = 32;
                 trkland_cingulum(obj); obj.resave();
             end
-            
-            
-            
-            
             
             %% [ DEPRECATED METHODS ]
             %~~~~~~ TRKLAND_DEPENDENT:
@@ -551,18 +530,19 @@ classdef dwi_ADRC < dwiMRI_Session
             
         end
         
-        
         %UNDER DEVELOPMENT
         function obj = post_tracx_by_txt(obj,masktxt_fname,masktxt_dir,replace_masktxt_info)
             %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR RPOB TRACTOGRAPHY%
             for tohide=1:1
                 if nargin<2 || isempty(masktxt_fname)
-                    masktxt_fname = 'try_masks_one';
-                    masktxt_dir='';
-                    
+                    masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
+                    masktxt_fname = 'default_mask'; %obj.dep_dir / fMRI_masks/maskt_txt/default_mask.txt
+                end
+                if nargin < 3 || isempty(masktxt_dir)
+                     masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
                 end
                 
-                %Verify you don't want to reaplace the processing of the
+                %Verify you don't want to replace the processing of the
                 %specific mask:
                 if nargin <4
                     replace_masktxt_info=false;
@@ -610,32 +590,21 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%% END DEALING WITH VARIABLE NUMBER OF MASK FOR TRACX%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            
-            
-            %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+          %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir = masktxt_dir;
             for tohide=1:1
                 %Check to see whether a mask directory locations is input
-                if nargin < 3 || isempty(masktxt_dir) %Check for directory
-                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir = [obj.dependencies_dir ...
-                        'fMRI_masks' filesep 'mask_txt' filesep ];
-                else
-                    
-                    %Checking whether the last charcater is a '/' (linux) or
-                    %'/' (windows). filesep = file separator character
-                    if ~strcmp(masktxt_dir(end),filesep)
-                        obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir = masktxt_dir;
-                    else
-                        obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir = [ masktxt_dir filesep ];
-                    end
-                end
-                
-                
                 %Check to see what mask_txt file is inputted
                 if nargin <2
-                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
+                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
+                    display(['DENOTING: ' tmp_txt_fullpath ' as the default mask filename to process (no arguments passed).'])
+                    pause(1)
                 else
-                    tmp_txt_fullpath =[ obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
+                    tmp_txt_fullpath =[ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
+                    display(['DEFAULT MASK FILENAME: ' tmp_txt_fullpath])
                 end
+                
+                %
             end
             %%%%%%%%%%%%%%%END CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
             
@@ -650,10 +619,11 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %TXT file related:
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles = ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep tmp_txtfname ];
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles = ...
+                ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'all_masks' filesep  tmp_txtfname ];
             
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).probtracx2_args = ...
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args = ...
                 ' -l --onewaycondition --omatrix1 -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
             
             proc_tracxBYmask(obj,tmp_txtfname); %obj.resave()
@@ -664,9 +634,6 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%%%%%%%%%%%%%% END OF IMPLEMENTATION  %%%%%%%%%%%%%%%%%%%%%
             
         end
-        
-        
-        
     end
     methods ( Access = protected )
         function obj = getDCM2nii(obj,torun)
