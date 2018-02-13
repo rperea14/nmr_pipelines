@@ -17,7 +17,9 @@ classdef dwi_HAB < dwiMRI_Session
     properties
         %software used:
         dsistudio_version='GQI_DSISv053117'
+        
         %root directoy where raw data lives:
+        object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
         root_location='/cluster/sperling/HAB/Project1/DWIs_30b700/Sessions/';
         dcm_location='/cluster/sperling/HAB/Project1/DICOM_ARCHIVE/All_DICOMS/';
         session_location='/cluster/sperling/HAB/Project1/Sessions/';
@@ -56,7 +58,7 @@ classdef dwi_HAB < dwiMRI_Session
             
             %For compiler code:
             if ~isdeployed()
-                addpath(genpath('/autofs/space/kant_004/users/rdp20/scripts/matlab'));
+                addpath(genpath(obj.object_dir));
             end
             
             %%%  If opt is passed, then the root Sessions folder will be
@@ -213,17 +215,7 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.GQI.out.export = 'gfa,nqa0,nqa1';
             
             obj.proc_gqi();
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %For AntsReg:
-            obj.Params.AntsReg.in.movefiles = ['..' filesep '06_Ants_CoReg' ];
-            obj.Params.AntsReg.in.fn = obj.Params.Dtifit.out.FA ;
-            obj.Params.AntsReg.in.ref = obj.HABn272_meanFA;
-            obj.Params.AntsReg.in.threads = '4' ;
-            obj.Params.AntsReg.in.prefix = 'Antsv201_2_HABn272_' ;
-            
-            obj.proc_antsreg();
-            
+       
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For Skeletonize:
             obj.Params.Skeletonize.in.movefiles = ['..' filesep '07_Skeletonize' ];
@@ -423,8 +415,7 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Trkland.cingulum.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
             obj.Trkland.cingulum.in.postcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-posteriorcingulate.nii.gz');
             obj.Trkland.cingulum.in.postcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-posteriorcingulate.nii.gz');
-            
-            
+           
             % BASE ON THESE VALUES (FROM EARLIER ADRC_PROCESSING W/O INTERP:
             % RESOLUTION IN ADRC CONNECTOME DATA IS 1.8^3, here 2.0^3 so I
             % decided to use the same number of interpolation points. 
@@ -489,7 +480,7 @@ classdef dwi_HAB < dwiMRI_Session
                 obj.Params.DCM2NII.out(ii).fn = [ obj.Params.DCM2NII.out(ii).location obj.Params.DCM2NII.seq_names '.nii.gz' ];
                 
             end
-            if (torun) ; obj.proc_dcm2nii ; end
+            if (torun) ; obj.proc_dcm2nii() ; end
         end
     end
 end

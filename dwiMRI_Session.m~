@@ -2,20 +2,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     %%% Written by:
     %%%             Rodrigo Perea (rpereacamargo@mgh.harvard.edu)
     %%%             Aaron Schultz (aschultz@martinos.org)
+    %
+    %      Dependencies (and tested in):
+    %          -FreeSurfer v6.0
+    %          -SPM12
+    %          -Ants tools 
+    %          -DSI_studio_vMarch_2017
+    %          -FSL 5.0.9
+    %
     %%
-    %%      Dependencies (and tested in):
-    %%          -FreeSurfer v6.0
-    %%          -SPM8
-    %%          -Ants tools 1.7.1
-    %%          -DSI_studio_vApr19_2017
-    %%          -FSL 5.0.9
-    %%
+    
     properties (GetAccess=private)
         %%% For properties that cannot be accessed or changed from outside
         %%% the class.
         %test = '12345';
     end
-    
     properties (Constant)
         %%% For setting properties that never change.
     end
@@ -26,6 +27,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     end
     
     properties
+        %NOT SURE IF ALL THESE PROPERTIES ARE NECESSARY TO INITIALIZE...
         exec_onecmd = '' ; %Sets the opt option when initialize to execute one single instruction.
         sessionname = '';
         rawfiles = '';
@@ -40,49 +42,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         objectHome = '';
         T1 = '' ;
         projectID = ''
-        
-        history = [];
-        error_messages = '';
-        %
-        %         TR = [];
-        %         nVols = [];
-        %         nRuns = [];
-        %
+        history=[] ; 
         pth = [];
         dbentry = [];
-        %
-        %         bb = [-78 -112 -70; 78 76 90];
-        %         bb = [];
-        %vox = [];
-        %lastFN = [];
-        %
         Params = [];
         Trkland = [] ;
-        %
-        %         RunInfo = [];
-        %         Behavior = [];
     end
     
-    
+    %MISC and Pre- processing public methods:
     methods
+        %Constructor:
         function obj=dwiMRI_Session()
             setDefaultParams(obj);
         end
         
-        function obj = getPaths(obj,proj)
-            obj.pth = MyPaths(proj);
-        end
-        
-        function obj = getDB(obj)
-            R = DataCentral(['SELECT * FROM Sessions.MRI WHERE MRI_Session_Name="' obj.sessionname '"']);
-            obj.dbentry = R;
-            try
-                obj.collectiondate = R.MRI_SessionDate;
-            catch
-                disp('Cant get collectiondate')
-            end
-        end
-        
+        %MISC Methods:
         function showUnpackedData(obj)
             try
                 type([obj.session_location filesep 'LogFiles' filesep 'config']);
@@ -90,8 +64,27 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 disp('config file was not found');
             end
         end
+             
+        function showHistory(obj)
+            disp('');
+            disp('HISTORY:');
+            for ii = 1:numel(obj.history)
+                disp([sprintf('%0.3i',ii) '  ' regexprep(obj.history{ii}.lastRun,'\n','')]);
+            end
+            disp('');
+        end
+        
+        function obj = getPaths(obj,proj)
+            obj.pth = MyPaths(proj);
+        end
         
         function obj = setDefaultParams(obj)
+            
+            %TO DOs:
+            % 1. Initialization  of Parameters was stopped after
+            %    proc_FS2DWI(). This is something that needs to be revisited to
+            %    init other properties (2/13/18).
+            
             %%%%%%%PARAMETERS SET BASED ON EACH STEP OF THE DWI PIPELINE%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For proc_dcm2nii:
@@ -316,140 +309,84 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.FS2dwi.out.xfm_dwi2FS = '' ;
             obj.Params.FS2dwi.out.fn_aparc = '';
             obj.Params.FS2dwi.out.fn_aparc2009 = '';
-            
-            %             %%%%%%%%%%%%%%%%%%%%
-            %             %%%%%%%%%%%%%%%%%%%%
-            %             %%%%%%%%%%%%%%%%%%%%
-            %             %%ALL THESE BELOW ARE INSTANCES OF A PREVIOUS CLASS (USED FOR
-            %             %%CODE RECYLING...)
-            
-            %
-            %             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %             obj.Params.Map_To_Surface.in.movefiles = '';
-            %             obj.Params.Map_To_Surface.in.fn = [];
-            %
-            %             obj.Params.Map_To_Surface.out.fn = [];
-            %
-            %             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %             obj.Params.SurfRend.fsubj = obj.fsubj;
-            %             obj.Params.SurfRend.fsdir = obj.fsdir;
-            %
-            %             obj.Params.SurfRend.figno = 101;
-            %             obj.Params.SurfRend.newfig = 1;
-            %             obj.Params.SurfRend.input_lh = [];
-            %             obj.Params.SurfRend.input_rh = [];
-            %             obj.Params.SurfRend.overlaythresh = [0 0];
-            %             obj.Params.SurfRend.colorlims = [0 Inf];
-            %             obj.Params.SurfRend.colomap = 'jet';
-            %             obj.Params.SurfRend.direction =  '+';
-            %             obj.Params.SurfRend.reverse = 0;
-            %             obj.Params.SurfRend.round = 0;
-            %             obj.Params.SurfRend.surface = 'pi';
-            %             obj.Params.SurfRend.shading =  'mixed';
-            %             obj.Params.SurfRend.shadingrange = [-2 2];
-            %             obj.Params.SurfRend.Nsurfs = 2;
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %%%%%%%%%%%%%%%%%%%%%%%%% BEGIN Things %%%%%%%%%%%%%%%%%%%%%%%%%
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
         
-        function showHistory(obj)
-            disp('');
-            disp('HISTORY:');
-            for ii = 1:numel(obj.history)
-                disp([sprintf('%0.3i',ii) '  ' regexprep(obj.history{ii}.lastRun,'\n','')]);
-            end
-            disp('');
-        end
-        
-        function showErrors(obj)
-            disp('');
-            fprintf('\n\nERROR MESSAGE HISTORY:');
-            if isempty(obj.error_messages)
-                fprintf(' \t \t No errors found!\n\n');
-            else
-                for ii = 1:numel(obj.error_messages)
-                    fprintf(obj.error_messages{ii,:});
-                end
-            end
-            disp('');
-        end
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%%%%%%%%%% END Things %%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%% BEGIN Data Processing Methods %%%%%%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function obj = proc_dcm2nii(obj,~,dest,out_filename)
+        %%%%%%%%%%%%%%%%%% BEGIN Pre- Processing Methods %%%%%%%%%%%%%%%%%%
+        function obj = proc_dcm2nii(obj,dest,out_filename)
             fprintf('\n\n%s\n', ['CONVERTING DCM TO NII (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
-            %%% MODULE IS COMPLETE
+            % Initializing exec_cmd (variable to store all cmds
+            if ~exist('exec_cmd','var')
+                exec_cmd{:}='INIT proc_dcm2nii()';
+            end
+            %Checking if module is complete
             wasRun = false;
-            nfn = [];
+            
             for ii=1:numel(obj.Params.DCM2NII.in)
                 if nargin>2 && ~isempty(dest)
                     obj.Params.DCM2NII.out(ii).location = dest;
                 end
                 
                 if nargin>3 && ~isempty(out_filename)
-                    obj.Params.DCM2NII.out(ii).out_filename = out_filename;
+                    if numel(obj.Params.DCM2NII.in) ~= numel(out_filename)
+                        error('out_filenames should have the same size (same # of file nameS) as the input DCMs');
+                    else
+                        obj.Params.DCM2NII.out(ii).out_filename = out_filename;
+                    end
                 end
                 
                 %Shortening naming comventions:
                 clear in_file out_file
-                in_file=strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
-                out_file=obj.Params.DCM2NII.out(ii).fn;
-                outpath=obj.Params.DCM2NII.out(ii).location;
-                obj.Params.DCM2NII.in(ii).fsl2std_matfile = [outpath 'fsl2std.matfile'];
+                in_file   = strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
+                out_file  = obj.Params.DCM2NII.out(ii).fn;
+                outpath   = obj.Params.DCM2NII.out(ii).location;
                 
+                obj.Params.DCM2NII.in(ii).fsl2std_matfile = [outpath 'fsl2std.matfile'];
                 obj.Params.DCM2NII.out(ii).bvecs=strrep(obj.Params.DCM2NII.out(ii).fn,'.nii.gz','.voxel_space.bvecs');
                 obj.Params.DCM2NII.out(ii).bvals=strrep(obj.Params.DCM2NII.out(ii).fn,'.nii.gz','.bvals');
+                
                 %Create out_file directory if doesnt exist:
                 if ~exist(obj.Params.DCM2NII.out(ii).location,'dir')
-                    clear exec_cmd
-                    exec_cmd = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
-                    obj.RunBash(exec_cmd);
+                    exec_cmd{end+1,:} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
+                    obj.RunBash(exec_cmd{end});
                 end
                 
-                %Processing starts here:
+                %%%PROCESSING STARTS HERE
                 if exist(in_file,'file') ~= 0 %check if in_file exists
                     if exist(out_file,'file') == 0 %check if out_file exists
-                        %Check whether we get the specific number of volumes:
-                        if  obj.Params.DCM2NII.specific_vols == obj.Params.DCM2NII.in(ii).nvols
-                            clear exec_cmd
-                            exec_cmd=['mri_convert ' in_file ' ' out_file ];
-                            obj.RunBash(exec_cmd,44);
+                        %Check whether we get the CORRECT number of volumes:
+                        if  obj.Params.DCM2NII.specific_vols == obj.Params.DCM2NII.in(ii).nvols;
+                            exec_cmd{end+1,:}=['mri_convert ' in_file ' ' out_file ];
+                            obj.RunBash(exec_cmd{end},44);
                             
                             fprintf('\nFslreorienting to standard...')
                             %Reorient to std that nii files -->
-                            exec_cmd=['fslreorient2std ' out_file ' ' out_file ];
-                            obj.RunBash(exec_cmd);
+                            exec_cmd{end+1,:}=['fslreorient2std ' out_file ' ' out_file ];
+                            obj.RunBash(exec_cmd{end});
                             %%%
                             
                             %Reorient to std the bvecs -->
                             if isempty(obj.Params.DCM2NII.in(ii).fsl2std_param) %due to inconsitencies with bvecs from mri_convert, this should be initialize in the child class
-                                exec_cmd=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
-                                obj.RunBash(exec_cmd);
+                                exec_cmd{end+1,:}=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            obj.RunBash(exec_cmd{end});
                             else
-                                exec_cmd=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
-                                obj.RunBash(exec_cmd);
-                                
+                                exec_cmd{end+1,:}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                                obj.RunBash(exec_cmd{end});
                             end
                             %%%
                             
                             %Now dealing with bvecs:
                             disp('Fslreorienting the bvecs now...')
                             temp_bvec=[outpath 'temp.bvec' ];
-                            exec_cmd=[obj.init_rotate_bvecs_sh ' ' ...
+                            exec_cmd{end+1,:}=[obj.init_rotate_bvecs_sh ' ' ...
                                 ' ' obj.Params.DCM2NII.out(ii).bvecs ...
                                 ' ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ...
                                 ' ' temp_bvec  ];
-                            obj.RunBash(exec_cmd);
+                            obj.RunBash(exec_cmd{end});
                             
-                            system(['mv ' temp_bvec ' ' obj.Params.DCM2NII.out(ii).bvecs ]);
+                            exec_cmd{end+1,:}=['mv ' temp_bvec ' ' obj.Params.DCM2NII.out(ii).bvecs ];
+                            obj.RunBash(exec_cmd{end});
                             fprintf('\n....done');
-                            obj.UpdateHist(obj.Params.DCM2NII,'proc_dcm2nii',out_file,wasRun);
+                            obj.UpdateHist_v2(obj.Params.DCM2NII,'proc_dcm2nii',out_file,wasRun,exec_cmd);
                             
                         else
                             error('==> obj.Params.DCM2NII.specific_vols  not equal to obj.Params.DCM2NII.in(ii).nvols ');
@@ -468,6 +405,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_drop_vols(obj)
             fprintf('\n%s\n', 'PERFORMING PROC_DROP_VOLS():');
             wasRun=false;
+            if ~exist('exec_cmd','var')
+                exec_cmd{:}='INIT PROC_DROP_VOLS()';
+            end
             for ii=1:numel(obj.Params.DropVols.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.DropVols.in.fn{ii})
@@ -491,7 +431,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     obj.RunBash(exec_cmd);
                     fprintf('...done \n ');
                     wasRun=true;
-                    obj.UpdateHist(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun);
+                    obj.UpdateHist_v2(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun,exec_cmd);
                 else
                     fprintf(['Dropping vols for: ' b c ' is complete. \n']) ;
                 end
@@ -525,9 +465,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.out.bvecs = obj.Params.DropVols.out.bvecs';
             end
             %%%%%%%%%%%%%%%%%%END OF OPTIONAL%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            
-            
         end
         
         function obj = proc_gradient_nonlin_correct(obj)
@@ -596,7 +533,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     obj.RunBash(exec_cmd);
                     fprintf('....done\n');
                     wasRun = true;
-                    obj.UpdateHist(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.fn{ii},wasRun);
+                    obj.UpdateHist_v2(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.fn{ii},wasRun,exec_cmd);
                 end
             end
             
@@ -631,7 +568,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{ii,1} = [  strtrim(to_exec) ' ' obj.Params.Bet2.in.fn{ii} ' ' obj.Params.Bet2.out.skull{ii}  ' -m -f ' num2str(obj.Params.Bet2.in.fracthrsh) ];
                 if exist( obj.Params.Bet2.out.mask{ii},'file')==0
                     fprintf(['\nExtracting the skull using bet2 for : ' obj.Params.Bet2.in.fn{ii} ]);
-                    obj.RunBash(exec_cmd{1,ii});
+                    obj.RunBash(exec_cmd{ii,1});
                     system(['mv ' obj.Params.Bet2.out.skull{ii} '_mask.nii.gz ' obj.Params.Bet2.out.mask{ii} ] ) ;
                     wasRun=true;
                     obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd{ii,1});
@@ -650,7 +587,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Bet2.history_saved = 1 ;
                 obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd);
             end
-            clear exec_cmd to_exec;
         end
         
         function obj = proc_eddy(obj)
@@ -733,6 +669,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Motion Correction for interspersed b0s.
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING MOTION CORRECTION - PROC_B0S_MOCO():');
+            if ~exist('exec_cmd')
+                exec_cmd{1}='INIT PROC_B0s_MOCO()';
+            end
             %Check if the FreeSurfer location exists (due to bbreg dependency):
             if exist( obj.Params.B0MoCo.FS,'dir') ~=0 %if so continue, else break!
                 for jj=1:numel(obj.Params.B0MoCo.in.fn)
@@ -758,11 +697,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     tmp_fslsplit=[ outpath 'tmp' filesep ...
                         'tmp_' strrep(b,'.nii','') filesep ];
                     if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0
-                        exec_cmd = (['mkdir -p ' tmp_fslsplit ] );
-                        obj.RunBash(exec_cmd);
-                        exec_cmd=(['fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
+                        exec_cmd{end+1,:} = (['mkdir -p ' tmp_fslsplit ] );
+                        obj.RunBash(exec_cmd{end});
+                        exec_cmd{end+1,:}=(['fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
                             ' ' tmp_fslsplit ' -t ']);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
                     end
                     
                     %Record bval information:
@@ -809,12 +748,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 
                                 %bbregister on every b0:
                                 if exist(out_dwi2fslmat{ii},'file') == 0
-                                    exec_cmd = ([ 'export SUBJECTS_DIR=' obj.FS_location ';' ...
+                                    exec_cmd{end+1,:} = ([ 'export SUBJECTS_DIR=' obj.FS_location ';' ...
                                         ' bbregister --s ' obj.sessionname ' --' obj.Params.B0MoCo.in.nDoF ...
                                         ' --mov ' cur_in_dwi{ii} ' --dti --o ' out_trnii{ii}  ...
                                         ' --init-header --reg ' out_dwi2fsmat{ii} ...
                                         ' --fslmat ' out_dwi2fslmat{ii}   ]);
-                                    obj.RunBash(exec_cmd,44);
+                                    obj.RunBash(exec_cmd{end},44);
                                 end
                                 %Convert dwi2T1 to T12dwi and apply_warp
                                 %(different from the 1st b0 and consequent
@@ -823,50 +762,50 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     out_fsl2firstdwimat = [ tmp_fslsplit 'mat_fslT1_2_dwi' strrep(bn_curdwi{1},'.nii','') '.mat' ];
                                     %Convert dwi2T1 into T12dwi:
                                     if exist(out_fsl2firstdwimat,'file') == 0
-                                        exec_cmd=[ 'convert_xfm -omat ' out_fsl2firstdwimat ...
+                                        exec_cmd{end+1,:}=[ 'convert_xfm -omat ' out_fsl2firstdwimat ...
                                             ' -inverse ' out_dwi2fslmat{ii} ];
-                                        obj.RunBash(exec_cmd);
+                                        obj.RunBash(exec_cmd{end});
                                     end
                                     %Apply the disco_rel here using applywarp
                                     if exist(out_dwi2firstb0{ii} ,'file') == 0
-                                        exec_cmd=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
+                                        exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
                                             ' -o ' out_dwi2firstb0{ii}  ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                             ' --rel --interp=spline' ]);
-                                        obj.RunBash(exec_cmd);
+                                        obj.RunBash(exec_cmd{end});
                                     end
                                     
                                     %Creating the eye.mat function for
                                     %reference on the firstb0 for rotation
                                     %matrices that will be used for rot. bvecs
                                     if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0
-                                        exec_cmd=(['echo -e "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
+                                        exec_cmd{end+1,:}=(['echo -e "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
                                             out_dwi2firstmat_rot_only{ii} ]);
-                                        obj.RunBash(exec_cmd);
+                                        obj.RunBash(exec_cmd{end});
                                     end
                                     
                                 else
                                     %Convert dwi2T1 into T12dwi (concating the firstb0):
                                     if exist(out_dwi2firstmat{ii},'file') == 0
-                                        exec_cmd=[ 'convert_xfm -omat ' out_dwi2firstmat{ii}  ...
+                                        exec_cmd{end+1,:}=[ 'convert_xfm -omat ' out_dwi2firstmat{ii}  ...
                                             ' -concat ' out_fsl2firstdwimat ' ' out_dwi2fslmat{ii} ];
-                                        obj.RunBash(exec_cmd);
+                                        obj.RunBash(exec_cmd{end});
                                     end
                                     
                                     %Apply the disco_rel here using applywarp
                                     if exist(out_dwi2firstb0{ii} ,'file') == 0
-                                        exec_cmd=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
+                                        exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
                                             ' -o ' out_dwi2firstb0{ii} ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                             ' --postmat=' out_dwi2firstmat{ii} ' --interp=spline --rel ' ]);
-                                        obj.RunBash(exec_cmd);
+                                        obj.RunBash(exec_cmd{end});
                                     end
                                     
                                     %Extracing the rotation matrix only using
                                     %avscale (this will be used for modifying
                                     %the bvecs output)
                                     if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0
-                                        exec_cmd=(['avscale ' out_dwi2firstmat{ii} ...
+                                        exec_cmd{end+1,:}=(['avscale ' out_dwi2firstmat{ii} ...
                                             ' | head -5 | tail -4 > ' out_dwi2firstmat_rot_only{ii} ]);
-                                        obj.RunBash(exec_cmd);
+                                        obj.RunBash(exec_cmd{end});
                                     end
                                 end
                             end
@@ -886,12 +825,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             
                             if exist(out_dwi2firstb0{ii},'file') == 0
                                 fprintf([ '...' bn_curdwi{ii} ] );
-                                exec_cmd=(['applywarp -i ' cur_in_dwi{ii} ...
+                                exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ...
                                     ' -r ' cur_in_dwi{1} ' -o ' out_dwi2firstb0{ii} ...
                                     ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                     ' --postmat=' out_dwi2firstmat{dwi_b0_idx{ii}} ...
                                     ' --interp=spline' ]);
-                                obj.RunBash(exec_cmd);
+                                obj.RunBash(exec_cmd{end});
                             end
                             
                             %Modify bvecs information now...
@@ -906,11 +845,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             fprintf('Applying rotation only .mat files to bvecs..');
                             TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
                             for pp=1:size(TEMP_BVEC,1)
-                                exec_cmd=[obj.Params.B0MoCo.in.sh_rotate_bvecs ...
+                                exec_cmd{end+1,:}=[obj.Params.B0MoCo.in.sh_rotate_bvecs ...
                                     ' ' num2str(TEMP_BVEC(pp,:)) ...
                                     ' ' out_dwi2firstmat_rot_only{dwi_b0_idx{pp}} ...
                                     ' >> ' (obj.Params.B0MoCo.out.bvecs{jj}) ];
-                                obj.RunBash(exec_cmd);
+                                obj.RunBash(exec_cmd{end});
                             end
                             fprintf('...done');
                         end
@@ -918,8 +857,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         %Copy bval_in to bvals_out (just a simple copy as
                         %its not affected):
                         if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0
-                            exec_cmd=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
-                            obj.RunBash(exec_cmd);
+                            exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
+                            obj.RunBash(exec_cmd{end});
                         end
                         
                         
@@ -935,11 +874,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             end
                             all_DWI_str = [ all_DWI_str ' ' out_dwi2firstb0{kk} ]  ;
                         end
-                        exec_cmd = [ 'fslmerge -t ' obj.Params.B0MoCo.out.fn{jj}  ' ' all_DWI_str ];
+                        exec_cmd{end+1,:} = [ 'fslmerge -t ' obj.Params.B0MoCo.out.fn{jj}  ' ' all_DWI_str ];
                         fprintf('\nfslmerging all newer b0MoCo corrected volumes...')
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
                         wasRun=true;
-                        obj.UpdateHist(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun);
+                        obj.UpdateHist_v2(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun,exec_cmd);
                         
                         fprintf('...done \n')
                         
@@ -1199,6 +1138,262 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             clear exec_cmd to_exec wasRun;
             
+        end
+        
+        function obj = proc_FS2dwi(obj)
+            wasRun=false;
+            fprintf('\n%s\n', 'PERFORMING PROC_FS2DWI():');
+            
+            %INIT SPECS:
+            for tohide=1:1
+                %Create folder to put ouput:
+                [a, ~, ~] = fileparts(obj.Params.FS2dwi.in.b0{1});
+                outpath=obj.getPath(a,obj.Params.FS2dwi.in.movefiles );
+                %Init outputs:
+                obj.Params.FS2dwi.out.xfm_dwi2FS = [ outpath 'xfm_dwi2FS.lta' ] ;
+                obj.Params.FS2dwi.out.fn_aparc = [ outpath  'dwi_aparc+aseg.nii.gz' ] ;
+                obj.Params.FS2dwi.out.fn_aparc2009 = [ outpath 'dwi_aparc.a2009+aseg.nii.gz' ] ;
+                obj.Params.FS2dwi.out.hippofield_left = [ outpath  'dwi_hippofields_lh.nii.gz' ] ;
+                obj.Params.FS2dwi.out.hippofield_right = [ outpath  'dwi_hippofields_rh.nii.gz' ] ;
+                
+                %Making directory for all the other output
+                system (['mkdir -p ' outpath filesep 'aparc_aseg' filesep]);
+                system (['mkdir -p ' outpath filesep 'aparc2009_aseg' filesep]);
+                system (['mkdir -p ' outpath filesep 'hippos' filesep]);
+                
+                %Sourcing FS and SUBJECTS_DIR:
+                if strcmp(obj.Params.FreeSurfer.shell,'rdp20') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
+                    export_shell=[ 'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
+                        ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
+                        ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; '];
+                else
+                    export_shell=[ ' setenv FREESURFER_HOME ' obj.Params.FreeSurfer.init_location ' ; ' ...
+                        ' source $FREESURFER_HOME/SetUpFreeSurfer.csh ; ' ...
+                        ' setenv SUBJECTS_DIR ' obj.Params.FreeSurfer.dir ' ; '];
+                end
+            end
+            %APARCASEG EXTRACTION:
+            for tohide=1:1
+                if exist(obj.Params.FS2dwi.in.aparcaseg, 'file') == 2
+                    %BBreg dwi (b0) to FS:
+                    [~, to_exec ] = system('which bbregister');
+                    exec_cmd{1}=[ export_shell ...
+                        strtrim(to_exec) ' --s ' obj.sessionname ...
+                        ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                        ' --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS ' --dti --init-fsl '];
+                    if exist(obj.Params.FS2dwi.out.xfm_dwi2FS,'file') == 0
+                        %bbreg b0 to FS_T1:
+                        disp('proc_FS2dwi: Running bbreg dwi2FS_T1...')
+                        obj.RunBash(exec_cmd{1},44); % '44' codes for seeing the output!
+                        disp('..done');
+                        wasRun=true;
+                    end
+                    
+                    %Aparc+aseg to dwi:
+                    [~, to_exec ] = system('which mri_vol2vol');
+                    exec_cmd{2}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                        ' --targ ' obj.Params.FS2dwi.in.aparcaseg ...
+                        ' --o ' obj.Params.FS2dwi.out.fn_aparc ...
+                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
+                    if exist(obj.Params.FS2dwi.out.fn_aparc,'file') == 0
+                        %bbreg b0 to FS_T1:
+                        disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
+                        obj.RunBash(exec_cmd{2},44); % '44' codes for seeing the output!
+                        disp('..done');
+                        wasRun=true;
+                    end
+                    
+                    %Extracting all ROIs for aparc:
+                    [num_aparc name_aparc ] =textread(obj.Params.FS2dwi.in.tmpfile_aparcaseg,'%s %s');
+                    for ff=1:numel(num_aparc)
+                        tmp_curname{ff} = [ outpath  'aparc_aseg' filesep 'dwi_' name_aparc{ff} '.nii.gz'];
+                        [~, to_exec ] = system('which fslmaths');
+                        exec_3{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.fn_aparc ...
+                            ' -uthr ' num_aparc{ff} ' -thr ' num_aparc{ff} ...
+                            ' -div '  num_aparc{ff} ' ' tmp_curname{ff} ] ;
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
+                            obj.RunBash(exec_3{ff});
+                            fprintf('done \n')
+                        end
+                    end
+                    %Values to be stored in history object:
+                    exec_cmd{3}=exec_3';
+                    fprintf('aparc+aseg extraction complete\n')
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                else
+                    error([ 'in proc_FS2dwi(obj): FS aparc_aseg (supposely) located in: ' obj.Params.FS2dwi.in.aparcaseg ' does not exist'])
+                end
+                fprintf('aparc+aseg extraction complete. \n')
+            end
+            %APARCASEGa2009 EXTRACTION:
+            for tohide=1:1
+                if exist(obj.Params.FS2dwi.in.aparcaseg2009,'file')==2
+                    %Aparc.a2009+aseg to dwi:
+                    [~, to_exec ] = system('which mri_vol2vol');
+                    exec_cmd{4}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                        ' --targ ' obj.Params.FS2dwi.in.aparcaseg2009 ...
+                        ' --o '  obj.Params.FS2dwi.out.fn_aparc2009 ...
+                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
+                    if exist(obj.Params.FS2dwi.out.fn_aparc2009,'file') == 0
+                        %bbreg b0 to FS_T1:
+                        disp('proc_FS2dwi: Running bbreg in aparc2009+aseg.mgz...')
+                        obj.RunBash(exec_cmd{4},44); % '44' codes for seeing the output!
+                        disp('..done');
+                        wasRun=true;
+                    end
+                    %Extracting all ROIs for aparc2009:
+                    [num_aparc2009 name_aparc2009 ] =textread(obj.Params.FS2dwi.in.tmpfile_aparcaseg2009,'%s %s');
+                    clear tmp_curname;
+                    for ff=1:numel(num_aparc2009)
+                        tmp_curname{ff} = [ outpath  'aparc2009_aseg' filesep  'dwi_' name_aparc2009{ff}  '.nii.gz' ];
+                        [~, to_exec ] = system('which fslmaths');
+                        exec_5{ff} = [ 'fslmaths  ' obj.Params.FS2dwi.out.fn_aparc ...
+                            ' -uthr ' num_aparc2009{ff} ' -thr ' num_aparc2009{ff} ...
+                            ' -div '  num_aparc2009{ff} ' ' tmp_curname{ff} ] ;
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
+                            obj.RunBash(exec_5{ff});
+                            fprintf('done \n')
+                        end
+                    end
+                    %Values to be stored in history object:
+                    exec_cmd{5}=exec_5';
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                else
+                    error([ 'in proc_FS2dwi(obj): FS aparc_aseg (supposely) located in: ' obj.Params.FS2dwi.out.fn_aparc2009 ' does not exist'])
+                end
+                fprintf('aparc+aseg2009 extraction complete. \n')
+            end
+            %HIPPOFIELD_LEFT EXTRACTION:
+            for tohide=1:1
+                if exist( obj.Params.FS2dwi.in.hippofield_left ,'file') == 2
+                    [~, to_exec ] = system('which mri_vol2vol');
+                    exec_cmd{6}=[ strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                        ' --targ ' obj.Params.FS2dwi.in.hippofield_left ...
+                        ' --o ' obj.Params.FS2dwi.out.hippofield_left ...
+                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
+                    if exist(obj.Params.FS2dwi.out.hippofield_left,'file') == 0
+                        %bbreg b0 to FS_T1:
+                        disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
+                        obj.RunBash(exec_cmd{6}); % '44' codes for seeing the output!
+                        disp('..done');
+                        wasRun=true;
+                    end
+                    [num_hippo_lh name_hippo_lh ] =textread(obj.Params.FS2dwi.in.tmpfile_hippo_bil,'%s %s');
+                    clear tmp_curname;
+                    for ff=1:numel(num_hippo_lh)
+                        tmp_curname{ff} = [ outpath  'hippos' filesep 'dwi_lh_' name_hippo_lh{ff} '.nii.gz' ];
+                        [~, to_exec ] = system('which fslmaths');
+                        exec_7{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_left ...
+                            ' -uthr ' num_hippo_lh{ff} ' -thr ' num_hippo_lh{ff} ...
+                            ' -div '  num_hippo_lh{ff} ' ' tmp_curname{ff} ] ;
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
+                            obj.RunBash(exec_7{ff});
+                            fprintf('done \n')
+                        end
+                    end
+                    %Values to be stored in history:
+                    exec_cmd{7}=exec_7';
+                elseif strcmp(obj.Params.FS2dwi.in.hippofield_left ,'nothing')
+                    display(['No hippofield_lh found in this processing. Skipping  for now...']);
+                else
+                    fprintf(['Need to run (or try): \n '  'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
+                        ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
+                        ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; ' ...
+                        ' recon-all -s ' obj.sessionname ' -hippocampal-subfields-T2 ' obj.Params.FreeSurfer.in.T2 ...
+                        ' T2'
+                        ])
+                    error([ 'in proc_FS2dwi(obj): FS hippofield_left (supposely) located in: ' obj.Params.FS2dwi.in.hippofield_left ' does not exist'])
+                end
+                fprintf('hippofield_lh extraction complete\n')
+            end
+            
+            %HIPPOFIELD_RIGHT EXTRACTION:
+            for tohide=1:1
+                if exist( obj.Params.FS2dwi.in.hippofield_right ,'file') == 2
+                    [~, to_exec ] = system('which mri_vol2vol');
+                    exec_cmd{8}=[ strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                        ' --targ ' obj.Params.FS2dwi.in.hippofield_right ...
+                        ' --o ' obj.Params.FS2dwi.out.hippofield_right ...
+                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
+                    if exist(obj.Params.FS2dwi.out.hippofield_right,'file') == 0
+                        %bbreg b0 to FS_T1:
+                        disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
+                        obj.RunBash(exec_cmd{8}); % '44' codes for seeing the output!
+                        disp('..done');
+                        wasRun=true;
+                    end
+                    
+                    %Extracting all ROIs for aparc2009:
+                    [num_hippo_rh name_hippo_rh ] =textread(obj.Params.FS2dwi.in.tmpfile_hippo_bil,'%s %s');
+                    clear tmp_curname;
+                    for ff=1:numel(num_hippo_rh)
+                        tmp_curname{ff} = [outpath  'hippos' filesep 'dwi_rh_' name_hippo_rh{ff} '.nii.gz' ];
+                        [~, to_exec ] = system('which fslmaths');
+                        exec_9{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_right ...
+                            ' -uthr ' num_hippo_rh{ff} ' -thr ' num_hippo_rh{ff} ...
+                            ' -div '  num_hippo_rh{ff} ' ' tmp_curname{ff} ] ;
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
+                            obj.RunBash(exec_9{ff});
+                            fprintf('done \n')
+                        end
+                    end
+                    %Values to be stored in history:
+                    exec_cmd{9}=exec_9';
+                elseif strcmp(obj.Params.FS2dwi.in.hippofield_right ,'nothing')
+                    display(['No hippofield_lh found in this processing. Skipping  for now...']);
+                else
+                    error([ 'in proc_FS2dwi(obj): FS hippofield_right (supposely) located in: ' obj.Params.FS2dwi.in.hippofield_right ' does not exist'])
+                end
+                fprintf('hippofield_rh extraction complete\n')
+            end
+            
+            %Update history if possible
+            if ~isfield(obj.Params.FS2dwi,'history_saved') || wasRun == true
+                obj.Params.FS2dwi.history_saved = 0 ;
+            end
+            if obj.Params.FS2dwi.history_saved == 0
+                obj.Params.FS2dwi.history_saved = 1 ;
+                obj.UpdateHist_v2(obj.Params.FS2dwi,'proc_FS2dwi', tmp_curname{ff} , wasRun,exec_cmd); %no file is created in this step but update it iteratively
+            end
+            clear exec_cmd to_exec wasRun;
+            
+        end
+        
+        function obj = proc_FROIS2dwi(obj)
+            wasRun=false;
+            fprintf('\n%s\n', 'PERFORMING PROC_FROIS2DWI():');
+            [a, ~, ~ ] = fileparts(obj.Params.FROIS2dwi.in.fn);
+            outpath=obj.getPath(a,obj.Params.FROIS2dwi.in.movefiles);
+            
+            %make a list of all *.gz that exist in that direcotry
+            [ok_check, tmp_frois_list ]  = system(['ls -1 '  ...
+                obj.Params.FROIS2dwi.in.FROIS_dir '*.nii.gz']);
+            if ok_check ~= 0
+                error(['In proc_FROIS2dwi(): cannot find any *.nii.gz images in:'...
+                    obj.Params.FROIS2dwi.in.FROIS_dir 'Double check']);
+            end
+            
+            tmp_cellarray=textscan(tmp_frois_list,'%s');
+            obj.Params.FROIS2dwi.in.FROIS_list=tmp_cellarray{1};
+            
+            
+            %Check if the MNI_T1 exists....
+            if exist(obj.Params.FROIS2dwi.in.MNI_T1,'file') == 0
+                error(['In proc_FROIS2dwi(): Cannnot find the MNI_T1 in:' obj.Params.FROIS2dwi.in.MNI_T1 ] );
+            end
+            
+            %Assigend outpath of coreg using ants
+            obj.Params.FROIS2dwi.out.MNI_2_dwi = [ outpath obj.Params.FROIS2dwi.in.prefix 'Warped.nii.gz' ];
+            if exist(obj.Params.FROIS2dwi.out.MNI_2_dwi ,'file')==0
+                fprintf('\n In proc_FROIS(): Coregistering Ants to reference... ');
+                aa=1;
+                %obj.proc_as_coreg(obj.Params.FROIS2dwi.in.FROIS_list
+                fprintf('...done.\n');
+            end
         end
         
         %Use when multiple DWIs sequences are acquired
@@ -1595,102 +1790,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
         end
         
-        function obj = proc_antsreg(obj)
-            wasRun=false;
-            fprintf('\n%s\n', 'PERFORMING PROC_ANTSREG():');
-            for ii=1:numel(obj.Params.AntsReg.in.fn)
-                clear cur_fn;
-                if iscell(obj.Params.AntsReg.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.AntsReg.in.fn{ii});
-                else
-                    cur_fn=obj.Params.AntsReg.in.fn{ii};
-                end
-                [a b c ] = fileparts(cur_fn);
-                outpath=obj.getPath(a,obj.Params.AntsReg.in.movefiles);
-                clear outfile
-                obj.Params.AntsReg.out.fn{ii} = [ outpath obj.Params.AntsReg.in.prefix 'Warped.nii.gz' ];
-                [~, to_exec ] = system('which antsRegistrationSyN.sh');
-                exec_cmd{ii,1}=[ strtrim(to_exec) ' '  ...
-                    ' -d '  obj.Params.AntsReg.in.dim ...
-                    ' -n '  obj.Params.AntsReg.in.threads ...
-                    ' -t '  obj.Params.AntsReg.in.transform ...
-                    ' -r '  obj.Params.AntsReg.in.radius  ...
-                    ' -p '  obj.Params.AntsReg.in.precision ...
-                    ' -f '  obj.Params.AntsReg.in.ref ...
-                    ' -m '  obj.Params.AntsReg.in.fn{ii} ...
-                    ' -o '  [ outpath obj.Params.AntsReg.in.prefix]  ];
-                
-                if exist(obj.Params.AntsReg.out.fn{ii},'file')==0
-                    fprintf('\nCoregistering Ants to reference... ');
-                    tic
-                    system(exec_cmd{ii,1})
-                    obj.Params.AntsReg.out.time_taken=[ toc ' seconds'];
-                    fprintf('...done.\n');
-                    wasRun=true;
-                else
-                    [~, bb,cc ] = fileparts(obj.Params.AntsReg.out.fn{ii} );
-                    fprintf(['The file ' bb cc ' is complete\n']) ;
-                end
-                for tocomment=1:1
-                    obj.Params.AntsReg.out.FA{ii} = [ outpath obj.Params.AntsReg.in.prefix 'FA.nii.gz' ];
-                    %FA:
-                    [~, to_exec ] = system('which WarpImageMultiTransform');
-                    exec_cmd{ii,2}=[ strtrim(to_exec)  ' 3 ' ...
-                        ' ' obj.Params.Dtifit.out.FA{ii}  ...
-                        ' ' obj.Params.AntsReg.out.FA{ii} ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat')];
-                    %RD:
-                    exec_cmd{ii,3}=[ strtrim(to_exec) ' 3 ' ...
-                        ' ' obj.Params.Dtifit.out.RD{ii}  ...
-                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','RD') ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                    %AxD:
-                    exec_cmd{ii,4}=[ strtrim(to_exec) ' 3 ' ...
-                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ...
-                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','AxD') ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                    %MD:
-                    exec_cmd{ii,5}=[ strtrim(to_exec) ' 3 ' ...
-                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','MD')  ...
-                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','MD') ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                    
-                    if  exist(obj.Params.AntsReg.out.FA{ii},'file')==0
-                        fprintf('\n Warping dtifit metrics...');
-                        %FA:
-                        obj.RunBash(exec_cmd{ii,2})
-                        %RD:
-                        obj.RunBash(exec_cmd{ii,3})
-                        %AxD:
-                        obj.RunBash(exec_cmd{ii,4});
-                        %MD:
-                        obj.RunBash(exec_cmd{ii,5});
-                        fprintf('...done.\n');
-                        wasRun=true;
-                    end
-                end
-            end
-            
-            %Update history if possible
-            if ~isfield(obj.Params.AntsReg,'history_saved') || wasRun == true
-                obj.Params.AntsReg.history_saved = 0 ;
-            end
-            if obj.Params.AntsReg.history_saved == 0
-                obj.Params.AntsReg.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.AntsReg,'proc_antsReg', obj.Params.AntsReg.out.fn{ii},wasRun,exec_cmd);
-            end
-            clear exec_cmd to_exec wasRun;
-            
-        end
-        
         function obj = proc_skeletonize(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_SKELETONIZE():');
@@ -1950,266 +2049,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
         end
         
-        function obj = proc_FS2dwi(obj)
-            wasRun=false;
-            fprintf('\n%s\n', 'PERFORMING PROC_FS2DWI():');
-            
-            %INIT SPECS:
-            for tohide=1:1
-                %Create folder to put ouput:
-                [a, ~, ~] = fileparts(obj.Params.FS2dwi.in.b0{1});
-                outpath=obj.getPath(a,obj.Params.FS2dwi.in.movefiles );
-                %Init outputs:
-                obj.Params.FS2dwi.out.xfm_dwi2FS = [ outpath 'xfm_dwi2FS.lta' ] ;
-                obj.Params.FS2dwi.out.fn_aparc = [ outpath  'dwi_aparc+aseg.nii.gz' ] ;
-                obj.Params.FS2dwi.out.fn_aparc2009 = [ outpath 'dwi_aparc.a2009+aseg.nii.gz' ] ;
-                obj.Params.FS2dwi.out.hippofield_left = [ outpath  'dwi_hippofields_lh.nii.gz' ] ;
-                obj.Params.FS2dwi.out.hippofield_right = [ outpath  'dwi_hippofields_rh.nii.gz' ] ;
-                
-                %Making directory for all the other output
-                system (['mkdir -p ' outpath filesep 'aparc_aseg' filesep]);
-                system (['mkdir -p ' outpath filesep 'aparc2009_aseg' filesep]);
-                system (['mkdir -p ' outpath filesep 'hippos' filesep]);
-                
-                %Sourcing FS and SUBJECTS_DIR:
-                if strcmp(obj.Params.FreeSurfer.shell,'rdp20') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
-                    export_shell=[ 'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
-                        ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
-                        ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; '];
-                else
-                    export_shell=[ ' setenv FREESURFER_HOME ' obj.Params.FreeSurfer.init_location ' ; ' ...
-                        ' source $FREESURFER_HOME/SetUpFreeSurfer.csh ; ' ...
-                        ' setenv SUBJECTS_DIR ' obj.Params.FreeSurfer.dir ' ; '];
-                end
-            end
-            %APARCASEG EXTRACTION:
-            for tohide=1:1
-                if exist(obj.Params.FS2dwi.in.aparcaseg, 'file') == 2
-                    %BBreg dwi (b0) to FS:
-                    [~, to_exec ] = system('which bbregister');
-                    exec_cmd{1}=[ export_shell ...
-                        strtrim(to_exec) ' --s ' obj.sessionname ...
-                        ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                        ' --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS ' --dti --init-fsl '];
-                    if exist(obj.Params.FS2dwi.out.xfm_dwi2FS,'file') == 0
-                        %bbreg b0 to FS_T1:
-                        disp('proc_FS2dwi: Running bbreg dwi2FS_T1...')
-                        obj.RunBash(exec_cmd{1},44); % '44' codes for seeing the output!
-                        disp('..done');
-                        wasRun=true;
-                    end
-                    
-                    %Aparc+aseg to dwi:
-                    [~, to_exec ] = system('which mri_vol2vol');
-                    exec_cmd{2}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                        ' --targ ' obj.Params.FS2dwi.in.aparcaseg ...
-                        ' --o ' obj.Params.FS2dwi.out.fn_aparc ...
-                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
-                    if exist(obj.Params.FS2dwi.out.fn_aparc,'file') == 0
-                        %bbreg b0 to FS_T1:
-                        disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
-                        obj.RunBash(exec_cmd{2},44); % '44' codes for seeing the output!
-                        disp('..done');
-                        wasRun=true;
-                    end
-                    
-                    %Extracting all ROIs for aparc:
-                    [num_aparc name_aparc ] =textread(obj.Params.FS2dwi.in.tmpfile_aparcaseg,'%s %s');
-                    for ff=1:numel(num_aparc)
-                        tmp_curname{ff} = [ outpath  'aparc_aseg' filesep 'dwi_' name_aparc{ff} '.nii.gz'];
-                        [~, to_exec ] = system('which fslmaths');
-                        exec_3{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.fn_aparc ...
-                            ' -uthr ' num_aparc{ff} ' -thr ' num_aparc{ff} ...
-                            ' -div '  num_aparc{ff} ' ' tmp_curname{ff} ] ;
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
-                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
-                            obj.RunBash(exec_3{ff});
-                            fprintf('done \n')
-                        end
-                    end
-                    %Values to be stored in history object:
-                    exec_cmd{3}=exec_3';
-                    fprintf('aparc+aseg extraction complete\n')
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                else
-                    error([ 'in proc_FS2dwi(obj): FS aparc_aseg (supposely) located in: ' obj.Params.FS2dwi.in.aparcaseg ' does not exist'])
-                end
-                fprintf('aparc+aseg extraction complete. \n')
-            end
-            %APARCASEGa2009 EXTRACTION:
-            for tohide=1:1
-                if exist(obj.Params.FS2dwi.in.aparcaseg2009,'file')==2
-                    %Aparc.a2009+aseg to dwi:
-                    [~, to_exec ] = system('which mri_vol2vol');
-                    exec_cmd{4}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                        ' --targ ' obj.Params.FS2dwi.in.aparcaseg2009 ...
-                        ' --o '  obj.Params.FS2dwi.out.fn_aparc2009 ...
-                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
-                    if exist(obj.Params.FS2dwi.out.fn_aparc2009,'file') == 0
-                        %bbreg b0 to FS_T1:
-                        disp('proc_FS2dwi: Running bbreg in aparc2009+aseg.mgz...')
-                        obj.RunBash(exec_cmd{4},44); % '44' codes for seeing the output!
-                        disp('..done');
-                        wasRun=true;
-                    end
-                    %Extracting all ROIs for aparc2009:
-                    [num_aparc2009 name_aparc2009 ] =textread(obj.Params.FS2dwi.in.tmpfile_aparcaseg2009,'%s %s');
-                    clear tmp_curname;
-                    for ff=1:numel(num_aparc2009)
-                        tmp_curname{ff} = [ outpath  'aparc2009_aseg' filesep  'dwi_' name_aparc2009{ff}  '.nii.gz' ];
-                        [~, to_exec ] = system('which fslmaths');
-                        exec_5{ff} = [ 'fslmaths  ' obj.Params.FS2dwi.out.fn_aparc ...
-                            ' -uthr ' num_aparc2009{ff} ' -thr ' num_aparc2009{ff} ...
-                            ' -div '  num_aparc2009{ff} ' ' tmp_curname{ff} ] ;
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
-                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
-                            obj.RunBash(exec_5{ff});
-                            fprintf('done \n')
-                        end
-                    end
-                    %Values to be stored in history object:
-                    exec_cmd{5}=exec_5';
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                else
-                    error([ 'in proc_FS2dwi(obj): FS aparc_aseg (supposely) located in: ' obj.Params.FS2dwi.out.fn_aparc2009 ' does not exist'])
-                end
-                fprintf('aparc+aseg2009 extraction complete. \n')
-            end
-            %HIPPOFIELD_LEFT EXTRACTION:
-            for tohide=1:1
-                if exist( obj.Params.FS2dwi.in.hippofield_left ,'file') == 2
-                    [~, to_exec ] = system('which mri_vol2vol');
-                    exec_cmd{6}=[ strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                        ' --targ ' obj.Params.FS2dwi.in.hippofield_left ...
-                        ' --o ' obj.Params.FS2dwi.out.hippofield_left ...
-                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
-                    if exist(obj.Params.FS2dwi.out.hippofield_left,'file') == 0
-                        %bbreg b0 to FS_T1:
-                        disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
-                        obj.RunBash(exec_cmd{6}); % '44' codes for seeing the output!
-                        disp('..done');
-                        wasRun=true;
-                    end
-                    [num_hippo_lh name_hippo_lh ] =textread(obj.Params.FS2dwi.in.tmpfile_hippo_bil,'%s %s');
-                    clear tmp_curname;
-                    for ff=1:numel(num_hippo_lh)
-                        tmp_curname{ff} = [ outpath  'hippos' filesep 'dwi_lh_' name_hippo_lh{ff} '.nii.gz' ];
-                        [~, to_exec ] = system('which fslmaths');
-                        exec_7{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_left ...
-                            ' -uthr ' num_hippo_lh{ff} ' -thr ' num_hippo_lh{ff} ...
-                            ' -div '  num_hippo_lh{ff} ' ' tmp_curname{ff} ] ;
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
-                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
-                            obj.RunBash(exec_7{ff});
-                            fprintf('done \n')
-                        end
-                    end
-                    %Values to be stored in history:
-                    exec_cmd{7}=exec_7';
-                elseif strcmp(obj.Params.FS2dwi.in.hippofield_left ,'nothing')
-                    display(['No hippofield_lh found in this processing. Skipping  for now...']);
-                else
-                    fprintf(['Need to run (or try): \n '  'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
-                        ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
-                        ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; ' ...
-                        ' recon-all -s ' obj.sessionname ' -hippocampal-subfields-T2 ' obj.Params.FreeSurfer.in.T2 ...
-                        ' T2'
-                        ])
-                    error([ 'in proc_FS2dwi(obj): FS hippofield_left (supposely) located in: ' obj.Params.FS2dwi.in.hippofield_left ' does not exist'])
-                end
-                fprintf('hippofield_lh extraction complete\n')
-            end
-            
-            %HIPPOFIELD_RIGHT EXTRACTION:
-            for tohide=1:1
-                if exist( obj.Params.FS2dwi.in.hippofield_right ,'file') == 2
-                    [~, to_exec ] = system('which mri_vol2vol');
-                    exec_cmd{8}=[ strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
-                        ' --targ ' obj.Params.FS2dwi.in.hippofield_right ...
-                        ' --o ' obj.Params.FS2dwi.out.hippofield_right ...
-                        ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
-                    if exist(obj.Params.FS2dwi.out.hippofield_right,'file') == 0
-                        %bbreg b0 to FS_T1:
-                        disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
-                        obj.RunBash(exec_cmd{8}); % '44' codes for seeing the output!
-                        disp('..done');
-                        wasRun=true;
-                    end
-                    
-                    %Extracting all ROIs for aparc2009:
-                    [num_hippo_rh name_hippo_rh ] =textread(obj.Params.FS2dwi.in.tmpfile_hippo_bil,'%s %s');
-                    clear tmp_curname;
-                    for ff=1:numel(num_hippo_rh)
-                        tmp_curname{ff} = [outpath  'hippos' filesep 'dwi_rh_' name_hippo_rh{ff} '.nii.gz' ];
-                        [~, to_exec ] = system('which fslmaths');
-                        exec_9{ff} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_right ...
-                            ' -uthr ' num_hippo_rh{ff} ' -thr ' num_hippo_rh{ff} ...
-                            ' -div '  num_hippo_rh{ff} ' ' tmp_curname{ff} ] ;
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
-                            fprintf(['\nDisplaying now: ' tmp_curname{ff} '...' ] )
-                            obj.RunBash(exec_9{ff});
-                            fprintf('done \n')
-                        end
-                    end
-                    %Values to be stored in history:
-                    exec_cmd{9}=exec_9';
-                elseif strcmp(obj.Params.FS2dwi.in.hippofield_right ,'nothing')
-                    display(['No hippofield_lh found in this processing. Skipping  for now...']);
-                else
-                    error([ 'in proc_FS2dwi(obj): FS hippofield_right (supposely) located in: ' obj.Params.FS2dwi.in.hippofield_right ' does not exist'])
-                end
-                fprintf('hippofield_rh extraction complete\n')
-            end
-            
-            %Update history if possible
-            if ~isfield(obj.Params.FS2dwi,'history_saved') || wasRun == true
-                obj.Params.FS2dwi.history_saved = 0 ;
-            end
-            if obj.Params.FS2dwi.history_saved == 0
-                obj.Params.FS2dwi.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.FS2dwi,'proc_FS2dwi', tmp_curname{ff} , wasRun,exec_cmd); %no file is created in this step but update it iteratively
-            end
-            clear exec_cmd to_exec wasRun;
-            
-        end
-        
-        function obj = proc_FROIS2dwi(obj)
-            wasRun=false;
-            fprintf('\n%s\n', 'PERFORMING PROC_FROIS2DWI():');
-            [a, ~, ~ ] = fileparts(obj.Params.FROIS2dwi.in.fn);
-            outpath=obj.getPath(a,obj.Params.FROIS2dwi.in.movefiles);
-            
-            %make a list of all *.gz that exist in that direcotry
-            [ok_check, tmp_frois_list ]  = system(['ls -1 '  ...
-                obj.Params.FROIS2dwi.in.FROIS_dir '*.nii.gz']);
-            if ok_check ~= 0
-                error(['In proc_FROIS2dwi(): cannot find any *.nii.gz images in:'...
-                    obj.Params.FROIS2dwi.in.FROIS_dir 'Double check']);
-            end
-            
-            tmp_cellarray=textscan(tmp_frois_list,'%s');
-            obj.Params.FROIS2dwi.in.FROIS_list=tmp_cellarray{1};
-            
-            
-            %Check if the MNI_T1 exists....
-            if exist(obj.Params.FROIS2dwi.in.MNI_T1,'file') == 0
-                error(['In proc_FROIS2dwi(): Cannnot find the MNI_T1 in:' obj.Params.FROIS2dwi.in.MNI_T1 ] );
-            end
-            
-            %Assigend outpath of coreg using ants
-            obj.Params.FROIS2dwi.out.MNI_2_dwi = [ outpath obj.Params.FROIS2dwi.in.prefix 'Warped.nii.gz' ];
-            if exist(obj.Params.FROIS2dwi.out.MNI_2_dwi ,'file')==0
-                fprintf('\n In proc_FROIS(): Coregistering Ants to reference... ');
-                aa=1;
-                %obj.proc_as_coreg(obj.Params.FROIS2dwi.in.FROIS_list
-                fprintf('...done.\n');
+        %Data management (datacentral) related  methods:
+        function obj = getDB(obj)
+            R = DataCentral(['SELECT * FROM Sessions.MRI WHERE MRI_Session_Name="' obj.sessionname '"']);
+            obj.dbentry = R;
+            try
+                obj.collectiondate = R.MRI_SessionDate;
+            catch
+                disp('Cant get collectiondate')
             end
         end
         
-        
-        
-        %GET DATA METHODS:
-        %%GET DATA (volumes, avg thcknesses) Method:
         function obj = proc_getskeltois(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_GETSKELTOIS():');
@@ -2297,154 +2147,112 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.resave;
         end
         
-        
-        %%%%%%%%%%%%%%%%%%% END Data Pre-Processing Methods %%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%% BEGIN Data Post-Processing Methods %%%%%%%%%%%%%
-        function obj = proc_WMLs2DWI(obj)
-            % **THIS SCRIPT WAS IMPLEMENTED AFTER WMLS WERE CREATED
-            % INDEPENDENT OF THIS OBJECT. HENCE, THIS METHOD EXTRACTS
-            % PREVIOUSLY RAN 'FLAIR IMAGES' AND 'WHITE MATTER LESIONS
-            % (WMLs)' FROM A PREVIOUS DIRECTORY*
-            % **ALSO AVAILABLE FOR SINGLE FILES @ pipelines/deps/WML2dwi.m
+        %!!!
+        %On the works - deprecated processing methods:
+        function obj = deprecated_proc_antsreg(obj)
             wasRun=false;
-            fprintf('\n%s\n', 'PERFORMING PROC_WML2DWI():');
-            %Creating WML2dwis root directory:
-            for tohide=1:1
-                [a b c ] = fileparts(obj.Params.WMLs2DWI.in.b0);
-                outpath=obj.getPath(a,obj.Params.WMLs2DWI.in.movefiles);
-                %Making sure we have the 'filesep' for the outpath
-                %directory
-                if ~strcmp(outpath(end),filesep)
-                    outpath(end+1) = filesep;
-                end
-                
-            end
-            
-            %Checking that in_files exist and is gzipped
-            for tohide=1:1
-                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
-                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Returning now...')
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No b0 FOUND!' , wasRun,'');
-                end
-                
-                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
-                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Returning now...')
-                    obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
-                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No FLAIR FOUND!' , wasRun,'');
-                    return
-                end
-                
-                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
-                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
-                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No WMLprobmap!' , wasRun,'');
-                    return
-                end
-            end
-            
-            %Initialize outdirs:
-            obj.Params.WMLs2DWI.out.dir_name=outpath;
-            obj.Params.WMLs2DWI.out.raw_FLAIR = [ outpath 'raw_' obj.sessionname '_FLAIR.nii'];
-            obj.Params.WMLs2DWI.out.raw_WMLprobmap = [ outpath  'raw_' obj.sessionname '_WMLmap.nii' ];
-            obj.Params.WMLs2DWI.out.raw_b0 = [ outpath  'raw_' obj.sessionname '_b0.nii' ];
-            obj.Params.WMLs2DWI.out.dwi_FLAIR = [ outpath 'dwi_' obj.sessionname '_FLAIR.nii'];
-            obj.Params.WMLs2DWI.out.dwi_WMLprobmap = [ outpath  'dwi_' obj.sessionname '_WMLmap.nii' ];
-            
-            
-            %Check gzip for FLAIRS/WMLsmap
-            for tohide=1:1
-                if ~strcmp(obj.Params.WMLs2DWI.in.FLAIR(end-3:end),'.nii')
-                    error(['proc_WMLs2DWI(): obj.Params.WMLs2DWI.in.FLAIR ' ...
-                        ' file extension does not finish in *.nii. Please check (or implement)'])
-                end
-                
-                if ~strcmp(obj.Params.WMLs2DWI.in.WMLprobmap(end-3:end),'.nii')
-                    error(['proc_WMLs2DWI(): obj.Params.in.WMLprobmap ' ...
-                        ' file extension does not finish in *.nii. Please check (or implement)'])
-                end
-            end
-            
-            %Initializing exec_cmd:
-            exec_cmd{:}='EXEC_CMD INIT:';
-            
-            %Copying FLAIRS and WMLprob to obj.Params.WMLs2DWI.out.dir_name
-            for tohide=1:1
-                if ~exist(obj.Params.WMLs2DWI.out.raw_FLAIR,'file')
-                    fprintf('\n copying raw_FLAIR..');
-                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.FLAIR ' ' obj.Params.WMLs2DWI.out.raw_FLAIR ]);
-                    obj.RunBash(exec_cmd{:,end});
-                    fprintf('..done\n');
-                end
-                if ~exist(obj.Params.WMLs2DWI.out.raw_WMLprobmap,'file');
-                    fprintf('\n copying raw_WMLmap..');
-                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.WMLprobmap ' ' obj.Params.WMLs2DWI.out.raw_WMLprobmap ]);
-                    obj.RunBash(exec_cmd{:,end});
-                    fprintf('..done\n');
-                end
-                
-            end
-            
-            %Gunzip b0 (if necessary) and coreg:
-            if ~exist(obj.Params.WMLs2DWI.out.raw_b0,'file')
-                [b0_dir b0_bname b0_ext] = fileparts(obj.Params.WMLs2DWI.in.b0);
-                if strcmp(b0_ext,'.gz') %gunzipping and copying
-                    display('b0 is gzipped. gunzipping and copying...')
-                    exec_cmd{:,end+1}=(['gunzip ' obj.Params.WMLs2DWI.in.b0]);
-                    obj.RunBash(exec_cmd{:,end})
-                    exec_cmd{:,end+1}=(['cp ' b0_dir filesep b0_bname  ' ' obj.Params.WMLs2DWI.out.raw_b0]);
-                    obj.RunBash(exec_cmd{:,end});
-                    exec_cmd{:,end+1}=(['gzip ' b0_dir filesep b0_bname]);
-                    obj.RunBash(exec_cmd{:,end});
-                    fprintf('..done\n');
-                else %copying only
-                    display('b0 is gzipped. gunzipping and copying...')
-                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.b0 ' ' obj.Params.WMLs2DWI.out.raw_b0 ]);
-                    obj.RunBash(exec_cmd{:,end});
-                    fprintf('..done\n');
-                end
-            end
-            if exist(obj.Params.WMLs2DWI.out.dwi_WMLprobmap,'file') == 0
-                %CoReg Now:
-                obj.proc_QuickCoReg(obj.Params.WMLs2DWI.out.raw_FLAIR, ...
-                    obj.Params.WMLs2DWI.out.raw_b0,{obj.Params.WMLs2DWI.out.raw_WMLprobmap},'dwi_')
-                exec_cmd{:,end+1} = ['obj.proc_QuickCoReg(obj.Params.WMLs2DWI.out.raw_FLAIR,' ...
-                    obj.Params.WMLs2DWI.out.raw_b0,{obj.Params.WMLs2DWI.out.raw_WMLprobmap},'dwi_'];
-                
-                %Replace 'dwi_raw' prefix with 'dwi_':
-                [ FLAIR_dir FLAIR_fname FLAIR_ext ] = fileparts(obj.Params.WMLs2DWI.out.raw_FLAIR);
-                exec_cmd{:,end+1}=['mv ' FLAIR_dir filesep 'dwi_' FLAIR_fname  FLAIR_ext ...
-                    ' ' obj.Params.WMLs2DWI.out.dwi_FLAIR ];
-                obj.RunBash(exec_cmd{:,end});
-                
-                [ WMLprobmap_dir WMLprobmap_fname WMLprobmap_ext ] = fileparts(obj.Params.WMLs2DWI.out.raw_WMLprobmap);
-                exec_cmd{:,end+1}=['mv ' WMLprobmap_dir filesep 'dwi_' WMLprobmap_fname WMLprobmap_ext ...
-                    ' ' obj.Params.WMLs2DWI.out.dwi_WMLprobmap ];
-                obj.RunBash(exec_cmd{:,end});
-                
-                %Remove spm_nans now:
-                if exist(obj.Params.WMLs2DWI.out.dwi_FLAIR,'file')
-                    obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_FLAIR);
-                    exec_cmd{:,end+1} = ['Removing spm_nans dwi_FLAIR: obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_FLAIR) ' ];
+            fprintf('\n%s\n', 'PERFORMING PROC_ANTSREG():');
+            for ii=1:numel(obj.Params.AntsReg.in.fn)
+                clear cur_fn;
+                if iscell(obj.Params.AntsReg.in.fn{ii})
+                    cur_fn=cell2char(obj.Params.AntsReg.in.fn{ii});
                 else
-                    warning('obj.Params.WMLs2DWI.out.dwi_FLAIR does not exist!');
+                    cur_fn=obj.Params.AntsReg.in.fn{ii};
                 end
-                if exist(obj.Params.WMLs2DWI.out.dwi_WMLprobmap,'file')
-                    obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_WMLprobmap);
-                    exec_cmd{:,end+1} =  ['Removing spm_nans dwi_WMLprobmap: obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_WMLprobmap) ' ];
+                [a b c ] = fileparts(cur_fn);
+                outpath=obj.getPath(a,obj.Params.AntsReg.in.movefiles);
+                clear outfile
+                obj.Params.AntsReg.out.fn{ii} = [ outpath obj.Params.AntsReg.in.prefix 'Warped.nii.gz' ];
+                [~, to_exec ] = system('which antsRegistrationSyN.sh');
+                exec_cmd{ii,1}=[ strtrim(to_exec) ' '  ...
+                    ' -d '  obj.Params.AntsReg.in.dim ...
+                    ' -n '  obj.Params.AntsReg.in.threads ...
+                    ' -t '  obj.Params.AntsReg.in.transform ...
+                    ' -r '  obj.Params.AntsReg.in.radius  ...
+                    ' -p '  obj.Params.AntsReg.in.precision ...
+                    ' -f '  obj.Params.AntsReg.in.ref ...
+                    ' -m '  obj.Params.AntsReg.in.fn{ii} ...
+                    ' -o '  [ outpath obj.Params.AntsReg.in.prefix]  ];
+                
+                if exist(obj.Params.AntsReg.out.fn{ii},'file')==0
+                    fprintf('\nCoregistering Ants to reference... ');
+                    tic
+                    system(exec_cmd{ii,1})
+                    obj.Params.AntsReg.out.time_taken=[ toc ' seconds'];
+                    fprintf('...done.\n');
+                    wasRun=true;
                 else
-                    warning('obj.Params.WMLs2DWI.out.dwi_WMLprobmap does not exist!')
+                    [~, bb,cc ] = fileparts(obj.Params.AntsReg.out.fn{ii} );
+                    fprintf(['The file ' bb cc ' is complete\n']) ;
                 end
-                wasRun=true;
-                obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
+                for tocomment=1:1
+                    obj.Params.AntsReg.out.FA{ii} = [ outpath obj.Params.AntsReg.in.prefix 'FA.nii.gz' ];
+                    %FA:
+                    [~, to_exec ] = system('which WarpImageMultiTransform');
+                    exec_cmd{ii,2}=[ strtrim(to_exec)  ' 3 ' ...
+                        ' ' obj.Params.Dtifit.out.FA{ii}  ...
+                        ' ' obj.Params.AntsReg.out.FA{ii} ...
+                        ' -R '  obj.Params.AntsReg.in.ref ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat')];
+                    %RD:
+                    exec_cmd{ii,3}=[ strtrim(to_exec) ' 3 ' ...
+                        ' ' obj.Params.Dtifit.out.RD{ii}  ...
+                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','RD') ...
+                        ' -R '  obj.Params.AntsReg.in.ref ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                    %AxD:
+                    exec_cmd{ii,4}=[ strtrim(to_exec) ' 3 ' ...
+                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ...
+                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','AxD') ...
+                        ' -R '  obj.Params.AntsReg.in.ref ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                    %MD:
+                    exec_cmd{ii,5}=[ strtrim(to_exec) ' 3 ' ...
+                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','MD')  ...
+                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','MD') ...
+                        ' -R '  obj.Params.AntsReg.in.ref ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                    
+                    if  exist(obj.Params.AntsReg.out.FA{ii},'file')==0
+                        fprintf('\n Warping dtifit metrics...');
+                        %FA:
+                        obj.RunBash(exec_cmd{ii,2})
+                        %RD:
+                        obj.RunBash(exec_cmd{ii,3})
+                        %AxD:
+                        obj.RunBash(exec_cmd{ii,4});
+                        %MD:
+                        obj.RunBash(exec_cmd{ii,5});
+                        fprintf('...done.\n');
+                        wasRun=true;
+                    end
+                end
             end
+            
+            %Update history if possible
+            if ~isfield(obj.Params.AntsReg,'history_saved') || wasRun == true
+                obj.Params.AntsReg.history_saved = 0 ;
+            end
+            if obj.Params.AntsReg.history_saved == 0
+                obj.Params.AntsReg.history_saved = 1 ;
+                obj.UpdateHist_v2(obj.Params.AntsReg,'proc_antsReg', obj.Params.AntsReg.out.fn{ii},wasRun,exec_cmd);
+            end
+            clear exec_cmd to_exec wasRun;
             
         end
+        %%%%%%%%%%%%%%%%%%% END  Pre-Processing Methods %%%%%%%%%%%%%%%%%%
+        %------------------------------------------------------------------
         
+    end
+    
+    %Post- procesing methods:
+    methods 
+        %%%%%%%%%%%%%%%%%% BEGIN  Post-Processing Methods %%%%%%%%%%%%%
+        %Post-process tracula:
         function obj = proc_tracula(obj)
             % try
             wasRun=false;
@@ -2544,7 +2352,300 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
+        %fMRI or any txt_with masks to probabilistic tracking (it will
+        %generate a shell script to run it from SHELL):
+        function obj = proc_tracxBYmask(obj,tmp_txtfname)
+            wasRun=false;
+            %INIT exec_cmd:
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = 'FIRST INIT proc_tracxBYmask';
+            end
+            %INIT VARIABLES
+            %Introducing local variable for ease of method implementation
+            in_bedp_dir     = obj.Params.tracxBYmask.tracula.bedp_dir;
+            in_b0           = obj.Params.tracxBYmask.tracula.b0;
+            in_txtfname     = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname;
+            in_movefiles    = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles;
+            %Creating working directory and assigning a short name:
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
+            out_dir = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir; %short-naming
+            
+            %~~~
+            %%%%%%%%%%%%%% FILE CHECKING: IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
+            for tohide=1:1
+                %Check b0 exists:
+                if ~exist(in_b0,'file');
+                    error(['proc_tracxBYmask: b0 file ' '' in_b0 '' ' does not exist. Returning...']);
+                    return
+                end
+                %Check if txt_mask_name exists
+                if ~exist(in_txtfname,'file');
+                    error(['proc_tracxBYmask: txt filename ' '' in_txtfname''  ' does not exist. Returning...']);
+                    return
+                end
+                
+                %Check to see that all filepaths/nii.gzs exist in the
+                %in_txtfname:
+                fileID=fopen(in_txtfname);
+                %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+                tmp_txtscan=textscan(fileID,'%s');
+                list_MASKS=tmp_txtscan{1};
+                for ii=1:numel(list_MASKS)
+                    if ~exist(list_MASKS{ii})
+                        fprintf('\n\n')
+                        display(['proc_tracxBYmask: The ' num2str(ii) 'th iteration filepath: ' '' list_MASKS{ii} '' ]);
+                        display(['\nIn: ' '' in_txtfname '' ' does not exist. Please check/change!'])
+                        error('Returning...')
+                        return
+                    end
+                end
+            end
+            %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%% START T1<-->DWI IMPLEMENTATION %%%%%%%%%%%%%%%%%
+            %~
+            %##########FIRST, DEALING WITH T1 <--> DWI DEPENDENCES ########
+            for tohide=1:1
+                %COREGISTERING T1 to DWI
+                obj.Params.tracxBYmask.T1coregDWI.dir = [obj.root 'post_tracx' filesep 'T1_coreg_dwi' ];
+                obj.Params.tracxBYmask.T1coregDWI.in_T1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'orig_T1.nii' ];
+                obj.Params.tracxBYmask.T1coregDWI.out_dwiT1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'coreg2dwi_orig_T1.nii' ];
+                obj.Params.tracxBYmask.T1coregDWI.in_b0 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'b0.nii' ];
+                obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'CoReg.mat' ];
+                %check if files exist:
+                %directory:
+                if exist(obj.Params.tracxBYmask.T1coregDWI.dir,'dir') == 0
+                    exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.T1coregDWI.dir ];
+                    obj.RunBash(exec_cmd{end});
+                end
+                %T1:
+                if exist( obj.Params.tracxBYmask.T1coregDWI.in_T1, 'file') == 0
+                    display('Copying the T1...');
+                    exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_T1  ];
+                    obj.RunBash(exec_cmd{end});
+                end
+                %B0:
+                if exist( obj.Params.tracxBYmask.T1coregDWI.in_b0, 'file') == 0
+                    if strcmp(obj.Params.tracxBYmask.tracula.b0(end-6:end),'.nii.gz')
+                        display('Copying the b0...');
+                        exec_cmd{:,end+1} = ['cp ' obj.Params.tracxBYmask.tracula.b0 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
+                        obj.RunBash(exec_cmd{end});
+                        exec_cmd{:,end+1} = ['gunzip ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
+                        obj.RunBash(exec_cmd{end});
+                        
+                    elseif strcmp(obj.Params.tracxBYmask.tracula.b0(end-3:end),'.nii')
+                        display('Copying the b0...')
+                        exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0  ];
+                        obj.RunBash(exec_cmd{end});
+                    end
+                end
+                
+                %Coregistering now...
+                if exist(obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat,'file') == 0
+                    exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,obj.Params.tracxBYmask.T1coregDWI.in_b0,obj.Params.tracxBYmask.T1coregDWI.dir);';
+                    eval(exec_cmd{end});
+                end
+                
+                if exist(obj.Params.tracxBYmask.T1coregDWI.out_dwiT1,'file') == 0
+                    exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0);';
+                    eval(exec_cmd{end});
+                end
+                %END OF COREGISTRERING T1 to DWI
+                %~~~
+                
+                
+                %PROCESSING T1 BASED ON SPM.
+                obj.Params.tracxBYmask.coregT12DWI.dir = [obj.root 'post_tracx' filesep 'coregT1_spm_proc' ];
+                obj.Params.tracxBYmask.coregT12DWI.in_T1 = obj.Params.tracxBYmask.T1coregDWI.out_dwiT1;
+                obj.Params.tracxBYmask.coregT12DWI.in_Affinemat = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'Affine.mat' ];
+                
+                [~, tmp_coT1_bname, tmp_cT1_ext ] = fileparts(obj.Params.tracxBYmask.coregT12DWI.in_T1);
+                obj.Params.tracxBYmask.coregT12DWI.out_regfile = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'iy_' tmp_coT1_bname, tmp_cT1_ext  ];
+                %check if files exist:
+                %directory:
+                if exist(obj.Params.tracxBYmask.coregT12DWI.dir,'dir') == 0
+                    exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.coregT12DWI.dir ];
+                    obj.RunBash(exec_cmd{end});
+                end
+                %regile:
+                if exist(obj.Params.tracxBYmask.coregT12DWI.out_regfile) == 0
+                    exec_cmd{:,end+1} = 'obj.proc_t1_spm(obj.Params.tracxBYmask.coregT12DWI.in_T1,obj.Params.tracxBYmask.coregT12DWI.dir);' ;
+                    eval(exec_cmd{end});
+                end
+            end
+            %##########END OF DEALING WITH T1 <--> DWI DEPENDENCES ########
+            %##############################################################
+                        
+            %%%%%%%%%%%%%% START TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %IMPLEMENTATION STARTS HERE:
+            fprintf('\n\nLOOPING THORUGH THE TXT_FILE....\n');
+            display('MAKE SURE FILENAMES ARE IN THE SAME SPACE AS THE FIRST FILENAME/MASK');
+            fprintf('*Supporting only *.nii for now.\n\n');
+            pause(2)
+            %Loop for every mask created
+            for ii=1:numel(list_MASKS)
+                %Split parts:
+                [curmask_dir , curmask_bname, curmask_ext ] = fileparts(list_MASKS{ii});
+                
+                %Initialize the probtracx shell command.
+                %If created, we can skip all these loops
+                %Integrate the probtracx commands in here:
+                obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} = [ out_dir 'torun_probtracx2_' curmask_bname  '.sh'];
+                if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii},'file') == 0
+                    %Check if masks are aligned to MNI. If not, align
+                    [m_TMP h_TMP] = openIMG(obj.Params.tracxBYmask.T1_tmp);
+                    [m_curMASK h_curMASK] = openIMG(list_MASKS{ii});
+                    if isequal(h_curMASK.dim,h_TMP.dim)
+                        %If *.mats differ, copy the same MNI:
+                        if ~isequal(h_curMASK.mat,h_TMP.mat)
+                            fprintf(['In txt iteration ' '' num2str(ii) ''  ' Correcting h.matrix to match header...']);
+                            h_curMASK.mat= h_TMP.mat;
+                            spm_write_vol(h_curMASK,m_curMASK);
+                            fprintf('..done\n');
+                        end
+                    else
+                        error([' Template: obj.Params.tracxBYmask.T1_tmp has different dimenisions than mask at iteration: ' num2str(ii) ]);
+                    end
+                    
+                    %Create split mask directory for each mask
+                    cur_split_dir{ii}= [out_dir filesep 'split_' curmask_bname filesep];
+                    cur_split_dir{ii}=regexprep(cur_split_dir{ii},[filesep filesep], filesep);
+                    system(['mkdir -p ' cur_split_dir{ii} ]);
+                    %Reverse normalize the mask so its align with T1 or b0
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.revN{ii}= [ cur_split_dir{ii} 'revN_' curmask_bname curmask_ext];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.revN{ii},'file') == 0
+                        exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(list_MASKS{ii}, ' ...
+                            ' obj.Params.tracxBYmask.coregT12DWI.out_regfile,in_b0, cur_split_dir{ii}, ''revN_'' );'] ;
+                        eval(exec_cmd{end});
+                    end
+                    %QuickReslice:
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii}= [ cur_split_dir{ii} 'resliced_revN_' curmask_bname curmask_ext];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii},'file') == 0
+                        exec_cmd{:,end+1} = 'obj.proc_reslice([ cur_split_dir{ii} ''revN_'' curmask_bname curmask_ext ],in_b0,'''', ''resliced_'' );';
+                        eval(exec_cmd{end});
+                    end
+                    %Splitting the reversed normalized, resliced mask:
+                    [~, obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} ] = ...
+                        system(['fslstats  ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii} ' -R | awk ''{print $2}'' ' ]);
+                    %making it a number (instead of a character class):
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} = str2num(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii});
+                    
+                    %Pad the last mask number with zeros:
+                    if obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} < 10
+                        pad_lastmask{ii} = [ '000' num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    elseif obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} < 100
+                        pad_lastmask{ii} = [ '00' num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    elseif obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii} < 1000
+                        pad_lastmask{ii} = [ '0' num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    else
+                        pad_lastmask{ii} = [ num2str(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii})];
+                    end
+                    
+                    %Splitting the mask by intensity:
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.last_mask{ii} = [ cur_split_dir{ii} 'split_' pad_lastmask{ii} '_' curmask_bname '.nii.gz'];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.last_mask{ii},'file') == 0
+                        %Then, we will redo the split...first remove previous
+                        %splits:
+                        display(['Removing previous split_* for ' cur_split_dir{ii}]);
+                        [~, b] = system(['rm ' cur_split_dir{ii} 'split*']);
+                        %then split by mask
+                        fprintf(['\nSplitting ' curmask_bname '...'])
+                        display('In iteration: ' )
+                        exec_cmd{:,end+1} = ['Splitting mask: ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii} ' using fslmaths -thr -uthr arguments.'];
+                        for ss=1:obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.n_masks{ii}
+                            %padding zeros:
+                            if ss < 10
+                                idx = [ '000' num2str(ss)];
+                            elseif ss < 100
+                                idx = [ '00' num2str(ss)];
+                            elseif ss < 1000
+                                idx = [ '0' num2str(ss)];
+                            else
+                                idx = [ num2str(ss)];
+                            end
+                            system(['fslmaths ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.reslicedN{ii} ...
+                                ' -uthr ' idx ' -thr ' idx ' ' cur_split_dir{ii} 'split_' idx '_' curmask_bname ]);
+                            fprintf([ idx ' ']);
+                            if ~mod(ss,20); fprintf('\n'); end
+                        end
+                        fprintf('..done \n');
+                    end
+                    
+                    %Is the txt file created?
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii} = [ cur_split_dir{ii} 'seeds_' curmask_bname '.txt'];
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii},'file')
+                        system(['rm ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii}  ]);
+                    end
+                    %Creating the file:
+                    fprintf(['\nInitializing the seeds_*.txt file for mask: ' tmp_txtfname ' in filename' curmask_bname  ' (iteration: ' num2str(ii) ' )']);
+                    system(['touch ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii}]);
+                    
+                    %Creating a list of the split*
+                    [~, tmp_list{ii} ] = system(['ls -1 ' cur_split_dir{ii} 'split*']);
+                    %Write to txt now:
+                    fileID=fopen(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii},'w');
+                    fprintf(fileID,'%s',tmp_list{ii}) ; fclose(fileID);
+                    fprintf('..done \n');
+                    
+                    %Move probtracx2 directory if it exists:
+                    obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} = [ out_dir 'pbtrackx2_out_' curmask_bname ];
+                    %unless it has already been moved:
+                    if exist([obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date],'dir') ~= 0
+                        error(['Cannot move ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} ' to a backup directory. The date already exists! ']);
+                    end
+                    %if not, move it
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii},'dir') ~= 0
+                        system(['mv ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} ' ' ...
+                            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date]);
+                    end
+                    %NO NEED TO CREATE THIS->: system(['mkdir -p ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii}]);
+                    
+                    %Create a shell script with the necessary commands in this specific mask:
+                    exec_cmd{:,end+1} = ['/usr/pubsw/packages/fsl/5.0.9/bin/probtrackx2 --network -x  ' ...
+                        obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.txt_masks{ii} ' ' ...
+                        obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args ' ' ...
+                        ' -s ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'merged' ...
+                        ' -m ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'nodif_brain_mask' ...
+                        ' --dir=' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.probtrackx2_dir{ii} ...
+                        ];
+                    
+                    %Writing out the command shell needed:
+                    fprintf(['\nIntegrating the probtrackx2 command into a shell script. txt_mask_fname line iteratoin: ' num2str(ii) '\n']);
+                    if exist(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii},'file') ~= 0
+                        system(['mv ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} ' ' ...
+                            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} '_bak_' date]);
+                    end
+                    system(['touch ' obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} ]);
+                    %Write to sh now:
+                    fileID=fopen(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii},'w');
+                    fprintf(fileID,'%s',exec_cmd{end}) ;
+                    fprintf(fileID,'\n\n');
+                    wasRun=true;
+                    fclose(fileID); fprintf('..done \n');
+                end
+            end
+            
+            %Letting the user know that these commands should be run
+            %away from the matlab environment (so it can be easily
+            %batch in pbs).
+            if wasRun
+                fprintf('\nRun the following script from command line: \n');
+                for jj=1:numel(obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun)
+                    fprintf([obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{ii} '\n']);
+                end
+                obj.UpdateHist_v2(obj.Params.tracxBYmask.allmasks.(tmp_txtfname),'proc_tracxBYmask', obj.Params.tracxBYmask.allmasks.(tmp_txtfname).sh_cmd_torun{end},wasRun,exec_cmd);
+                fprintf('**ALTERNTATIVELY: create a protected method prot_run_TRACTx() <ontheworks> \n');
+            end
+            fprintf(['\n\nPROBTRACKX2 SH COMMAND CREATION COMPLETED \n\n']);
+            %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
+            
+        end
         
+        %!!!
+        %ON THE WORKS:
+        %TRKLAND related
         function obj = trkland_fx(obj)
             wasRun = false ;
             fprintf('\n%s\n', 'PERFORMING TRKLAND FORNIX: TRKLAND_FX():');
@@ -2827,10 +2928,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
             clear exec_cmd to_exec wasRun;
-        end
-        
-        %trkland_hippocing needs to (maybe) define different
-        % regions of avoidance (same hollow criteria as trkland_fx)
+        end        
+        %trkland_hippocing and trkland_cingulum needs to (maybe) define different regions of avoidance (same hollow criteria as trkland_fx)
         function obj = trkland_hippocing(obj)
             fprintf('\n%s\n', 'PERFORMING TRKLAND HIPPOCAMPAL CINGULUM: TRKLAND_HIPPOCING():');
             wasRun=false;
@@ -3035,8 +3134,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             
         end
-        
-        %trkland_hippocing needs to (maybe) define different ROAs
         function obj = trkland_cingulum(obj)
             fprintf('\n%s\n', 'PERFORMING TRKLAND CINGULUM: TRKLAND_CINGULUM():');
             %Create trkland directory (if doesn't exist)
@@ -3156,7 +3253,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 end
                             end
                             wasRun=true;
-                            obj.UpdateHist(obj.Trkland.cingulum,'trkland_cingulum', obj.Trkland.cingulum.out.raw_rh,wasRun);
+                            obj.UpdateHisty(obj.Trkland.cingulum,'trkland_cingulum', obj.Trkland.cingulum.out.raw_rh,wasRun);
                         end
                     else
                         display('QC_flag_rh found in trkland_cingulum. Skipping and removing data points...')
@@ -3190,298 +3287,154 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             clear exec_cmd to_exec wasRun;
         end
         
-        %~~~~ON THE WORKS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        %old code that replaced creation of ants_coreg protected method
-        function obj = proc_tracxBYmask(obj,tmp_txtfname)
+        %Need to Co-register T1s to FLAIRs before doing so. The WMLs2DWIs
+        %selects previous (raw space) FLAIR images. Probably we need to
+        %co-register these images first to the FreeSurfer env. before
+        %calling the function which will re-implement the method entirely
+        function obj = ontheworkds_WMLs2DWI(obj)
+            % **THIS SCRIPT WAS IMPLEMENTED AFTER WMLS WERE CREATED
+            % INDEPENDENT OF THIS OBJECT. HENCE, THIS METHOD EXTRACTS
+            % PREVIOUSLY RAN 'FLAIR IMAGES' AND 'WHITE MATTER LESIONS
+            % (WMLs)' FROM A PREVIOUS DIRECTORY*
+            % **ALSO AVAILABLE FOR SINGLE FILES @ pipelines/deps/WML2dwi.m
             wasRun=false;
-            %INIT exec_cmd:
-            if ~exist('exec_cmd','var')
-                exec_cmd{:} = 'FIRST INIT proc_tracxBYmask';
-            end
-              
-            %INIT VARIABLES
-            %Introducing local variable for ease of method implementation
-            in_bedp_dir     = obj.Params.tracxBYmask.tracula.bedp_dir;
-            in_b0           = obj.Params.tracxBYmask.tracula.b0;
-            in_txtfname     = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.txt_fname;
-            in_movefiles    = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).in.movefiles;
-            %Creating working directory and assigning a short name:
-            obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
-            out_dir = obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.dir; %short-naming
-            
-            %~~~
-            
-            %%%%%%%%%%%%%% FILE CHECKING: IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
+            fprintf('\n%s\n', 'PERFORMING PROC_WML2DWI():');
+            %Creating WML2dwis root directory:
             for tohide=1:1
-                %Check b0 exists:
-                if ~exist(in_b0,'file');
-                    error(['proc_tracxBYmask: b0 file ' '' in_b0 '' ' does not exist. Returning...']);
+                [a b c ] = fileparts(obj.Params.WMLs2DWI.in.b0);
+                outpath=obj.getPath(a,obj.Params.WMLs2DWI.in.movefiles);
+                %Making sure we have the 'filesep' for the outpath
+                %directory
+                if ~strcmp(outpath(end),filesep)
+                    outpath(end+1) = filesep;
+                end
+                
+            end
+            
+            %Checking that in_files exist and is gzipped
+            for tohide=1:1
+                if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Returning now...')
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No b0 FOUND!' , wasRun,'');
+                end
+                
+                if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Returning now...')
+                    obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No FLAIR FOUND!' , wasRun,'');
                     return
                 end
-                %Check if txt_mask_name exists
-                if ~exist(in_txtfname,'file');
-                    error(['proc_tracxBYmask: txt filename ' '' in_txtfname''  ' does not exist. Returning...']);
+                
+                if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
+                    warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
+                    obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
+                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No WMLprobmap!' , wasRun,'');
                     return
                 end
-                
-                %Check to see that all filepaths/nii.gzs exist in the
-                %in_txtfname:
-                fileID=fopen(in_txtfname);
-                %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
-                tmp_txtscan=textscan(fileID,'%s');
-                list_MASKS=tmp_txtscan{1};
-                for ii=1:numel(list_MASKS)
-                    if ~exist(list_MASKS{ii})
-                        fprintf('\n\n')
-                        display(['proc_tracxBYmask: The ' num2str(ii) 'th iteration filepath: ' '' list_MASKS{ii} '' ]);
-                        display(['\nIn: ' '' in_txtfname '' ' does not exist. Please check/change!'])
-                        error('Returning...')
-                        return
-                    end
-                end
             end
-            %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
+            
+            %Initialize outdirs:
+            obj.Params.WMLs2DWI.out.dir_name=outpath;
+            obj.Params.WMLs2DWI.out.raw_FLAIR = [ outpath 'raw_' obj.sessionname '_FLAIR.nii'];
+            obj.Params.WMLs2DWI.out.raw_WMLprobmap = [ outpath  'raw_' obj.sessionname '_WMLmap.nii' ];
+            obj.Params.WMLs2DWI.out.raw_b0 = [ outpath  'raw_' obj.sessionname '_b0.nii' ];
+            obj.Params.WMLs2DWI.out.dwi_FLAIR = [ outpath 'dwi_' obj.sessionname '_FLAIR.nii'];
+            obj.Params.WMLs2DWI.out.dwi_WMLprobmap = [ outpath  'dwi_' obj.sessionname '_WMLmap.nii' ];
             
             
-            %%%%%%%%%%%%%% START T1<-->DWI IMPLEMENTATION %%%%
-            %%%%%%%%%%%%
-            %%%%%%%%%%%%            
-            %##########FIRST, DEALING WITH T1 <--> DWI DEPENDENCES ########
+            %Check gzip for FLAIRS/WMLsmap
             for tohide=1:1
-                %COREGISTERING T1 to DWI
-                obj.Params.tracxBYmask.T1coregDWI.dir = [obj.root 'post_tracx' filesep 'T1_coreg_dwi' ];
-                obj.Params.tracxBYmask.T1coregDWI.in_T1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'orig_T1.nii' ];
-                obj.Params.tracxBYmask.T1coregDWI.out_dwiT1 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'coreg2dwi_orig_T1.nii' ];
-                obj.Params.tracxBYmask.T1coregDWI.in_b0 = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'b0.nii' ];
-                obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat = [ obj.Params.tracxBYmask.T1coregDWI.dir filesep 'CoReg.mat' ];
-                %check if files exist:
-                %directory:
-                if exist(obj.Params.tracxBYmask.T1coregDWI.dir,'dir') == 0
-                    exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.T1coregDWI.dir ];
-                    obj.RunBash(exec_cmd{end});
-                end
-                %T1:
-                if exist( obj.Params.tracxBYmask.T1coregDWI.in_T1, 'file') == 0
-                    display('Copying the T1...');
-                    exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_T1  ];
-                    obj.RunBash(exec_cmd{end});
-                end
-                %B0:
-                if exist( obj.Params.tracxBYmask.T1coregDWI.in_b0, 'file') == 0
-                    if strcmp(obj.Params.tracxBYmask.tracula.b0(end-6:end),'.nii.gz')
-                        display('Copying the b0...');
-                        exec_cmd{:,end+1} = ['cp ' obj.Params.tracxBYmask.tracula.b0 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
-                        obj.RunBash(exec_cmd{end});
-                        exec_cmd{:,end+1} = ['gunzip ' obj.Params.tracxBYmask.T1coregDWI.in_b0 '.gz'  ];
-                        obj.RunBash(exec_cmd{end});
-                        
-                    elseif strcmp(obj.Params.tracxBYmask.tracula.b0(end-3:end),'.nii')
-                        display('Copying the b0...')
-                        exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_b0  ];
-                        obj.RunBash(exec_cmd{end});
-                    end
+                if ~strcmp(obj.Params.WMLs2DWI.in.FLAIR(end-3:end),'.nii')
+                    error(['proc_WMLs2DWI(): obj.Params.WMLs2DWI.in.FLAIR ' ...
+                        ' file extension does not finish in *.nii. Please check (or implement)'])
                 end
                 
-                %Coregistering now...
-                if exist(obj.Params.tracxBYmask.T1coregDWI.in_CoRegmat,'file') == 0
-                    exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,obj.Params.tracxBYmask.T1coregDWI.in_b0,obj.Params.tracxBYmask.T1coregDWI.dir);';
-                    eval(exec_cmd{end});
-                end
-                
-                if exist(obj.Params.tracxBYmask.T1coregDWI.out_dwiT1,'file') == 0
-                    exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0);';
-                    eval(exec_cmd{end});
-                end
-                %END OF COREGISTRERING T1 to DWI
-                %~~~
-                
-                
-                %PROCESSING T1 BASED ON SPM.
-                obj.Params.tracxBYmask.coregT12DWI.dir = [obj.root 'post_tracx' filesep 'coregT1_spm_proc' ];
-                obj.Params.tracxBYmask.coregT12DWI.in_T1 = obj.Params.tracxBYmask.T1coregDWI.out_dwiT1;
-                obj.Params.tracxBYmask.coregT12DWI.in_Affinemat = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'Affine.mat' ];
-                
-                [~, tmp_coT1_bname, tmp_cT1_ext ] = fileparts(obj.Params.tracxBYmask.coregT12DWI.in_T1);
-                obj.Params.tracxBYmask.coregT12DWI.out_regfile = [ obj.Params.tracxBYmask.coregT12DWI.dir  filesep 'iy_' tmp_coT1_bname, tmp_cT1_ext  ];
-                %check if files exist:
-                %directory:
-                if exist(obj.Params.tracxBYmask.coregT12DWI.dir,'dir') == 0
-                    exec_cmd{:,end+1} = [  'mkdir -p ' obj.Params.tracxBYmask.coregT12DWI.dir ];
-                    obj.RunBash(exec_cmd{end});
-                end
-                %regile:
-                if exist(obj.Params.tracxBYmask.coregT12DWI.out_regfile) == 0
-                    exec_cmd{:,end+1} = 'obj.proc_t1_spm(obj.Params.tracxBYmask.coregT12DWI.in_T1,obj.Params.tracxBYmask.coregT12DWI.dir);' ;
-                    eval(exec_cmd{end});
+                if ~strcmp(obj.Params.WMLs2DWI.in.WMLprobmap(end-3:end),'.nii')
+                    error(['proc_WMLs2DWI(): obj.Params.in.WMLprobmap ' ...
+                        ' file extension does not finish in *.nii. Please check (or implement)'])
                 end
             end
-            %##########END OF DEALING WITH T1 <--> DWI DEPENDENCES ########
-            %##############################################################
             
+            %Initializing exec_cmd:
+            exec_cmd{:}='EXEC_CMD INIT:';
             
-            %%%%%%%%%%%%%% START TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %IMPLEMENTATION STARTS HERE:
-            fprintf('\n\nLOOPING THORUGH THE TXT_FILE....\n');
-            display('MAKE SURE FILENAMES ARE IN THE SAME SPACE AS THE FIRST FILENAME/MASK');
-            fprintf('*Supporting only *.nii for now.\n\n');
-            pause(2)
-         
-            %Loop for every mask created
-            for ii=1:numel(list_MASKS)
-                %Split parts:
-                [curmask_dir , curmask_bname, curmask_ext ] = fileparts(list_MASKS{ii});
+            %Copying FLAIRS and WMLprob to obj.Params.WMLs2DWI.out.dir_name
+            for tohide=1:1
+                if ~exist(obj.Params.WMLs2DWI.out.raw_FLAIR,'file')
+                    fprintf('\n copying raw_FLAIR..');
+                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.FLAIR ' ' obj.Params.WMLs2DWI.out.raw_FLAIR ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                end
+                if ~exist(obj.Params.WMLs2DWI.out.raw_WMLprobmap,'file');
+                    fprintf('\n copying raw_WMLmap..');
+                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.WMLprobmap ' ' obj.Params.WMLs2DWI.out.raw_WMLprobmap ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                end
                 
+            end
+            
+            %Gunzip b0 (if necessary) and coreg:
+            if ~exist(obj.Params.WMLs2DWI.out.raw_b0,'file')
+                [b0_dir b0_bname b0_ext] = fileparts(obj.Params.WMLs2DWI.in.b0);
+                if strcmp(b0_ext,'.gz') %gunzipping and copying
+                    display('b0 is gzipped. gunzipping and copying...')
+                    exec_cmd{:,end+1}=(['gunzip ' obj.Params.WMLs2DWI.in.b0]);
+                    obj.RunBash(exec_cmd{:,end})
+                    exec_cmd{:,end+1}=(['cp ' b0_dir filesep b0_bname  ' ' obj.Params.WMLs2DWI.out.raw_b0]);
+                    obj.RunBash(exec_cmd{:,end});
+                    exec_cmd{:,end+1}=(['gzip ' b0_dir filesep b0_bname]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                else %copying only
+                    display('b0 is gzipped. gunzipping and copying...')
+                    exec_cmd{:,end+1}=(['cp ' obj.Params.WMLs2DWI.in.b0 ' ' obj.Params.WMLs2DWI.out.raw_b0 ]);
+                    obj.RunBash(exec_cmd{:,end});
+                    fprintf('..done\n');
+                end
+            end
+            if exist(obj.Params.WMLs2DWI.out.dwi_WMLprobmap,'file') == 0
+                %CoReg Now:
+                obj.proc_QuickCoReg(obj.Params.WMLs2DWI.out.raw_FLAIR, ...
+                    obj.Params.WMLs2DWI.out.raw_b0,{obj.Params.WMLs2DWI.out.raw_WMLprobmap},'dwi_')
+                exec_cmd{:,end+1} = ['obj.proc_QuickCoReg(obj.Params.WMLs2DWI.out.raw_FLAIR,' ...
+                    obj.Params.WMLs2DWI.out.raw_b0,{obj.Params.WMLs2DWI.out.raw_WMLprobmap},'dwi_'];
                 
-                %Check if masks are aligned to MNI. If not, align 
-                [m_TMP h_TMP] = openIMG(obj.Params.tracxBYmask.T1_tmp); 
-                [m_curMASK h_curMASK] = openIMG(list_MASKS{ii}); 
-                if isequal(h_curMASK.dim,h_TMP.dim)
-                    %If *.mats differ, copy the same MNI:
-                    if ~isequal(h_curMASK.mat,h_TMP.mat)
-                        fprintf(['In txt iteration ' '' num2str(ii) ''  ' Correcting h.matrix to match header...'])
-                        h_curMASK.mat= h_TMP.mat;
-                        spm_write_vol(h_curMASK,m_curMASK);
-                        fprintf('..done\n')
-                    end
+                %Replace 'dwi_raw' prefix with 'dwi_':
+                [ FLAIR_dir FLAIR_fname FLAIR_ext ] = fileparts(obj.Params.WMLs2DWI.out.raw_FLAIR);
+                exec_cmd{:,end+1}=['mv ' FLAIR_dir filesep 'dwi_' FLAIR_fname  FLAIR_ext ...
+                    ' ' obj.Params.WMLs2DWI.out.dwi_FLAIR ];
+                obj.RunBash(exec_cmd{:,end});
+                
+                [ WMLprobmap_dir WMLprobmap_fname WMLprobmap_ext ] = fileparts(obj.Params.WMLs2DWI.out.raw_WMLprobmap);
+                exec_cmd{:,end+1}=['mv ' WMLprobmap_dir filesep 'dwi_' WMLprobmap_fname WMLprobmap_ext ...
+                    ' ' obj.Params.WMLs2DWI.out.dwi_WMLprobmap ];
+                obj.RunBash(exec_cmd{:,end});
+                
+                %Remove spm_nans now:
+                if exist(obj.Params.WMLs2DWI.out.dwi_FLAIR,'file')
+                    obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_FLAIR);
+                    exec_cmd{:,end+1} = ['Removing spm_nans dwi_FLAIR: obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_FLAIR) ' ];
                 else
-                    error([' Template: obj.Params.tracxBYmask.T1_tmp has different dimenisions than mask at iteration: ' num2str(ii) ]);
+                    warning('obj.Params.WMLs2DWI.out.dwi_FLAIR does not exist!');
                 end
-                
-                %Create split mask directory for each mask
-                cur_split_dir{ii}= [out_dir filesep 'split_' curmask_bname filesep];
-                cur_split_dir{ii}=regexprep(cur_split_dir{ii},[filesep filesep], filesep);
-                system(['mkdir -p ' cur_split_dir{ii} ]);
-                
-                %Reverse normalize the mask so its align with T1 or b0
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.revN{ii}= [ cur_split_dir{ii} 'revN_' curmask_bname curmask_ext];
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.revN{ii},'file') == 0
-                    exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(list_MASKS{ii}, ' ...
-                        ' obj.Params.tracxBYmask.coregT12DWI.out_regfile,in_b0, cur_split_dir{ii}, ''revN_'' );'] ;
-                    eval(exec_cmd{end});
-                end
-                %QuickReslice:
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii}= [ cur_split_dir{ii} 'resliced_revN_' curmask_bname curmask_ext];
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii},'file') == 0
-                    exec_cmd{:,end+1} = 'obj.proc_reslice([ cur_split_dir{ii} ''revN_'' curmask_bname curmask_ext ],in_b0,'''', ''resliced_'' );';
-                    eval(exec_cmd{end});
-                end
-                
-                %Splitting the reversed normalized, resliced mask:
-                [~, obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} ] = ...
-                system(['fslstats  ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ' -R | awk ''{print $2}'' ' ]);
-                %making it a number (instead of a character class):
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} = str2num(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii});
-                
-                %Pad the last mask number with zeros:
-                if obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 10
-                    pad_lastmask{ii} = [ '000' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
-                elseif obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 100
-                    pad_lastmask{ii} = [ '00' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
-                elseif obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii} < 1000
-                    pad_lastmask{ii} = [ '0' num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
+                if exist(obj.Params.WMLs2DWI.out.dwi_WMLprobmap,'file')
+                    obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_WMLprobmap);
+                    exec_cmd{:,end+1} =  ['Removing spm_nans dwi_WMLprobmap: obj.proc_remove_spm_nans(obj.Params.WMLs2DWI.out.dwi_WMLprobmap) ' ];
                 else
-                    pad_lastmask{ii} = [ num2str(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii})];
+                    warning('obj.Params.WMLs2DWI.out.dwi_WMLprobmap does not exist!')
                 end
-                
-                %Splitting the mask by intensity:
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.last_mask{ii} = [ cur_split_dir{ii} 'split_' pad_lastmask{ii} '_' curmask_bname '.nii.gz'];
-                
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.last_mask{ii},'file') == 0
-                    %Then, we will redo the split...first remove previous
-                    %splits:
-                    display(['Removing previous split_* for ' cur_split_dir{ii}]);
-                    [~, b] = system(['rm ' cur_split_dir{ii} 'split*']);
-                    
-                    %then split by mask
-                    fprintf(['\nSplitting ' curmask_bname '...'])
-                    display('In iteration: ' )
-                    exec_cmd{:,end+1} = ['Splitting mask: ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ' using fslmaths -thr -uthr arguments.'];
-                    for ss=1:obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.n_masks{ii}
-                        %padding zeros:
-                        if ss < 10 
-                            idx = [ '000' num2str(ss)];
-                        elseif ss < 100
-                            idx = [ '00' num2str(ss)];
-                        elseif ss < 1000
-                            idx = [ '0' num2str(ss)];
-                        else
-                            idx = [ num2str(ss)];
-                        end
-                        system(['fslmaths ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.reslicedN{ii} ...
-                            ' -uthr ' idx ' -thr ' idx ' ' cur_split_dir{ii} 'split_' idx '_' curmask_bname ]);
-                        fprintf([ idx ' ']);
-                        if ~mod(ss,20); fprintf('\n'); end
-                    end
-                    fprintf('..done \n');
-                end
-
-                %Is the txt file created? 
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii} = [ cur_split_dir{ii} 'seeds_' curmask_bname '.txt'];
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii},'file') 
-                    system(['rm ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii}  ])
-                end
-                %Creating the file:
-                fprintf('\nInitializing the seeds_*.txt file')
-                system(['touch ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii}])
-                
-                
-                %Creating a list of the split*
-                [~, tmp_list{ii} ] = system(['ls -1 ' cur_split_dir{ii} 'split*']);
-                %Write to txt now:
-                fileID=fopen(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii},'w');
-                fprintf(fileID,'%s',tmp_list{ii}) ; fclose(fileID);
-                fprintf('..done \n')
-                
-                %Move probtracx2 directory if it exists:
-                obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} = [ cur_split_dir{ii} 'probtrackx2'];
-                %unless it has already been moved:
-                if exist([obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date],'dir') ~= 0
-                    error(['Cannot move ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ' to a backup directory. The date already exists! ']);
-                end
-                %if not, move it                                
-                if exist(obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii},'dir') ~= 0
-                    system(['mv ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ' ' ...
-                         obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} '_bak_' date]);
-                end
-                system('mkdir -p ' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii});
-                
-                
-                %Create a shell script with the necessary commands in this specific mask:
-                curmask_exec_cmd{ii} = ['/usr/pubsw/packages/fsl/5.0.9/bin/probtrackx2 --network -x  ' ...
-                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.txt_masks{ii} ' ' ...
-                    obj.Params.tracxBYmask.list_masks.(tmp_txtfname).probtracx2_args ' ' ...
-                    ' -s ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'merged' ...
-                    ' -m ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'nodif_brain_mask' ...
-                    ' --dir=' obj.Params.tracxBYmask.list_masks.(tmp_txtfname).out.probtrackx2_dir{ii} ...
-                    ];
+                wasRun=true;
+                obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', '' , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
             end
-            
-            %Integrate the probtracx commands in here:
-            obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun = [ out_dir 'probtracx2_cmd_to_run.sh'];
-            fprintf('\nIntegrating the probtrackx2 command into a shell script\n');
-            fprintf('\nRun the following script from command line: \n');
-            fprintf(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun);
-            if exist(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun,'file') ~= 0
-                system(['mv ' obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun ' ' ...
-                    obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun '_bak_' date]);
-            end
-            system(['touch ' obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun ]);
-            %Write to sh now:
-            fileID=fopen(obj.Params.tracxBYmask.(tmp_txtfname).sh_cmd_torun,'w');
-            for ii=1:numel(list_MASKS)
-                fprintf(fileID,'%s',curmask_exec_cmd{ii}) 
-                
-            end
-            fclose(fileID); fprintf('..done \n')
-            %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
             
         end
         
-        %~~~~~~~~~~~~~~OBSOLETES~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        %proc_AFQ on the works (not finished/used yet)
-        function obj = obsolete_proc_AFQ(obj)
-            % try
+        %proc_AFQ on the works (not finished/used yet. issues with AC-PC alignment)
+        function obj = ontheworks_proc_AFQ(obj)
+            % Adding paths for: https://github.com/vistalab/vistasoft
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_AFQ():');
             %Creating root directory:
@@ -3496,11 +3449,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.AFQ.out.dwi = 'AFQ_dn.mat';
                 %
                 [obj.Params.AFQ.out.dwi, obj.Params.AFQ.out.dir] = dtiInit(obj.Params.AFQ.in.dwi, obj.Params.AFQ.in.T1, []);
-                
-                
             end
         end
         
+        %!!
+        %OBSOLETES:
         %trkland_atr won't work as isolating a centerline is useless in this tract
         function obj = obsolete_trkland_atr(obj)
             display( 'trkland_atr implementation has not been. Please check before using it (improvements were given to trimmmed_clean and ordeing so check. Dat stamped 10162017!!!');
@@ -3963,7 +3916,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%COMMENTED:obj.resave
             
         end
-        
         function obj = obsolete_proc_tracxBYmask(obj,tracx_name)
             %COMMENTED OUT. CHECK THE NON_OBSOLETE METHOD:
             
@@ -4180,7 +4132,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.UpdateHist_v2(obj.Params.ants_dwi2MNI,'proc_ants_dwi2MNI', obj.Params.ants_dwi2MNI.out.dwi2mni_fn,wasRun,exec_cmd);
             fprintf(' proc_ants_dwi2MNI(obj) is complete\n');
         end
-        
         function obj = obsolete_proc_ants_RegSyN(obj,fixed_img,mov_img,out_dir,out_prefix,other_args)
             if nargin < 5
                 error('In obj.proc_ants_RegSyN(): not enough arguments')
@@ -4219,336 +4170,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
         end
         
-        
-        %Trying Aaron Schultz methods
-        function obj = obsolete_proc_normalize_new(obj,fn)
-            fprintf('\n%s\n', 'NORMALIZING IMAGES USING SPM12 METHOD:');
-            %%% MODULE IS COMPLETE
-            wasRun = false;
-            if nargin == 1
-                fn = obj.Params.NormNew.in.source;
-            else
-                obj.Params.NormNew.in.source=fn;
-            end
-            
-            if iscell(fn);
-                fn = char(fn);
-            end
-            
-            
-            [a b c] = fileparts(fn(1,:));
-            outpath =  obj.getPath(a,'spm12_newNorm') %obj.Params.NormNew.in.movefiles);
-            
-            if exist(outpath,'dir')==0
-                mkdir(outpath);
-            end
-            
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%SPM PARAMETERS FOR NORMALIZATION%%%
-            obj.Params.NormNew.in.movefiles = '';
-            obj.Params.NormNew.in.source = '';
-            obj.Params.NormNew.in.tpm = [fileparts(which('spm')) '/tpm/TPM.nii'];
-            obj.Params.NormNew.in.nn.channel.vols = {};
-            obj.Params.NormNew.in.nn.channel.biasreg = 0;%0.0001;
-            obj.Params.NormNew.in.nn.channel.biasfwhm = 60;
-            obj.Params.NormNew.in.nn.channel.write = [0 0];
-            for ii = 1:6
-                obj.Params.NormNew.in.nn.tissue(ii).tpm = {[obj.Params.NormNew.in.tpm ',' num2str(ii)]};
-                obj.Params.NormNew.in.nn.tissue(ii).ngaus = Inf;
-                obj.Params.NormNew.in.nn.tissue(ii).native = [1 0];
-                obj.Params.NormNew.in.nn.tissue(ii).warped = [0 0];
-            end
-            
-            obj.Params.NormNew.in.nn.warp.mrf = 0;
-            obj.Params.NormNew.in.nn.warp.reg = [0 0.001 0.5000 0.0500 0.2000];
-            obj.Params.NormNew.in.nn.warp.affreg ='mni';
-            obj.Params.NormNew.in.nn.warp.fwhm = 0;
-            obj.Params.NormNew.in.nn.warp.samp = 3;
-            obj.Params.NormNew.in.nn.warp.write = [1 1];
-            obj.Params.NormNew.in.nn.savemat=1;
-            
-            obj.Params.NormNew.out.regfile = '';
-            obj.Params.NormNew.out.iregfile = '';
-            obj.Params.NormNew.out.estTPM = '';
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            reg = regexprep([outpath 'y_' b c],[filesep filesep],filesep);
-            if exist(reg,'file')>0
-                disp('Deformation fields have already been computed');
-                obj.Params.NormNew.out.regfile = reg;
-                obj.Params.NormNew.out.iregfile = regexprep([outpath 'iy_' b c],[filesep filesep],filesep);
-                
-                obj.Params.NormNew.out.estTPM{1,1} = regexprep([outpath 'c1' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{2,1} = regexprep([outpath 'c2' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{3,1} = regexprep([outpath 'c3' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{4,1} = regexprep([outpath 'c4' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{5,1} = regexprep([outpath 'c5' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{6,1} = regexprep([outpath 'c6' b c],[filesep filesep],filesep);
-            else
-                wasRun = true;
-                obj.Params.NormNew.in.nn.channel.vols = {fn};
-                spm_preproc_run(obj.Params.NormNew.in.nn);
-                
-                
-                try
-                    movefile([a filesep 'c1*.nii'],outpath);
-                    movefile([a filesep 'c2*.nii'],outpath);
-                    movefile([a filesep 'c3*.nii'],outpath);
-                    movefile([a filesep 'c4*.nii'],outpath);
-                    movefile([a filesep 'c5*.nii'],outpath);
-                    movefile([a filesep 'c6*.nii'],outpath);
-                    movefile([a filesep 'iy*.nii'],outpath);
-                    movefile([a filesep 'y*.nii'],outpath);
-                    movefile([a filesep '*seg8.mat'],outpath);
-                end
-                
-                obj.Params.NormNew.out.regfile = reg;
-                obj.Params.NormNew.out.iregfile = regexprep([outpath 'iy_' b c],[filesep filesep],filesep);
-                
-                obj.Params.NormNew.out.estTPM{1,1} = regexprep([outpath 'c1' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{2,1} = regexprep([outpath 'c2' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{3,1} = regexprep([outpath 'c3' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{4,1} = regexprep([outpath 'c4' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{5,1} = regexprep([outpath 'c5' b c],[filesep filesep],filesep);
-                obj.Params.NormNew.out.estTPM{6,1} = regexprep([outpath 'c6' b c],[filesep filesep],filesep);
-            end
-            
-            obj.UpdateHist(obj.Params.NormNew,'proc_normalize_new',reg,wasRun);
-            
-        end
-        
-        function obj = obsolete_proc_applynorm_new(obj,fn,regfile)
-            %How to run it:
-            %obj.proc_applynorm_new( obj.Params.NormNew.in.nn.channel.vols,  obj.Params.NormNew.out.regfile)
-            
-            %STARTS HERE:
-            
-            
-            fprintf('\n%s\n', 'APPLYING SPM12 STYLE NORMALIZATION:');
-            
-            %INIT PARAMS:
-            %%% Apply New Norm Params
-            obj.Params.ApplyNormNew.in.movefiles = '';
-            obj.Params.ApplyNormNew.in.fn = [];
-            obj.Params.ApplyNormNew.in.prefix = 'nn2_';
-            %obj.Params.ApplyNormNew.in.regfile = [];
-            obj.Params.ApplyNormNew.in.pars.comp{1}.def = []; % Normalization file in cell
-            obj.Params.ApplyNormNew.in.pars.comp{2}.idbbvox.vox = obj.T1_vox;
-            obj.Params.ApplyNormNew.in.pars.comp{2}.idbbvox.bb = obj.bb;
-            obj.Params.ApplyNormNew.in.pars.out{1}.pull.fnames  = []; % files to normalize
-            obj.Params.ApplyNormNew.in.pars.out{1}.pull.savedir.savesrc = 1;
-            %NOT SURE WHAt INTERPORDER IS!
-            obj.Params.ApplyNormNew.in.pars.out{1}.pull.interp=5 %obj.interporder;
-            obj.Params.ApplyNormNew.in.pars.out{1}.pull.mask=1;
-            obj.Params.ApplyNormNew.in.pars.out{1}.pull.fwhm=[0 0 0];
-            obj.Params.ApplyNormNew.out.fn = [];
-            obj.Params.ApplyNormNew.out.normmean = [];
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            
-            %%% MODULE IS COMPLETE
-            wasRun = false;
-            
-            if nargin < 2
-                fn = obj.Params.ApplyNormNew.in.fn;
-            else
-                obj.Params.ApplyNormNew.in.fn=fn;
-            end
-            
-            if nargin < 3
-                regfile = obj.Params.ApplyNormNew.in.regfile;
-            else
-                obj.Params.ApplyNormNew.in.regfile=regfile;
-            end
-            
-            if ischar(fn)
-                fn = cellstr(fn);
-            end
-            
-            [a b c] = fileparts(fn{1});
-            outpath = obj.getPath(a,obj.Params.ApplyNormNew.in.movefiles);
-            ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
-            
-            nfn = [];
-            for ii = 1:numel(fn);
-                [a b c] = fileparts(fn{ii});
-                outpath = obj.getPath(a,obj.Params.ApplyNormNew.in.movefiles);
-                if exist(outpath,'dir')==0; mkdir(outpath); end
-                
-                ff = regexprep([outpath obj.Params.ApplyNormNew.in.prefix b c],[filesep filesep],filesep);
-                nfn{end+1,1} = ff;
-            end
-            
-            check = 0;
-            for ii = 1:numel(nfn)
-                if exist(nfn{ii},'file')>0
-                    check = check+1;
-                end
-            end
-            
-            if check ~= (numel(fn))
-                wasRun = true;
-                defs = obj.Params.ApplyNormNew.in.pars;
-                defs.comp{1}.def = {regfile};
-                defs.out{1}.pull.fnames  = fn(:)';
-                spm_deformations(defs);
-                
-                nfn = [];
-                for ii = 1:numel(fn);
-                    [a b c] = fileparts(fn{ii});
-                    outpath = obj.getPath(a,obj.Params.ApplyNormNew.in.movefiles);
-                    ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
-                    movefile([a filesep 'w' b c], ff);
-                    nfn{end+1,1} = ff;
-                end
-                
-            end
-            
-            %[a b c] = fileparts(obj.Params.Reslice.out.meanimage);
-            %outpath = obj.getPath(a,obj.Params.ApplyNormNew.in.movefiles);
-            %if exist(outpath,'dir')==0; mkdir(outpath); end
-            %             if ~exist([outpath obj.Params.ApplyNormNew.in.prefix b c])
-            %                 defs = obj.Params.ApplyNormNew.in.pars;
-            %                 defs.comp{1}.def = {regfile};
-            %                 defs.out{1}.pull.fnames  = {obj.Params.Reslice.out.meanimage};
-            %
-            %                 spm_deformations(defs);
-            %
-            %                 ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
-            %                 movefile([a filesep 'w' b c], ff);
-            %
-            %                 obj.Params.ApplyNormNew.out.normmean = ff;
-            %             else
-            %                 ff = [outpath obj.Params.ApplyNormNew.in.prefix b c];
-            %                 obj.Params.ApplyNormNew.out.normmean = ff;
-            %             end
-            
-            disp('Applying Normalization is complete');
-            obj.Params.ApplyNormNew.out.fn = nfn;
-            
-            obj.UpdateHist(obj.Params.ApplyNormNew,'proc_applynorm_new',nfn{1},wasRun);
-            fprintf('\n');
-        end
-        
-        function obj = obsolete_proc_apply_reservsenorm_new(obj,fn,regfile,targ)
-            %        obj.Params.ApplyReverseNormNew.in.movefiles = '/autofs/eris/bang/ADRC/Sessions/141015_8CS00118/restingState/';
-            % obj.Params.ApplyReverseNormNew.in.fn = '/cluster/brutha/MATLAB_Scripts/PET/FROIs/DMN_PCC.nii';
-            % obj.Params.ApplyReverseNormNew.in.targ = '/autofs/eris/bang/ADRC/FreeSurfer6.0/141015_8CS00118/mri/spm12/orig.nii';
-            % obj.Params.ApplyReverseNormNew.in.regfile = obj.Params.spmT1_Proc.out.iregfile;
-            %
-            %
-            % obj.proc_apply_reservsenorm_new;
-            fprintf('\n%s\n', 'APPLYING SPM12 STYLE REVERSE NORMALIZATION:');
-            wasRun = false;
-            
-            
-            %%%%%%%%INIT VALUES FOR ApplyReverseNormNew%%%%%%%%%%%%%%%%%%%%
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            obj.Params.ApplyReverseNormNew.in.movefiles = '';
-            obj.Params.ApplyReverseNormNew.in.fn = [];
-            obj.Params.ApplyReverseNormNew.in.prefix = 'in_';
-            obj.Params.ApplyReverseNormNew.in.targ = [];
-            obj.Params.ApplyReverseNormNew.in.regfile = [];
-            obj.Params.ApplyReverseNormNew.in.pars.comp{1}.def = []; % Normalization file in cell
-            obj.Params.ApplyReverseNormNew.in.pars.comp{2}.idbbvox.vox = [];
-            obj.Params.ApplyReverseNormNew.in.pars.comp{2}.idbbvox.bb = [];
-            obj.Params.ApplyReverseNormNew.in.pars.out{1}.pull.fnames  = []; % files to normalize
-            obj.Params.ApplyReverseNormNew.in.pars.out{1}.pull.savedir.savesrc = 1;
-            obj.Params.ApplyReverseNormNew.in.pars.out{1}.pull.interp=5 %obj.interporder;
-            obj.Params.ApplyReverseNormNew.in.pars.out{1}.pull.mask=1;
-            obj.Params.ApplyReverseNormNew.in.pars.out{1}.pull.fwhm=[0 0 0];
-            obj.Params.ApplyReverseNormNew.out.fn = [];
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            if nargin == 1
-                fn = obj.Params.ApplyReverseNormNew.in.fn;
-            else
-                obj.Params.ApplyReverseNormNew.in.fn=fn;
-            end
-            
-            if nargin <3
-                regfile = obj.Params.ApplyReverseNormNew.in.regfile;
-            else
-                obj.Params.ApplyReverseNormNew.in.regfile=regfile;
-            end
-            
-            if nargin <4
-                targ = obj.Params.ApplyReverseNormNew.in.targ;
-            else
-                obj.Params.ApplyReverseNormNew.in.targ=targ;
-            end
-            
-            if isempty(obj.Params.ApplyReverseNormNew.in.regfile)
-                regfile = ''
-            end
-            
-            if ischar(fn)
-                fn = cellstr(fn);
-            end
-            
-            
-            
-            
-            [a b c] = fileparts(obj.Params.ApplyReverseNormNew.in.regfile);
-            outpath = obj.getPath(a,'reverseNorm') %obj.Params.ApplyReverseNormNew.in.movefiles);
-            if exist(outpath,'dir')==0
-                mkdir(outpath);
-            end
-            
-            nfn = [];
-            for ii = 1:numel(fn);
-                [a1 b1 c1] = fileparts(fn{ii});
-                ff = regexprep([outpath obj.Params.ApplyReverseNormNew.in.prefix b1 c1],[filesep filesep],filesep);
-                nfn{end+1,1} = ff;
-            end
-            
-            check = 0;
-            for ii = 1:numel(nfn)
-                if exist(nfn{ii},'file')>0
-                    check = check+1;
-                end
-            end
-            
-            if check ~= (numel(fn))
-                wasRun = true;
-                h = spm_vol(targ);
-                x = spm_imatrix(h.mat);
-                
-                defs = obj.Params.ApplyNormNew.in.pars;
-                defs.comp{1}.def = {regfile};
-                defs.out{1}.pull.fnames  = fn(:)';
-                defs.comp{2}.idbbvox.vox = abs(x(7:9));
-                defs.comp{2}.idbbvox.bb = world_bb(h);
-                
-                spm_deformations(defs);
-                
-                nfn = [];
-                for ii = 1:numel(fn);
-                    [a1 b1 c1] = fileparts(fn{ii});
-                    ff = [outpath obj.Params.ApplyReverseNormNew.in.prefix b1 c1];
-                    movefile([a1 filesep 'w' b1 c1], ff);
-                    nfn{end+1,1} = ff;
-                end
-            end
-            disp('Applying Normalization is complete');
-            
-            obj.Params.ApplyReverseNormNew.in.fn=fn;
-            obj.Params.ApplyReverseNormNew.out.fn=nfn;
-            
-            obj.UpdateHist(obj.Params.ApplyReverseNormNew,'proc_apply_reservsenorm_new',nfn{end},wasRun);
-            fprintf('\n');
-        end
         %%%%%%%%%%%%%%%%%%% END Data Post-Processing Methods %%%%%%%%%%%%%%
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     end
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%%%%%%%% END of Post-Processing Methods %%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %Protected methods:
     methods (Access = protected)
+        %TODOS:
+        % 1. Prefix all these methods prot_* instead of proc_* or nothing
+        % so it will be easier to know how/where it was accessed. 
         %TRKLAND DEPENDENT METHODS:
         function obj = initoutputsTRKLAND(obj,TOI,outpath)
             %INIT OUTPUTS
@@ -4867,7 +4496,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
-        %COREG METHODS:
+        %SPM COREG METHODS:
         function obj = proc_reslice(obj,mov,ref,list_applyxforms, prefix)
             %function proc_reslice(mov,ref,list_applyxforms, prefix)
             
@@ -5246,9 +4875,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('\n');
         end
         
-       
-        
-        
         %MISC FUNCTIONALITIES
         function outpath = getPath(obj,a,movefiles)
             if isempty(movefiles)
@@ -5391,7 +5017,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.resave;
         end
         
-        %DATACENTRAL UPLOADS (TBSS)
+        %DATACENTRAL UPLOADS (used in HAB1 TBSS for now)
         function obj = UploadData_DWI(obj)
             id = obj.sessionname;
             if isempty(id);
@@ -5487,10 +5113,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             disp('skelTOIs values have been uploaded to DataCentral');
         end
         
-        
-        %~~~~~ ONTHEWORKS
-        
-        %~~~~~~~~~~~~~~~DEPRECATED METHODS~~~~~~~~~~~~~
+        %!!
+        %DEPRECATED:
         function obj = deprecated_UploadData_Trkland(obj)
             id = obj.sessionname;
             if isempty(id);
@@ -5617,7 +5241,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             disp('skelTOIs values have been uploaded to DataCentral');
         end
         
-        
         function obj = deprecated_proc_as_coreg(obj,source,target,list_toxform,coreg_tech)
             %              fprintf('\n%s\n', 'PERFORMING COREGISTRATION');
             %              wasRun = false;
@@ -5728,7 +5351,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %            end
         end
         
-        function obj = remove_trkland_fields(obj,curTRK)
+        function obj = deprecated_remove_trkland_fields(obj,curTRK)
             if isfield(obj.Trkland.Trks,curTRK)
                 temp_fields = fieldnames(obj.Trkland.Trks.(curTRK));
                 for ii=1:numel(temp_fields)
@@ -5746,10 +5369,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
             end
         end
-        %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        
         
         
     end
 end
+
 
 

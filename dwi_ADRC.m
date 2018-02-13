@@ -4,6 +4,9 @@ classdef dwi_ADRC < dwiMRI_Session
     %%  Created by:
     %%              Rodrigo D. Perea grandrigo@gmail.com
     %%
+
+    
+    
     properties
         %root directoy where raw data lives:
         object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
@@ -646,8 +649,7 @@ classdef dwi_ADRC < dwiMRI_Session
             end
             obj.Params.DCM2NII.seq_names={ 'ep2d_diff_7p5k_set1E60' 'ep2d_diff_7p5k_set2E60' ...
                 'ep2d_diff_7p5k_set3E60' 'ep2d_diff_2p5k_set4E60' };
-            
-            
+      
             for ii=1:4 % 4 sets of DWIs in this project!
                 obj.Params.DCM2NII.in(ii).fsl2std_param = '-1 0 0 250.199 \n0 1 0 250.199 \n0 0 -1 0 \n0 0 0 1';
                 
