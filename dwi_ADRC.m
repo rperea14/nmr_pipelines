@@ -123,8 +123,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.DropVols.in.fn=obj.rawfiles;
             %Bvecs and bvals will be created from XX.in.fn and XX.out.fn
             obj.Params.DropVols.out.fn=dir_wfp([obj.root, '01_DropVols', filesep, '*.nii.gz']);
-            
-            obj.proc_drop_vols();
+                        obj.proc_drop_vols();
             
             %%%%%%%%%%%%
             %02_GradCorrect
