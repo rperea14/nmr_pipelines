@@ -107,8 +107,6 @@ classdef dwi_ADRC < dwiMRI_Session
         %COMMON METHODS THAT CALL post_XXX METHODS IN SUPERCLASS
         %dwiMRI_Session.m :
         function obj = CommonPreProc(obj)
-            obj.dosave = true ; %To record process in MAT file
-            
             if isempty(obj.rawfiles)
                 %The Orig_ 
                 obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii*' ] );
@@ -140,21 +138,18 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.proc_gradient_nonlin_correct();
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %T1_01_For FreeSurfer Segmentation (needed for b0 bbreg correction)
-            [ tmpa, tmpb ] = system('whoami ');
-            %[ tmpa, tmpb ] = system('echo $0');
-            %[~,  tmpshell , ~] = fileparts(tmpb);
-            obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
-            obj.Params.FreeSurfer.dir = obj.FS_location;
+            %??_Proc_FreeSurfer
             obj.Params.FreeSurfer.init_location = obj.init_FS;
-            
+            obj.Params.FreeSurfer.dir = obj.FS_location;
+            obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
+                filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ];
+            %T1_01_For FreeSurfer Segmentation (needed for segmenting ROIs to diffusion space)
             %Retrieving a T1 scan:
             [sys_error, obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep '*1mm.nii | head -1' ]);
             obj.Params.FreeSurfer.in.T1raw = strtrim(obj.Params.FreeSurfer.in.T1raw );
             if sys_error ~= 0 %No problem, we get the T1 the continue...
                 fprintf(['\nError when finding the T1:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
             end
-            
             %Retrieving a T2 scan:
             [sys_error, obj.Params.FreeSurfer.in.T2_tempraw ] = system(['ls ' obj.session_location 'other' filesep '*T2SPACE* | head -1' ]);
             obj.Params.FreeSurfer.in.T2_tempraw = strtrim(obj.Params.FreeSurfer.in.T2_tempraw);
@@ -170,15 +165,19 @@ classdef dwi_ADRC < dwiMRI_Session
                 system(['cp '  strtrim(obj.Params.FreeSurfer.in.T2_tempraw) ' ' strtrim(obj.Params.FreeSurfer.in.T2raw)]);
             end
             
-            obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
-                filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ] ;
+            %Some optional parameters specific to what SHELL envinroment is
+            %being used. If 'rdp20' then syntanx should be in bash.
+            %Otherwise, the syntax should be in csh/tsch
+            [ tmpa, tmpb ] = system('whoami ');
+            obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
             
             obj.proc_getFreeSurfer();
+           
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %T1_02_Getting the necessary values from FreeSurfer's output:
             obj.getdata_FreeSurfer();
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -641,30 +640,48 @@ classdef dwi_ADRC < dwiMRI_Session
         function obj = getDCM2nii(obj,torun)
             %For proc_DCM2NII:
             obj.Params.DCM2NII.specific_vols=68;
-            obj.Params.DCM2NII.scanlog = [ obj.session_location filesep 'LogFiles' ...
-                filesep 'scan.log' ] ;
-            if ~exist(obj.Params.DCM2NII.scanlog,'file')
-                error(['No scanlog file found in: ' obj.Params.DCM2NII.scanlog ' . Exiting...']);
-            end
+            
             obj.Params.DCM2NII.seq_names={ 'ep2d_diff_7p5k_set1E60' 'ep2d_diff_7p5k_set2E60' ...
                 'ep2d_diff_7p5k_set3E60' 'ep2d_diff_2p5k_set4E60' };
       
             for ii=1:4 % 4 sets of DWIs in this project!
                 obj.Params.DCM2NII.in(ii).fsl2std_param = '-1 0 0 250.199 \n0 1 0 250.199 \n0 0 -1 0 \n0 0 0 1';
-                
                 obj.Params.DCM2NII.in(ii).prefix = obj.Params.DCM2NII.seq_names(ii);
-                [ ~ , obj.Params.DCM2NII.in(ii).nvols ] = system([ 'cat ' ...
-                    obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names{ii} ...
-                    ' | tail -1 | awk ''{ print $7 }'' ' ]);
-                obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
-                [ ~ , obj.Params.DCM2NII.in(ii).first_dcmfiles ]= system([ 'cat ' ...
-                    obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names{ii} ...
-                    ' | tail -1 | awk ''{ print $8 }'' ' ]);
                 
+                %DUE TO EARLIER UNPACKS AND NEWER ONE, WE WOULD NEED TO
+                %SPLIT THE INPUT SELECTION IN TWO: 1) IF the SCANLOG files
+                %EXISTS (EARLIER UNPACK) vs 2) IF THE NEWER UNPACK EXISTS
+                obj.Params.DCM2NII.scanlog = [ obj.session_location filesep 'LogFiles' ...
+                    filesep 'scan.log' ] ; % CASE 1)
+                
+                [tmp_bvecs_ok, tmp_bvecs] = ... 
+                    system(([ 'ls ' obj.session_location filesep 'other' ...
+                    filesep  '*' obj.Params.DCM2NII.seq_names{ii}  '*.bvecs' ]) );
+                
+                %OLDER UNPACK
+                if exist(obj.Params.DCM2NII.scanlog,'file')
+                    [ ~ , obj.Params.DCM2NII.in(ii).nvols ] = system([ 'cat ' ...
+                        obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names{ii} ...
+                        ' | tail -1 | awk ''{ print $7 }'' ' ]);
+                      [ ~ , obj.Params.DCM2NII.in(ii).first_dcmfiles ]= system([ 'cat ' ...
+                        obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names{ii} ...
+                        ' | tail -1 | awk ''{ print $8 }'' ' ]);
+                %NEWER UNPACK (Feb 2018):
+                elseif exist(strtrim(tmp_bvecs),'file')
+                    [ ~ , obj.Params.DCM2NII.in(ii).nvols ] = system(['cat ' ...
+                        strtrim(tmp_bvecs) ' | wc -l ' ]);
+                    obj.Params.DCM2NII.in(ii).first_dcmfiles = [] ; %No need to same first_dcmfile since its already been unpacked with *.bvecs
+                else
+                    fprinft(['ERROR! \n 1. No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ...
+                        ' \nor 2.Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ]);
+                    error('Please verify that DCM files have been unpacked. Exiting now...');
+                end
+                obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
                 obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];
                 obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
             end
-            if (torun) ; obj.proc_dcm2nii ; end
+            obj.proc_dcm2nii();
+            
         end
     end
 end

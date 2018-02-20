@@ -312,7 +312,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %%%%%%%%%%%%%%%%%% BEGIN Pre- Processing Methods %%%%%%%%%%%%%%%%%%
         function obj = proc_dcm2nii(obj,~,dest,out_filename)
-            fprintf('\n\n%s\n', ['CONVERTING DCM TO NII (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
+            fprintf('\n\n%s\n', ['PROC_DCM2NII(): MOVING RAW NIIs TO ORIG FOLDER (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
             % Initializing exec_cmd (variable to store all cmds
             if ~exist('exec_cmd','var')
                 exec_cmd{:}='INIT proc_dcm2nii()';
@@ -335,7 +335,29 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Shortening naming comventions:
                 clear in_file out_file
-                in_file   = strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
+                %Check whether first_dcmfiles exist . If not (then newer
+                %unpack is given) so select the *.nii as infile:
+                if isempty(obj.Params.DCM2NII.in(ii).first_dcmfiles)
+                    %NEWER UNPACK DEFINITION:
+                    if strcmp(obj.projectID,'ADRC')
+                        [~, in_file]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.nii.gz']);
+                        in_file=strtrim(in_file);
+                        
+                        [~, in_bvecs]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.bvecs']);
+                        in_bvecs=strtrim(in_bvecs);
+                        
+                        [~, in_bvals]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.bvals']);
+                        in_bvals=strtrim(in_bvals);
+                        
+                    end
+                    %Double check that the files exist:
+                    if exist(in_file,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_file: ' in_file ]); end
+                    if exist(in_bvecs,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_bvecs: ' in_bvecs ]); end
+                    if exist(in_bvals,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_bvals: ' in_bvals ]); end
+                else
+                    %OLDER UNPACK DEFINITION:
+                    in_file   = strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
+                end
                 out_file  = obj.Params.DCM2NII.out(ii).fn;
                 outpath   = obj.Params.DCM2NII.out(ii).location;
                 
@@ -348,56 +370,69 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     exec_cmd{end+1,:} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
                     obj.RunBash(exec_cmd{end});
                     wasRun = true;
-
                 end
                 
                 %%%PROCESSING STARTS HERE
-                if exist(in_file,'file') ~= 0 %check if in_file exists
-                    if exist(out_file,'file') == 0 %check if out_file exists
-                        %Check whether we get the CORRECT number of volumes:
-                        if  obj.Params.DCM2NII.specific_vols == obj.Params.DCM2NII.in(ii).nvols;
+                if exist(out_file,'file') == 0 %check if out_file exists
+                    %Check whether we get the CORRECT number of volumes:
+                    if  obj.Params.DCM2NII.specific_vols == obj.Params.DCM2NII.in(ii).nvols;
+                        %NEWER UNPACK:
+                        if isempty(obj.Params.DCM2NII.in(ii).first_dcmfiles)
+                            %Copying the files...
+                            exec_cmd{end+1,:}=['cp ' in_file ' ' out_file ];
+                            fprintf(['\nCopying in_file: ' in_file ' to Orig/ ...']);
+                            obj.RunBash(exec_cmd{end},44); fprintf('done');
+                            %Bvecs:
+                            exec_cmd{end+1,:}=['cp ' in_bvecs ' ' obj.Params.DCM2NII.out(ii).bvecs ];
+                            fprintf(['\nCopying in_file: ' in_bvecs ' to Orig/ ...']);
+                            obj.RunBash(exec_cmd{end},44); fprintf('done');                            
+                            %Bvals:
+                            exec_cmd{end+1,:}=['cp ' in_bvals ' ' obj.Params.DCM2NII.out(ii).bvals ];
+                            fprintf(['\nCopying in_file: ' in_bvals ' to Orig/ ...']);
+                            obj.RunBash(exec_cmd{end},44); fprintf('done');
+                            
+                        %OLDER UNPACK:
+                        else
                             exec_cmd{end+1,:}=['mri_convert ' in_file ' ' out_file ];
                             obj.RunBash(exec_cmd{end},44);
-                            
-                            fprintf('\nFslreorienting to standard...')
-                            %Reorient to std that nii files -->
-                            exec_cmd{end+1,:}=['fslreorient2std ' out_file ' ' out_file ];
-                            obj.RunBash(exec_cmd{end});
-                            %%%
-                            
-                            %Reorient to std the bvecs -->
-                            if isempty(obj.Params.DCM2NII.in(ii).fsl2std_param) %due to inconsitencies with bvecs from mri_convert, this should be initialize in the child class
-                                exec_cmd{end+1,:}=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
-                                obj.RunBash(exec_cmd{end});
-                            else
-                                exec_cmd{end+1,:}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
-                                obj.RunBash(exec_cmd{end});
-                            end
-                            %%%
-                            
-                            %Now dealing with bvecs:
-                            disp('Fslreorienting the bvecs now...')
-                            temp_bvec=[outpath 'temp.bvec' ];
-                            exec_cmd{end+1,:}=[obj.init_rotate_bvecs_sh ' ' ...
-                                ' ' obj.Params.DCM2NII.out(ii).bvecs ...
-                                ' ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ...
-                                ' ' temp_bvec  ];
-                            obj.RunBash(exec_cmd{end});
-                            
-                            exec_cmd{end+1,:}=['mv ' temp_bvec ' ' obj.Params.DCM2NII.out(ii).bvecs ];
-                            obj.RunBash(exec_cmd{end});
-                            wasRun = true;
-                            fprintf('\n....done');
-                        else
-                            error('==> obj.Params.DCM2NII.specific_vols  not equal to obj.Params.DCM2NII.in(ii).nvols ');
                         end
+                        fprintf('\nFslreorienting to standard...');
+                        %Reorient to std that nii files -->
+                        exec_cmd{end+1,:}=['fslreorient2std ' out_file ' ' out_file ];
+                        obj.RunBash(exec_cmd{end}); fprintf('done');
+                        %%%
+                        
+                        %Reorient to std the bvecs -->
+                        if isempty(obj.Params.DCM2NII.in(ii).fsl2std_param) %due to inconsitencies with bvecs from mri_convert, this should be initialize in the child class
+                            exec_cmd{end+1,:}=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            obj.RunBash(exec_cmd{end});
+                        else
+                            exec_cmd{end+1,:}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            obj.RunBash(exec_cmd{end});
+                        end
+                        %%%
+                        
+                        %Now dealing with bvecs:
+                        disp('Fslreorienting the bvecs now...')
+                        temp_bvec=[outpath 'temp.bvec' ];
+                        exec_cmd{end+1,:}=[obj.init_rotate_bvecs_sh ' ' ...
+                            ' ' obj.Params.DCM2NII.out(ii).bvecs ...
+                            ' ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ...
+                            ' ' temp_bvec  ];
+                        obj.RunBash(exec_cmd{end});
+                        
+                        exec_cmd{end+1,:}=['mv ' temp_bvec ' ' obj.Params.DCM2NII.out(ii).bvecs ];
+                        obj.RunBash(exec_cmd{end});
+                        wasRun = true;
+                        fprintf('\n....done');
                     else
-                        disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
+                        error('==> obj.Params.DCM2NII.specific_vols  not equal to obj.Params.DCM2NII.in(ii).nvols ');
                     end
                 else
-                    error(['Error in obj.proc_dcm2nii ==> in_file: ' in_file 'does not exist!']);
+                    disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
                 end
             end
+       
             %Check if something was run. If so, update history.
             if wasRun == true
                 obj.UpdateHist_v2(obj.Params.DCM2NII,'proc_dcm2nii',out_file,wasRun,exec_cmd);
@@ -1410,6 +1445,157 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
+        %FreeSurfer related method
+        %(TODO: replace/modify it to work simliarly to other objects' methods). 
+        function obj = proc_getFreeSurfer(obj)
+            wasRun=false;
+            %Double check what is your default shell (to source
+            %FreeSurfer):;;
+            %if strcmp(obj.Params.FreeSurfer.shell,'bash')
+            fprintf('\n%s\n', 'PERFORMING PROC_GETFREESURFER():');
+            %display([ 'The whoami output is: ' obj.Params.FreeSurfer.shell ])
+            
+            %Assign directory where the T1/T2s were acquired:
+            %T1_dir:
+            [obj.Params.FreeSurfer.in.T1_dir, T1_fname, ~ ] = fileparts(obj.Params.FreeSurfer.in.T1raw);
+            %T2_dir:
+            if obj.Params.FreeSurfer.in.T2exist==true
+                [obj.Params.FreeSurfer.in.T2_dir, ~, ~ ] = fileparts(obj.Params.FreeSurfer.in.T2raw);
+            end
+            
+            exec_cmd{1} = ['MAKE SURE YOU GRAD_NON LINEARITY IN CONNECTOME DATA (if not, there will be skiped steps...ok (e.g. HAB data) '];
+            %Doing Grad-non linearity in T1:
+            if strcmp(obj.projectID,'ADRC')
+                obj.Params.FreeSurfer.in.T1_grad_non = [obj.Params.FreeSurfer.in.T1_dir filesep 'gnc_T1.nii' ];
+                obj.Params.FreeSurfer.in.T1_warpfile  = strtrim([obj.Params.FreeSurfer.in.T1_dir filesep  T1_fname '_deform_grad_rel.nii']);
+                
+                exec_cmd{2}=['sh ' obj.sh_gradfile ' ' strtrim(obj.Params.FreeSurfer.in.T1raw) ' ' obj.Params.FreeSurfer.in.T1_grad_non ' ' obj.gradfile ' '];
+                %Getting the warp fields....
+                if exist( obj.Params.FreeSurfer.in.T1_warpfile, 'file' ) == 0
+                    obj.RunBash(exec_cmd{2},44);
+                end
+                %Applywing the warp fields...
+                [~ , to_exec ] = system('which applywarp');
+                exec_cmd{3}=[ to_exec ' -i ' obj.Params.FreeSurfer.in.T1raw ' -r ' obj.Params.FreeSurfer.in.T1raw ...
+                    ' -o ' obj.Params.FreeSurfer.in.T1_grad_non ' -w ' obj.Params.FreeSurfer.in.T1_warpfile ...
+                    ' --interp=spline' ];
+                
+                if exist(obj.Params.FreeSurfer.in.T1_grad_non , 'file' ) == 0
+                    fprintf(['\nGNC: Applying warp to T1: '  obj.Params.FreeSurfer.in.T1raw]);
+                    obj.RunBash(exec_cmd{3});
+                    system(['gunzip ' obj.Params.FreeSurfer.in.T1_dir filesep '*.gz ']);
+                    fprintf('...done\n');
+                end
+                obj.Params.FreeSurfer.in.T1=obj.Params.FreeSurfer.in.T1_grad_non;
+            else
+                %Assuming HABS datasets for now...(IMPLEMENT FOR OTHER IS
+                %PRE-VALUES ARE NEEDED HERE)
+                obj.Params.FreeSurfer.in.T1=obj.Params.FreeSurfer.in.T1raw;
+            end
+            
+            %Doing Grad-non linearity in T2:
+            if obj.Params.FreeSurfer.in.T2exist==true
+                if strcmp(obj.projectID,'ADRC')
+                    obj.Params.FreeSurfer.in.T2_grad_non = [obj.Params.FreeSurfer.in.T2_dir filesep 'gnc_T2.nii' ];
+                    %applying the warip fields from the T1 (yielding similar results).
+                    [~ , to_exec ] = system('which applywarp');
+                    exec_cmd{4}=[strtrim(to_exec) ' -i ' obj.Params.FreeSurfer.in.T2raw ' -r ' obj.Params.FreeSurfer.in.T2raw ...
+                        ' -o ' obj.Params.FreeSurfer.in.T2_grad_non ' -w ' obj.Params.FreeSurfer.in.T1_warpfile ...
+                        ' --interp=spline' ];
+                    if exist(obj.Params.FreeSurfer.in.T2_grad_non , 'file' ) == 0
+                        fprintf(['\nGNC: Applying warp to T2: '  obj.Params.FreeSurfer.in.T2raw]);
+                        obj.RunBash(exec_cmd{4});
+                        system(['gunzip ' obj.Params.FreeSurfer.in.T2_dir filesep '*.gz ']);
+                        
+                        fprintf('...done\n');
+                    end
+                    obj.Params.FreeSurfer.in.T2=obj.Params.FreeSurfer.in.T2raw;
+                    
+                else
+                    %ASSUMING NOT PRE-ARRANGEMENT IS NEEDED. IF SO, IMPLEMENT:
+                    obj.Params.FreeSurfer.in.T2=obj.Params.FreeSurfer.in.T2raw;
+                end
+            end
+            
+            
+            %PREPARING THE SHELLS (THIS SHOULD CHANGE!!):
+            if strcmp(obj.Params.FreeSurfer.shell,'rdp20') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
+                export_shell=[ 'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
+                    ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
+                    ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; '];
+            else
+                export_shell=[ ' setenv FREESURFER_HOME ' obj.Params.FreeSurfer.init_location ' ; ' ...
+                    ' source $FREESURFER_HOME/SetUpFreeSurfer.csh ; ' ...
+                    ' setenv SUBJECTS_DIR ' obj.Params.FreeSurfer.dir ' ; '];
+            end
+            
+            %CHECKING RECON-ALL AND WHETHER A T2 IMAGE IS USED
+            [~ , exec_FS ] = system('which recon-all ' );
+            if obj.Params.FreeSurfer.in.T2exist==true
+                %use T2 for recon-all
+                exec_cmd{5}=[ export_shell ...
+                    ' ' strtrim(exec_FS) ' -all -subjid ' obj.sessionname ...
+                    ' -deface -i ' strtrim(obj.Params.FreeSurfer.in.T1) ...
+                    ' -T2 ' strtrim(obj.Params.FreeSurfer.in.T2) ...
+                    ' -hippocampal-subfields-T1T2 ' strtrim(obj.Params.FreeSurfer.in.T2) ' T2 ' ];
+            else
+                %no T2 so use only T1 for recon-all
+                exec_cmd{5}=[ export_shell ...
+                    ' ' strtrim(exec_FS) ' -all  -subjid ' obj.sessionname ...
+                    ' -deface -i ' strtrim(obj.Params.FreeSurfer.in.T1) ...
+                    ' -hippocampal-subfields-T1' ];
+            end
+            disp('Running FreeSurfer... (this will take ~24 hours)')
+            tic;
+            
+            %APPLYING THE ACTUAL RECON-ALL:
+            if exist(obj.Params.FreeSurfer.out.aparcaseg, 'file') == 0
+                obj.RunBash(exec_cmd{5},44); % '44' codes for seeing the output!
+                %THE PREVIOUS LINE OF CODE MAY NOT WORK DUE TO PERMISSION
+                %ERRORS READING /eris/* folder. To see if this is not the
+                %error try a simple `ls` command (e.g.  ls /eris/bang/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
+                obj.Params.FreeSurfer.out.timelapsed_mins=[ 'FreeSurfer took ' toc/60 ' minutes to complete'];
+                disp('Done with FreeSurfer');
+                wasRun=true;
+            else
+                [~,bb,cc ] = fileparts(obj.Params.FreeSurfer.out.aparcaseg) ;
+                fprintf(['The aparc aseg file ' bb cc ' exists. \n' ]);
+            end
+            
+            %Convert final brain.mgz into brain.nii so it can be used for
+            %normalization purposes
+            %Brain into nii
+            obj.Params.FreeSurfer.out.brain_mgz = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','brain.mgz');
+            obj.Params.FreeSurfer.out.brain_nii = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','brain.nii');
+            [~ , to_exec ] = system('which mri_convert');
+            exec_cmd{6}=[ strtrim(to_exec) ' ' obj.Params.FreeSurfer.out.brain_mgz ' ' obj.Params.FreeSurfer.out.brain_nii ] ;
+            if exist(obj.Params.FreeSurfer.out.brain_nii,'file') == 0
+                obj.RunBash(exec_cmd{6});
+            end
+            
+            %Orig into nii
+            obj.Params.FreeSurfer.out.orig_mgz = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','orig.mgz');
+            obj.Params.FreeSurfer.out.orig_nii = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','orig.nii');
+            exec_cmd{7}= [strtrim(to_exec)  ' ' obj.Params.FreeSurfer.out.orig_mgz ' ' obj.Params.FreeSurfer.out.orig_nii ] ;
+            if exist(obj.Params.FreeSurfer.out.orig_nii,'file') == 0
+                obj.RunBash(exec_cmd{7});
+            end
+            
+            
+            %Update history if possible
+            if ~isfield(obj.Params.FreeSurfer,'history_saved') || wasRun == true
+                obj.Params.FreeSurfer.history_saved = 0 ;
+            end
+            if obj.Params.FreeSurfer.history_saved == 0
+                obj.Params.FreeSurfer.history_saved = 1 ;
+                
+                obj.UpdateHist_v2(obj.Params.FreeSurfer,'proc_FreeSurfer', obj.Params.FreeSurfer.out.aparcaseg,wasRun,exec_cmd);
+            end
+            clear exec_cmd to_exec wasRun;
+            
+        end
+  
+        
         %Use when multiple DWIs sequences are acquired
         function obj = proc_coreg_multiple(obj)
             wasRun=false;
@@ -1914,155 +2100,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             clear exec_cmd to_exec wasRun;
         end
-        
-        function obj = proc_getFreeSurfer(obj)
-            wasRun=false;
-            %Double check what is your default shell (to source
-            %FreeSurfer):;;
-            %if strcmp(obj.Params.FreeSurfer.shell,'bash')
-            fprintf('\n%s\n', 'PERFORMING PROC_GETFREESURFER():');
-            %display([ 'The whoami output is: ' obj.Params.FreeSurfer.shell ])
-            
-            %Assign directory where the T1/T2s were acquired:
-            %T1_dir:
-            [obj.Params.FreeSurfer.in.T1_dir, T1_fname, ~ ] = fileparts(obj.Params.FreeSurfer.in.T1raw);
-            %T2_dir:
-            if obj.Params.FreeSurfer.in.T2exist==true
-                [obj.Params.FreeSurfer.in.T2_dir, ~, ~ ] = fileparts(obj.Params.FreeSurfer.in.T2raw);
-            end
-            
-            exec_cmd{1} = ['MAKE SURE YOU GRAD_NON LINEARITY IN CONNECTOME DATA (if not, there will be skiped steps...ok (e.g. HAB data) '];
-            %Doing Grad-non linearity in T1:
-            if strcmp(obj.projectID,'ADRC')
-                obj.Params.FreeSurfer.in.T1_grad_non = [obj.Params.FreeSurfer.in.T1_dir filesep 'gnc_T1.nii' ];
-                obj.Params.FreeSurfer.in.T1_warpfile  = strtrim([obj.Params.FreeSurfer.in.T1_dir filesep  T1_fname '_deform_grad_rel.nii']);
-                
-                exec_cmd{2}=['sh ' obj.sh_gradfile ' ' strtrim(obj.Params.FreeSurfer.in.T1raw) ' ' obj.Params.FreeSurfer.in.T1_grad_non ' ' obj.gradfile ' '];
-                %Getting the warp fields....
-                if exist( obj.Params.FreeSurfer.in.T1_warpfile, 'file' ) == 0
-                    obj.RunBash(exec_cmd{2},44);
-                end
-                %Applywing the warp fields...
-                [~ , to_exec ] = system('which applywarp');
-                exec_cmd{3}=[ to_exec ' -i ' obj.Params.FreeSurfer.in.T1raw ' -r ' obj.Params.FreeSurfer.in.T1raw ...
-                    ' -o ' obj.Params.FreeSurfer.in.T1_grad_non ' -w ' obj.Params.FreeSurfer.in.T1_warpfile ...
-                    ' --interp=spline' ];
-                
-                if exist(obj.Params.FreeSurfer.in.T1_grad_non , 'file' ) == 0
-                    fprintf(['\nGNC: Applying warp to T1: '  obj.Params.FreeSurfer.in.T1raw]);
-                    obj.RunBash(exec_cmd{3});
-                    system(['gunzip ' obj.Params.FreeSurfer.in.T1_dir filesep '*.gz ']);
-                    fprintf('...done\n');
-                end
-                obj.Params.FreeSurfer.in.T1=obj.Params.FreeSurfer.in.T1_grad_non;
-            else
-                %Assuming HABS datasets for now...(IMPLEMENT FOR OTHER IS
-                %PRE-VALUES ARE NEEDED HERE)
-                obj.Params.FreeSurfer.in.T1=obj.Params.FreeSurfer.in.T1raw;
-            end
-            
-            %Doing Grad-non linearity in T2:
-            if obj.Params.FreeSurfer.in.T2exist==true
-                if strcmp(obj.projectID,'ADRC')
-                    obj.Params.FreeSurfer.in.T2_grad_non = [obj.Params.FreeSurfer.in.T2_dir filesep 'gnc_T2.nii' ];
-                    %applying the warip fields from the T1 (yielding similar results).
-                    [~ , to_exec ] = system('which applywarp');
-                    exec_cmd{4}=[strtrim(to_exec) ' -i ' obj.Params.FreeSurfer.in.T2raw ' -r ' obj.Params.FreeSurfer.in.T2raw ...
-                        ' -o ' obj.Params.FreeSurfer.in.T2_grad_non ' -w ' obj.Params.FreeSurfer.in.T1_warpfile ...
-                        ' --interp=spline' ];
-                    if exist(obj.Params.FreeSurfer.in.T2_grad_non , 'file' ) == 0
-                        fprintf(['\nGNC: Applying warp to T2: '  obj.Params.FreeSurfer.in.T2raw]);
-                        obj.RunBash(exec_cmd{4});
-                        system(['gunzip ' obj.Params.FreeSurfer.in.T2_dir filesep '*.gz ']);
-                        
-                        fprintf('...done\n');
-                    end
-                    obj.Params.FreeSurfer.in.T2=obj.Params.FreeSurfer.in.T2raw;
-                    
-                else
-                    %ASSUMING NOT PRE-ARRANGEMENT IS NEEDED. IF SO, IMPLEMENT:
-                    obj.Params.FreeSurfer.in.T2=obj.Params.FreeSurfer.in.T2raw;
-                end
-            end
-            
-            
-            %PREPARING THE SHELLS (THIS SHOULD CHANGE!!):
-            if strcmp(obj.Params.FreeSurfer.shell,'rdp20') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
-                export_shell=[ 'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
-                    ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
-                    ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; '];
-            else
-                export_shell=[ ' setenv FREESURFER_HOME ' obj.Params.FreeSurfer.init_location ' ; ' ...
-                    ' source $FREESURFER_HOME/SetUpFreeSurfer.csh ; ' ...
-                    ' setenv SUBJECTS_DIR ' obj.Params.FreeSurfer.dir ' ; '];
-            end
-            
-            %CHECKING RECON-ALL AND WHETHER A T2 IMAGE IS USED
-            [~ , exec_FS ] = system('which recon-all ' );
-            if obj.Params.FreeSurfer.in.T2exist==true
-                %use T2 for recon-all
-                exec_cmd{5}=[ export_shell ...
-                    ' ' strtrim(exec_FS) ' -all -subjid ' obj.sessionname ...
-                    ' -deface -i ' strtrim(obj.Params.FreeSurfer.in.T1) ...
-                    ' -T2 ' strtrim(obj.Params.FreeSurfer.in.T2) ...
-                    ' -hippocampal-subfields-T1T2 ' strtrim(obj.Params.FreeSurfer.in.T2) ' T2 ' ];
-            else
-                %no T2 so use only T1 for recon-all
-                exec_cmd{5}=[ export_shell ...
-                    ' ' strtrim(exec_FS) ' -all  -subjid ' obj.sessionname ...
-                    ' -deface -i ' strtrim(obj.Params.FreeSurfer.in.T1) ...
-                    ' -hippocampal-subfields-T1' ];
-            end
-            disp('Running FreeSurfer... (this will take ~24 hours)')
-            tic;
-            
-            %APPLYING THE ACTUAL RECON-ALL:
-            if exist(obj.Params.FreeSurfer.out.aparcaseg, 'file') == 0
-                obj.RunBash(exec_cmd{5},44); % '44' codes for seeing the output!
-                %THE PREVIOUS LINE OF CODE MAY NOT WORK DUE TO PERMISSION
-                %ERRORS READING /eris/* folder. To see if this is not the
-                %error try a simple `ls` command (e.g.  ls /eris/bang/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
-                obj.Params.FreeSurfer.out.timelapsed_mins=[ 'FreeSurfer took ' toc/60 ' minutes to complete'];
-                disp('Done with FreeSurfer');
-                wasRun=true;
-            else
-                [~,bb,cc ] = fileparts(obj.Params.FreeSurfer.out.aparcaseg) ;
-                fprintf(['The aparc aseg file ' bb cc ' exists. \n' ]);
-            end
-            
-            %Convert final brain.mgz into brain.nii so it can be used for
-            %normalization purposes
-            %Brain into nii
-            obj.Params.FreeSurfer.out.brain_mgz = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','brain.mgz');
-            obj.Params.FreeSurfer.out.brain_nii = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','brain.nii');
-            [~ , to_exec ] = system('which mri_convert');
-            exec_cmd{6}=[ strtrim(to_exec) ' ' obj.Params.FreeSurfer.out.brain_mgz ' ' obj.Params.FreeSurfer.out.brain_nii ] ;
-            if exist(obj.Params.FreeSurfer.out.brain_nii,'file') == 0
-                obj.RunBash(exec_cmd{6});
-            end
-            
-            %Orig into nii
-            obj.Params.FreeSurfer.out.orig_mgz = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','orig.mgz');
-            obj.Params.FreeSurfer.out.orig_nii = strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg.mgz','orig.nii');
-            exec_cmd{7}= [strtrim(to_exec)  ' ' obj.Params.FreeSurfer.out.orig_mgz ' ' obj.Params.FreeSurfer.out.orig_nii ] ;
-            if exist(obj.Params.FreeSurfer.out.orig_nii,'file') == 0
-                obj.RunBash(exec_cmd{7});
-            end
-            
-            
-            %Update history if possible
-            if ~isfield(obj.Params.FreeSurfer,'history_saved') || wasRun == true
-                obj.Params.FreeSurfer.history_saved = 0 ;
-            end
-            if obj.Params.FreeSurfer.history_saved == 0
-                obj.Params.FreeSurfer.history_saved = 1 ;
-                
-                obj.UpdateHist_v2(obj.Params.FreeSurfer,'proc_FreeSurfer', obj.Params.FreeSurfer.out.aparcaseg,wasRun,exec_cmd);
-            end
-            clear exec_cmd to_exec wasRun;
-            
-        end
-        
+          
         %Data management (datacentral) related  methods:
         function obj = getDB(obj)
             R = DataCentral(['SELECT * FROM Sessions.MRI WHERE MRI_Session_Name="' obj.sessionname '"']);

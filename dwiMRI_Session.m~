@@ -119,7 +119,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.GradNonlinCorrect.in.fslroi= [0 1];
             obj.Params.GradNonlinCorrect.out.b0='';
             obj.Params.GradNonlinCorrect.out.warpfile = [];
-            obj.Params.GradNonlinCorrect.out.meannii = [];
             obj.Params.GradNonlinCorrect.out.fn = [];
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -313,7 +312,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %%%%%%%%%%%%%%%%%% BEGIN Pre- Processing Methods %%%%%%%%%%%%%%%%%%
         function obj = proc_dcm2nii(obj,~,dest,out_filename)
-            fprintf('\n\n%s\n', ['CONVERTING DCM TO NII (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
+            fprintf('\n\n%s\n', ['PROC_DCM2NII(): MOVING RAW NIIs TO ORIG FOLDER (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
             % Initializing exec_cmd (variable to store all cmds
             if ~exist('exec_cmd','var')
                 exec_cmd{:}='INIT proc_dcm2nii()';
@@ -336,7 +335,29 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Shortening naming comventions:
                 clear in_file out_file
-                in_file   = strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
+                %Check whether first_dcmfiles exist . If not (then newer
+                %unpack is given) so select the *.nii as infile:
+                if isempty(obj.Params.DCM2NII.in(ii).first_dcmfiles)
+                    %NEWER UNPACK DEFINITION:
+                    if strcmp(obj.projectID,'ADRC')
+                        [~, in_file]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.nii.gz']);
+                        in_file=strtrim(in_file);
+                        
+                        [~, in_bvecs]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.bvecs']);
+                        in_bvecs=strtrim(in_bvecs);
+                        
+                        [~, in_bvals]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.bvals']);
+                        in_bvals=strtrim(in_bvals);
+                        
+                    end
+                    %Double check that the files exist:
+                    if exist(in_file,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_file: ' in_file ]); end
+                    if exist(in_bvecs,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_bvecs: ' in_bvecs ]); end
+                    if exist(in_bvals,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_bvals: ' in_bvals ]); end
+                else
+                    %OLDER UNPACK DEFINITION:
+                    in_file   = strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
+                end
                 out_file  = obj.Params.DCM2NII.out(ii).fn;
                 outpath   = obj.Params.DCM2NII.out(ii).location;
                 
@@ -349,56 +370,70 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     exec_cmd{end+1,:} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
                     obj.RunBash(exec_cmd{end});
                     wasRun = true;
-
                 end
                 
                 %%%PROCESSING STARTS HERE
-                if exist(in_file,'file') ~= 0 %check if in_file exists
-                    if exist(out_file,'file') == 0 %check if out_file exists
-                        %Check whether we get the CORRECT number of volumes:
-                        if  obj.Params.DCM2NII.specific_vols == obj.Params.DCM2NII.in(ii).nvols;
-                            exec_cmd{end+1,:}=['mri_convert ' in_file ' ' out_file ];
+                if exist(out_file,'file') == 0 %check if out_file exists
+                    %Check whether we get the CORRECT number of volumes:
+                    if  obj.Params.DCM2NII.specific_vols == obj.Params.DCM2NII.in(ii).nvols;
+                        %NEWER UNPACK:
+                        if isempty(obj.Params.DCM2NII.in(ii).first_dcmfiles)
+                            %Copying the files...
+                            exec_cmd{end+1,:}=['cp ' in_file ' ' out_file ];
+                            fpritnf('Copying 
                             obj.RunBash(exec_cmd{end},44);
                             
-                            fprintf('\nFslreorienting to standard...')
-                            %Reorient to std that nii files -->
-                            exec_cmd{end+1,:}=['fslreorient2std ' out_file ' ' out_file ];
-                            obj.RunBash(exec_cmd{end});
-                            %%%
+                            %Bvecs:
+                            exec_cmd{end+1,:}=['cp ' in_bvecs ' ' obj.Params.DCM2NII.out(ii).bvecs ];
+                            obj.RunBash(exec_cmd{end},44);
                             
-                            %Reorient to std the bvecs -->
-                            if isempty(obj.Params.DCM2NII.in(ii).fsl2std_param) %due to inconsitencies with bvecs from mri_convert, this should be initialize in the child class
-                                exec_cmd{end+1,:}=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
-                                obj.RunBash(exec_cmd{end});
-                            else
-                                exec_cmd{end+1,:}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
-                                obj.RunBash(exec_cmd{end});
-                            end
-                            %%%
-                            
-                            %Now dealing with bvecs:
-                            disp('Fslreorienting the bvecs now...')
-                            temp_bvec=[outpath 'temp.bvec' ];
-                            exec_cmd{end+1,:}=[obj.init_rotate_bvecs_sh ' ' ...
-                                ' ' obj.Params.DCM2NII.out(ii).bvecs ...
-                                ' ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ...
-                                ' ' temp_bvec  ];
-                            obj.RunBash(exec_cmd{end});
-                            
-                            exec_cmd{end+1,:}=['mv ' temp_bvec ' ' obj.Params.DCM2NII.out(ii).bvecs ];
-                            obj.RunBash(exec_cmd{end});
-                            wasRun = true;
-                            fprintf('\n....done');
+                            %Bvals:
+                            exec_cmd{end+1,:}=['cp ' in_bvals ' ' obj.Params.DCM2NII.out(ii).bvals ];
+                            obj.RunBash(exec_cmd{end},44);
+                        %OLDER UNPACK:
                         else
-                            error('==> obj.Params.DCM2NII.specific_vols  not equal to obj.Params.DCM2NII.in(ii).nvols ');
+                            exec_cmd{end+1,:}=['mri_convert ' in_file ' ' out_file ];
+                            obj.RunBash(exec_cmd{end},44);
                         end
+                        
+                        
+                        fprintf('\nFslreorienting to standard...')
+                        %Reorient to std that nii files -->
+                        exec_cmd{end+1,:}=['fslreorient2std ' out_file ' ' out_file ];
+                        obj.RunBash(exec_cmd{end});
+                        %%%
+                        
+                        %Reorient to std the bvecs -->
+                        if isempty(obj.Params.DCM2NII.in(ii).fsl2std_param) %due to inconsitencies with bvecs from mri_convert, this should be initialize in the child class
+                            exec_cmd{end+1,:}=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            obj.RunBash(exec_cmd{end});
+                        else
+                            exec_cmd{end+1,:}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            obj.RunBash(exec_cmd{end});
+                        end
+                        %%%
+                        
+                        %Now dealing with bvecs:
+                        disp('Fslreorienting the bvecs now...')
+                        temp_bvec=[outpath 'temp.bvec' ];
+                        exec_cmd{end+1,:}=[obj.init_rotate_bvecs_sh ' ' ...
+                            ' ' obj.Params.DCM2NII.out(ii).bvecs ...
+                            ' ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ...
+                            ' ' temp_bvec  ];
+                        obj.RunBash(exec_cmd{end});
+                        
+                        exec_cmd{end+1,:}=['mv ' temp_bvec ' ' obj.Params.DCM2NII.out(ii).bvecs ];
+                        obj.RunBash(exec_cmd{end});
+                        wasRun = true;
+                        fprintf('\n....done');
                     else
-                        disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
+                        error('==> obj.Params.DCM2NII.specific_vols  not equal to obj.Params.DCM2NII.in(ii).nvols ');
                     end
                 else
-                    error(['Error in obj.proc_dcm2nii ==> in_file: ' in_file 'does not exist!']);
+                    disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
                 end
             end
+       
             %Check if something was run. If so, update history.
             if wasRun == true
                 obj.UpdateHist_v2(obj.Params.DCM2NII,'proc_dcm2nii',out_file,wasRun,exec_cmd);
@@ -413,6 +448,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if ~exist('exec_cmd','var')
                 exec_cmd{:}='INIT PROC_DROP_VOLS()';
             end
+            %Looping on every DWI image(if 1+ sequences are input)
             for ii=1:numel(obj.Params.DropVols.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.DropVols.in.fn{ii})
@@ -430,13 +466,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['\n Dropping volumes  (fslroi <input> <output> ' ...
                         obj.Params.DropVols.in.tmin ' ' obj.Params.DropVols.in.tsize  ') ...' ...
                         'Iteration: ' num2str(ii) ]);
-                    exec_cmd = [ 'fslroi ' obj.Params.DropVols.in.fn{ii} ...
+                    exec_cmd{:,end+1} = [ 'fslroi ' obj.Params.DropVols.in.fn{ii} ...
                         ' ' obj.Params.DropVols.out.fn{ii}  ' ' obj.Params.DropVols.in.tmin ...
                         ' ' obj.Params.DropVols.in.tsize ];
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
                     fprintf('...done \n ');
                     wasRun=true;
-                    obj.UpdateHist_v2(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun,exec_cmd);
                 else
                     fprintf(['Dropping vols for: ' b c ' is complete. \n']) ;
                 end
@@ -444,17 +479,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.in.bvals{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.bvals');
                 obj.Params.DropVols.out.bvals{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.bvals');
                 if exist( obj.Params.DropVols.out.bvals{ii},'file')==0
-                    exec_cmd=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
+                    exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvals{ii} ' > ' obj.Params.DropVols.out.bvals{ii} ]);
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
                 end
                 %Droppping volumes in the DWIs (bvecs):
                 obj.Params.DropVols.in.bvecs{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.voxel_space.bvecs');
                 obj.Params.DropVols.out.bvecs{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.voxel_space.bvecs');
-                if exist( obj.Params.DropVols.out.bvecs{ii},'file')==0
-                    exec_cmd=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
+                if exist(obj.Params.DropVols.out.bvecs{ii},'file')==0
+                    exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvecs{ii} ' > ' obj.Params.DropVols.out.bvecs{ii} ]);
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                 end
             end
             
@@ -470,13 +506,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.out.bvecs = obj.Params.DropVols.out.bvecs';
             end
             %%%%%%%%%%%%%%%%%%END OF OPTIONAL%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if wasRun
+                obj.UpdateHist_v2(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun,exec_cmd);
+            end
         end
         
         function obj = proc_gradient_nonlin_correct(obj)
             fprintf('\n%s\n', 'PERFORMING PROC_GRADIENT_NONLIN_CORRECT():');
             wasRun = false;
             in_fn = obj.Params.GradNonlinCorrect.in.fn;
-            
+            if ~exist('exec_cmd','var')
+                exec_cmd{:}='INIT PROC_GNC()';
+            end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %APPLYING GRADIENT_NON_LIN CORRECTION TO set4 and THEN EXPAND
             %IT TO ALL OTHER IMAGES
@@ -488,9 +529,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.GradNonlinCorrect.in.b0{1}=[outpath 'firstb0_' b c ];
             if exist(obj.Params.GradNonlinCorrect.in.b0{1},'file')==0
                 fprintf(['\nExtracting the first b0 of: ' obj.Params.GradNonlinCorrect.in.b0{1} ]);
-                exec_cmd=['fslroi ' in_fn{1} ' ' obj.Params.GradNonlinCorrect.in.b0{1} ...
+                exec_cmd{:,end+1}=['fslroi ' in_fn{1} ' ' obj.Params.GradNonlinCorrect.in.b0{1} ...
                     ' ' num2str(obj.Params.GradNonlinCorrect.in.fslroi) ];
-                obj.RunBash(exec_cmd);
+                obj.RunBash(exec_cmd{end});
+                wasRun=true;
                 fprintf('...done\n');
             end
             %now creating grad-nonlinearity in first_b0s:
@@ -503,8 +545,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%% Compute the grdient nonlinearity correction
             obj.Params.GradNonlinCorrect.out.warpfile{1} = strrep(first_b0_infile,'.nii','_deform_grad_rel.nii');
             if exist(obj.Params.GradNonlinCorrect.out.warpfile{1},'file')==0
-                exec_cmd=['sh ' obj.sh_gradfile ' '  first_b0_infile ' ' first_b0_outfile ' ' gradfile ' '];
-                obj.RunBash(exec_cmd,44);
+                exec_cmd{:,end+1}=['sh ' obj.sh_gradfile ' '  first_b0_infile ' ' first_b0_outfile ' ' gradfile ' '];
+                obj.RunBash(exec_cmd{end},44);
                 wasRun = true;
             else
                 [~, bb, cc ] = fileparts(first_b0_outfile);
@@ -513,19 +555,19 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %%Apply the correction to the first_b0
             if exist(first_b0_outfile,'file')==0
-                exec_cmd=['applywarp -i ' first_b0_infile ' -r ' first_b0_infile ...
+                exec_cmd{:,end+1}=['applywarp -i ' first_b0_infile ' -r ' first_b0_infile ...
                     ' -o ' first_b0_outfile ' -w ' obj.Params.GradNonlinCorrect.out.warpfile{1} ...
                     ' --interp=spline' ];
                 fprintf(['\nGNC: Applying warp to first_b0_file: '  first_b0_infile]);
-                obj.RunBash(exec_cmd);
-                
+                obj.RunBash(exec_cmd{end});
+                wasRun=true;
                 fprintf('...done\n');
             end
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            %NOW APPLYING IT TO ALL IMAGES:
+            %NOW APPLYING IT TO ALL DWI IMAGES:
             %%% Apply the correction to all the subsequent diffusion images.
             for ii=1:numel(in_fn)
                 [a b c ] = fileparts(in_fn{ii});
@@ -533,12 +575,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist(obj.Params.GradNonlinCorrect.out.fn{ii},'file')==0
                     fprintf('\nGNC: Applying warp field to all the other images:\n');
                     fprintf(['~~~~> ' obj.Params.GradNonlinCorrect.out.fn{ii} '.']);
-                    exec_cmd = ['applywarp -i ' obj.Params.GradNonlinCorrect.in.fn{ii} ' -r ' first_b0_infile ...
+                    exec_cmd{:,end+1} = ['applywarp -i ' obj.Params.GradNonlinCorrect.in.fn{ii} ' -r ' first_b0_infile ...
                         ' -o ' obj.Params.GradNonlinCorrect.out.fn{ii} ' -w ' obj.Params.GradNonlinCorrect.out.warpfile{1} ' --interp=spline'];
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
                     fprintf('....done\n');
                     wasRun = true;
-                    obj.UpdateHist_v2(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.fn{ii},wasRun,exec_cmd);
+                    
                 end
             end
             
@@ -550,6 +592,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.GradNonlinCorrect.out.fn = obj.Params.GradNonlinCorrect.out.fn';
             end
             %%%%%%%%%%%%%%%%  END OF OPTIONAL  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if wasRun==true
+                obj.UpdateHist_v2(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.fn{ii},wasRun,exec_cmd);
+            end
         end
         
         function obj = proc_bet2(obj)
@@ -2667,6 +2712,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.fx.data=[] ;
             end
             if ~isfield(obj.Trkland.fx.data,'lh_done')
+                %A value of ~= 1 will make date to be loaded at the
+                %object. This should always be the case if some
+                %modificaitons are done in the tracking/cleaning up of the
+                %streamlines...
                 obj.Trkland.fx.data.lh_done = 0 ;
                 obj.Trkland.fx.data.rh_done = 0 ;
             end
@@ -2857,6 +2906,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_fx. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('fx','lh');
                         %RefreshFields(obj,'fx','lh')
                     end
                     
@@ -2893,11 +2943,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_fx. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('fx','rh');
                         %                         RefreshFields(obj,'fx','rh')
                     end
                 else
-                    display('QC_flag_bil found in trklnad_fx. Skipping and removing data points...')
-                    %                     RefreshFields(obj,'fx','bil')
+                    display('QC_flag_bil found in trkland_fx. Skipping and removing data points...')
+                    obj=obj.clearTRKLANDdata('fx','bil');
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3087,6 +3138,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_hippocing. Skipping tracking...')
+                        obj=obj.clearTRKLANDdata('hippocing','lh');
                     end
                     
                     %Right side trking:
@@ -3107,9 +3159,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_hippocing. Skipping tracking...')
+                        obj=obj.clearTRKLANDdata('hippocing','rh');
+
                     end
                 else
                     display('QC_flag_bil found in trkland_hippocing. Skiping tracking...')
+                    obj=obj.clearTRKLANDdata('hippocing','bil');
+
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3240,6 +3296,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_cingulum. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('cingulum','lh');
                     end
                     
                     %Right side trking:
@@ -3262,9 +3319,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_cingulum. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('cingulum','rh');
                     end
                 else
                     display('QC_flag_bil found in trkland_cingulum. Skipping and removing data points...')
+                    obj=obj.clearTRKLANDdata('cingulum','bil');
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -4329,19 +4388,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     rotrk_write(obj.Trkland.Trks.([TOI '_trimmedclean_' HEMI ]).header,obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]).sstr,obj.Trkland.(TOI).out.(['trimmedclean_' HEMI ]));
                     obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
                     
-                    
-                    %Clean up based on normality of hausdorff distance
-                    if strcmp(TOI,'fx')
-                        obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]) = rotrk_rm_byHDorff(obj.Trkland.Trks.([ TOI '_clineinit_' HEMI ]),  ...
-                            obj.Trkland.Trks.([ TOI '_trimmedC4_' HEMI ] ),obj.Trkland.Trks.([ TOI '_trimmedC4_' HEMI ]));
-                    else
-                        obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]) = rotrk_rm_byHDorff(obj.Trkland.Trks.([ TOI '_clineinit_' HEMI ]),  ...
-                            obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ] ),obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]));
-                    end
-                    %saving trimmed and trimmed_clean trks:
-                    rotrk_write(obj.Trkland.Trks.([TOI '_trimmedclean_' HEMI ]).header,obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]).sstr,obj.Trkland.(TOI).out.(['trimmedclean_' HEMI ]));
-                    obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                    
                     %empty field for MATLAB environment:
                     obj.Trkland.Trks = rmfield(obj.Trkland.Trks,[TOI '_trimmedclean_' HEMI]);
                 end
@@ -4481,6 +4527,32 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.(TOI).data.([HEMI '_done']) = 1;
             end
         end
+        function obj = clearTRKLANDdata(obj,TOI,HEMI)
+            %Create a list of all the fields stored in data:
+            all_trks= fields(obj.Trkland.(TOI).data);
+            %Check what HEMI is passed:
+            if strcmp(HEMI,'rh') || strcmp(HEMI,'lh')
+                %Select those who are in the HEMI of interest:
+                AA=strfind(all_trks,HEMI);
+                %Remove nans that done correspond:
+                data_trks=all_trks(cellfun(@(AA) any(~isnan(AA)),AA));
+                
+            else %Assuming bilateral
+                data_trks=all_trks;
+            end
+            
+            %FOR LOOP TO CLEAR THE CORRESPONDING DATA VALUE:
+            for ii=1:numel(data_trks)
+                if strcmp(data_trks{ii},'lh_done') || strcmp(data_trks{ii},'rh_done')
+                    % Change the value of the corresponding data lh/rh_done
+                    % variable (this is a flag to denote data was uploaded)
+                    obj.Trkland.(TOI).data.(data_trks{ii}) = 1;
+                else
+                    obj.Trkland.(TOI).data.(data_trks{ii}) = []; 
+                end
+            end
+        end
+        
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
