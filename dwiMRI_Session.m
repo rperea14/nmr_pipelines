@@ -2676,6 +2676,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.fx.data=[] ;
             end
             if ~isfield(obj.Trkland.fx.data,'lh_done')
+                %A value of ~= 1 will make date to be loaded at the
+                %object. This should always be the case if some
+                %modificaitons are done in the tracking/cleaning up of the
+                %streamlines...
                 obj.Trkland.fx.data.lh_done = 0 ;
                 obj.Trkland.fx.data.rh_done = 0 ;
             end
@@ -2866,6 +2870,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_fx. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('fx','lh');
                         %RefreshFields(obj,'fx','lh')
                     end
                     
@@ -2902,11 +2907,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_fx. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('fx','rh');
                         %                         RefreshFields(obj,'fx','rh')
                     end
                 else
-                    display('QC_flag_bil found in trklnad_fx. Skipping and removing data points...')
-                    %                     RefreshFields(obj,'fx','bil')
+                    display('QC_flag_bil found in trkland_fx. Skipping and removing data points...')
+                    obj=obj.clearTRKLANDdata('fx','bil');
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3096,6 +3102,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_hippocing. Skipping tracking...')
+                        obj=obj.clearTRKLANDdata('hippocing','lh');
                     end
                     
                     %Right side trking:
@@ -3116,9 +3123,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_hippocing. Skipping tracking...')
+                        obj=obj.clearTRKLANDdata('hippocing','rh');
+
                     end
                 else
                     display('QC_flag_bil found in trkland_hippocing. Skiping tracking...')
+                    obj=obj.clearTRKLANDdata('hippocing','bil');
+
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3249,6 +3260,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_lh found in trkland_cingulum. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('cingulum','lh');
                     end
                     
                     %Right side trking:
@@ -3271,9 +3283,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     else
                         display('QC_flag_rh found in trkland_cingulum. Skipping and removing data points...')
+                        obj=obj.clearTRKLANDdata('cingulum','rh');
                     end
                 else
                     display('QC_flag_bil found in trkland_cingulum. Skipping and removing data points...')
+                    obj=obj.clearTRKLANDdata('cingulum','bil');
                 end
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -4477,6 +4491,32 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Trkland.(TOI).data.([HEMI '_done']) = 1;
             end
         end
+        function obj = clearTRKLANDdata(obj,TOI,HEMI)
+            %Create a list of all the fields stored in data:
+            all_trks= fields(obj.Trkland.(TOI).data);
+            %Check what HEMI is passed:
+            if strcmp(HEMI,'rh') || strcmp(HEMI,'lh')
+                %Select those who are in the HEMI of interest:
+                AA=strfind(all_trks,HEMI);
+                %Remove nans that done correspond:
+                data_trks=all_trks(cellfun(@(AA) any(~isnan(AA)),AA));
+                
+            else %Assuming bilateral
+                data_trks=all_trks;
+            end
+            
+            %FOR LOOP TO CLEAR THE CORRESPONDING DATA VALUE:
+            for ii=1:numel(data_trks)
+                if strcmp(data_trks{ii},'lh_done') || strcmp(data_trks{ii},'rh_done')
+                    % Change the value of the corresponding data lh/rh_done
+                    % variable (this is a flag to denote data was uploaded)
+                    obj.Trkland.(TOI).data.(data_trks{ii}) = 1;
+                else
+                    obj.Trkland.(TOI).data.(data_trks{ii}) = []; 
+                end
+            end
+        end
+        
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
