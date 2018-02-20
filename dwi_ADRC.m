@@ -74,6 +74,7 @@ classdef dwi_ADRC < dwiMRI_Session
             if isempty(obj.rawfiles) || numel(obj.rawfiles) ~= 4 % 4 DWIs sequence acquired here
                 RunFlag = true ;
                 obj.getDCM2nii(RunFlag);
+                obj.resave()
             end
             
             %Assign whether a single process is given or a particular one
@@ -109,44 +110,43 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.dosave = true ; %To record process in MAT file
             
             if isempty(obj.rawfiles)
-                obj.rawfiles = dir_wfp([obj.root 'Orig_' filesep '*.nii' ] );
+                %The Orig_ 
+                obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii*' ] );
+                if isempty(obj.rawfiles)
+                    error('Cannot find any *.nii* files in obj.root/Orig/*.nii*. Please check')
+                end
             end
-            
             
             %%%%%%%%%%%%
             %01_DropVols
-            %For proc_dropvols
+            % For proc_dropvols
+            obj.Params.DropVols.in.movefiles=['..' filesep '01_DropVols' filesep ];
             obj.Params.DropVols.in.tmin='1';
             obj.Params.DropVols.in.tsize='67';
-            obj.Params.DropVols.in.prefix='dv_';
-            obj.Params.DropVols.in.movefiles=['..' filesep '01_DropVols' filesep ];
             obj.Params.DropVols.in.fn=obj.rawfiles;
-            %Bvecs and bvals will be created from XX.in.fn and XX.out.fn
+            % Bvecs and bvals will be created from XX.in.fn and XX.out.fn
             obj.Params.DropVols.out.fn=dir_wfp([obj.root, '01_DropVols', filesep, '*.nii.gz']);
-                        obj.proc_drop_vols();
+            obj.proc_drop_vols();
             
             %%%%%%%%%%%%
             %02_GradCorrect
-            %For gradient non-linearity correction
+            % For gradient non-linearity correction
             obj.Params.GradNonlinCorrect.in.movefiles = '../02_GradCorrect/';
-            obj.Params.GradNonlinCorrect.in.prefix = 'gnc_';
-            obj.Params.GradNonlinCorrect.in.gradfile = obj.gradfile;
-            
-            obj.Params.GradNonlinCorrect.in.fslroi = [ 0 1 ]; %To extraact the 1st b0
             obj.Params.GradNonlinCorrect.in.fn = obj.Params.DropVols.out.fn;
+            obj.Params.GradNonlinCorrect.in.prefix = 'gnc_';
             
+            obj.Params.GradNonlinCorrect.in.gradfile = obj.gradfile;
+            obj.Params.GradNonlinCorrect.in.fslroi = [ 0 1 ]; %To extraact the 1st b0 and apply gnc only to it
             obj.proc_gradient_nonlin_correct();
             
-            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %For FreeSurfer Segmentation (needed for b0 bbreg correction)
+            %T1_01_For FreeSurfer Segmentation (needed for b0 bbreg correction)
             [ tmpa, tmpb ] = system('whoami ');
             %[ tmpa, tmpb ] = system('echo $0');
             %[~,  tmpshell , ~] = fileparts(tmpb);
             obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
             obj.Params.FreeSurfer.dir = obj.FS_location;
             obj.Params.FreeSurfer.init_location = obj.init_FS;
-            
             
             %Retrieving a T1 scan:
             [sys_error, obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep '*1mm.nii | head -1' ]);
@@ -175,14 +175,14 @@ classdef dwi_ADRC < dwiMRI_Session
             
             obj.proc_getFreeSurfer();
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Extracting the value sfrom FreeSurfer:
+            %T1_02_Getting the necessary values from FreeSurfer's output:
             obj.getdata_FreeSurfer();
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %For b0 motion correciton (based on interspersed b0s)
+            %03_B0 motion correciton (based on interspersed b0s)
             obj.fsdir=[obj.FS_location obj.sessionname ] ;
             obj.Params.B0MoCo.FS = obj.fsdir;
             obj.Params.B0MoCo.in.movefiles = '../03_B0s_MoCo/';

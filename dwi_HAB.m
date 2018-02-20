@@ -280,6 +280,7 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
                 filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ] ;
             
+            %IF CODE LIVES IN /eris/**, 
             obj.proc_getFreeSurfer();
              
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

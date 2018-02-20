@@ -119,7 +119,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.GradNonlinCorrect.in.fslroi= [0 1];
             obj.Params.GradNonlinCorrect.out.b0='';
             obj.Params.GradNonlinCorrect.out.warpfile = [];
-            obj.Params.GradNonlinCorrect.out.meannii = [];
             obj.Params.GradNonlinCorrect.out.fn = [];
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -413,6 +412,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if ~exist('exec_cmd','var')
                 exec_cmd{:}='INIT PROC_DROP_VOLS()';
             end
+            %Looping on every DWI image(if 1+ sequences are input)
             for ii=1:numel(obj.Params.DropVols.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.DropVols.in.fn{ii})
@@ -430,13 +430,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['\n Dropping volumes  (fslroi <input> <output> ' ...
                         obj.Params.DropVols.in.tmin ' ' obj.Params.DropVols.in.tsize  ') ...' ...
                         'Iteration: ' num2str(ii) ]);
-                    exec_cmd = [ 'fslroi ' obj.Params.DropVols.in.fn{ii} ...
+                    exec_cmd{:,end+1} = [ 'fslroi ' obj.Params.DropVols.in.fn{ii} ...
                         ' ' obj.Params.DropVols.out.fn{ii}  ' ' obj.Params.DropVols.in.tmin ...
                         ' ' obj.Params.DropVols.in.tsize ];
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
                     fprintf('...done \n ');
                     wasRun=true;
-                    obj.UpdateHist_v2(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun,exec_cmd);
                 else
                     fprintf(['Dropping vols for: ' b c ' is complete. \n']) ;
                 end
@@ -444,17 +443,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.in.bvals{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.bvals');
                 obj.Params.DropVols.out.bvals{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.bvals');
                 if exist( obj.Params.DropVols.out.bvals{ii},'file')==0
-                    exec_cmd=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
+                    exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvals{ii} ' > ' obj.Params.DropVols.out.bvals{ii} ]);
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
                 end
                 %Droppping volumes in the DWIs (bvecs):
                 obj.Params.DropVols.in.bvecs{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.voxel_space.bvecs');
                 obj.Params.DropVols.out.bvecs{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.voxel_space.bvecs');
-                if exist( obj.Params.DropVols.out.bvecs{ii},'file')==0
-                    exec_cmd=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
+                if exist(obj.Params.DropVols.out.bvecs{ii},'file')==0
+                    exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvecs{ii} ' > ' obj.Params.DropVols.out.bvecs{ii} ]);
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                 end
             end
             
@@ -470,13 +470,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.out.bvecs = obj.Params.DropVols.out.bvecs';
             end
             %%%%%%%%%%%%%%%%%%END OF OPTIONAL%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if wasRun
+                obj.UpdateHist_v2(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun,exec_cmd);
+            end
         end
         
         function obj = proc_gradient_nonlin_correct(obj)
             fprintf('\n%s\n', 'PERFORMING PROC_GRADIENT_NONLIN_CORRECT():');
             wasRun = false;
             in_fn = obj.Params.GradNonlinCorrect.in.fn;
-            
+            if ~exist('exec_cmd','var')
+                exec_cmd{:}='INIT PROC_GNC()';
+            end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %APPLYING GRADIENT_NON_LIN CORRECTION TO set4 and THEN EXPAND
             %IT TO ALL OTHER IMAGES
@@ -488,9 +493,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.GradNonlinCorrect.in.b0{1}=[outpath 'firstb0_' b c ];
             if exist(obj.Params.GradNonlinCorrect.in.b0{1},'file')==0
                 fprintf(['\nExtracting the first b0 of: ' obj.Params.GradNonlinCorrect.in.b0{1} ]);
-                exec_cmd=['fslroi ' in_fn{1} ' ' obj.Params.GradNonlinCorrect.in.b0{1} ...
+                exec_cmd{:,end+1}=['fslroi ' in_fn{1} ' ' obj.Params.GradNonlinCorrect.in.b0{1} ...
                     ' ' num2str(obj.Params.GradNonlinCorrect.in.fslroi) ];
-                obj.RunBash(exec_cmd);
+                obj.RunBash(exec_cmd{end});
+                wasRun=true;
                 fprintf('...done\n');
             end
             %now creating grad-nonlinearity in first_b0s:
@@ -503,8 +509,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%% Compute the grdient nonlinearity correction
             obj.Params.GradNonlinCorrect.out.warpfile{1} = strrep(first_b0_infile,'.nii','_deform_grad_rel.nii');
             if exist(obj.Params.GradNonlinCorrect.out.warpfile{1},'file')==0
-                exec_cmd=['sh ' obj.sh_gradfile ' '  first_b0_infile ' ' first_b0_outfile ' ' gradfile ' '];
-                obj.RunBash(exec_cmd,44);
+                exec_cmd{:,end+1}=['sh ' obj.sh_gradfile ' '  first_b0_infile ' ' first_b0_outfile ' ' gradfile ' '];
+                obj.RunBash(exec_cmd{end},44);
                 wasRun = true;
             else
                 [~, bb, cc ] = fileparts(first_b0_outfile);
@@ -513,19 +519,19 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %%Apply the correction to the first_b0
             if exist(first_b0_outfile,'file')==0
-                exec_cmd=['applywarp -i ' first_b0_infile ' -r ' first_b0_infile ...
+                exec_cmd{:,end+1}=['applywarp -i ' first_b0_infile ' -r ' first_b0_infile ...
                     ' -o ' first_b0_outfile ' -w ' obj.Params.GradNonlinCorrect.out.warpfile{1} ...
                     ' --interp=spline' ];
                 fprintf(['\nGNC: Applying warp to first_b0_file: '  first_b0_infile]);
-                obj.RunBash(exec_cmd);
-                
+                obj.RunBash(exec_cmd{end});
+                wasRun=true;
                 fprintf('...done\n');
             end
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
-            %NOW APPLYING IT TO ALL IMAGES:
+            %NOW APPLYING IT TO ALL DWI IMAGES:
             %%% Apply the correction to all the subsequent diffusion images.
             for ii=1:numel(in_fn)
                 [a b c ] = fileparts(in_fn{ii});
@@ -533,12 +539,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist(obj.Params.GradNonlinCorrect.out.fn{ii},'file')==0
                     fprintf('\nGNC: Applying warp field to all the other images:\n');
                     fprintf(['~~~~> ' obj.Params.GradNonlinCorrect.out.fn{ii} '.']);
-                    exec_cmd = ['applywarp -i ' obj.Params.GradNonlinCorrect.in.fn{ii} ' -r ' first_b0_infile ...
+                    exec_cmd{:,end+1} = ['applywarp -i ' obj.Params.GradNonlinCorrect.in.fn{ii} ' -r ' first_b0_infile ...
                         ' -o ' obj.Params.GradNonlinCorrect.out.fn{ii} ' -w ' obj.Params.GradNonlinCorrect.out.warpfile{1} ' --interp=spline'];
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
                     fprintf('....done\n');
                     wasRun = true;
-                    obj.UpdateHist_v2(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.fn{ii},wasRun,exec_cmd);
+                    
                 end
             end
             
@@ -550,6 +556,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.GradNonlinCorrect.out.fn = obj.Params.GradNonlinCorrect.out.fn';
             end
             %%%%%%%%%%%%%%%%  END OF OPTIONAL  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if wasRun==true
+                obj.UpdateHist_v2(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.fn{ii},wasRun,exec_cmd);
+            end
         end
         
         function obj = proc_bet2(obj)
