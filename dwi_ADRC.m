@@ -74,7 +74,6 @@ classdef dwi_ADRC < dwiMRI_Session
             if isempty(obj.rawfiles) || numel(obj.rawfiles) ~= 4 % 4 DWIs sequence acquired here
                 RunFlag = true ;
                 obj.getDCM2nii(RunFlag);
-                obj.resave()
             end
             
             %Assign whether a single process is given or a particular one
@@ -145,24 +144,23 @@ classdef dwi_ADRC < dwiMRI_Session
                 filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ];
             %T1_01_For FreeSurfer Segmentation (needed for segmenting ROIs to diffusion space)
             %Retrieving a T1 scan:
-            [sys_error, obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep '*1mm.nii | head -1' ]);
+            [~ , obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep 'rawT1_HCPF_1mm_001.nii | head -1' ]);
             obj.Params.FreeSurfer.in.T1raw = strtrim(obj.Params.FreeSurfer.in.T1raw );
-            if sys_error ~= 0 %No problem, we get the T1 the continue...
-                fprintf(['\nError when finding the T1:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
+            try
+                if exist(obj.Params.FreeSurfer.in.T1raw,'file') == 0 %No problem, we get the T1 the continue...
+                    error(['\nT1 not found:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
+                end
+            catch
+                error(['\nError when finding the T1:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
             end
             %Retrieving a T2 scan:
-            [sys_error, obj.Params.FreeSurfer.in.T2_tempraw ] = system(['ls ' obj.session_location 'other' filesep '*T2SPACE* | head -1' ]);
-            obj.Params.FreeSurfer.in.T2_tempraw = strtrim(obj.Params.FreeSurfer.in.T2_tempraw);
-            if sys_error ~= 0 %No problem, we get the T1 the continue...
-                fprintf(['\nNo T2 found:'  obj.Params.FreeSurfer.in.T2_tempraw  '\n'])
-                obj.Params.FreeSurfer.in.T2_temprawexist=false;
+            [~ , obj.Params.FreeSurfer.in.T2raw ] = system(['ls ' obj.session_location 'T2' filesep 'rawT2_HCPF_1mm* | head -1' ]);
+            obj.Params.FreeSurfer.in.T2raw = strtrim(obj.Params.FreeSurfer.in.T2raw);
+            if exist(obj.Params.FreeSurfer.in.T2raw,'file') == 0 %No problem, we get the T1 the continue...
+                fprintf(['\nT2 not found:'  obj.Params.FreeSurfer.in.T2raw  '\n'])
+                obj.Params.FreeSurfer.in.T2exist=false;
             else
-                [obj.Params.FreeSurfer.in.T1_dir, ~, ~ ] = fileparts(obj.Params.FreeSurfer.in.T1raw);
                 obj.Params.FreeSurfer.in.T2exist=true;
-                obj.Params.FreeSurfer.in.T2_dir = strrep(obj.Params.FreeSurfer.in.T1_dir,'T1','T2');
-                system(['mkdir -p ' obj.Params.FreeSurfer.in.T2_dir ]);
-                obj.Params.FreeSurfer.in.T2raw = [ obj.Params.FreeSurfer.in.T2_dir filesep 'T2.nii'];
-                system(['cp '  strtrim(obj.Params.FreeSurfer.in.T2_tempraw) ' ' strtrim(obj.Params.FreeSurfer.in.T2raw)]);
             end
             
             %Some optional parameters specific to what SHELL envinroment is
