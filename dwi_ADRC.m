@@ -8,28 +8,29 @@ classdef dwi_ADRC < dwiMRI_Session
     
     
     properties
+        %Check protected method initProperties()
         %root directoy where raw data lives:
         object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
         session_location='/eris/bang/ADRC/Sessions/';
         dcm_location = '/eris/bang/ADRC/DICOM_Archive/';
         gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
         dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
-        %sh dependencies:
-        sh_gradfile=[ '/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
-            '/usr/pubsw/common/matlab/8.5 '];
-        b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
-        col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
         %FreeSurfer Dependencies
         FS_location='/eris/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
-        fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
+        fx_template_dir='/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
+        %Dep properties:
+        sh_gradfile=['/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
+            '/usr/pubsw/common/matlab/8.5'];
+        b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
+        init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
     end
     
     methods
         function obj = dwi_ADRC(sessionname,opt)
-            %For compiler code:
+            %For compiled code:
             if ~isdeployed()
                 addpath(genpath(obj.object_dir));
             end
@@ -180,18 +181,17 @@ classdef dwi_ADRC < dwiMRI_Session
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %03_B0 motion correciton (based on interspersed b0s)
-            obj.fsdir=[obj.FS_location obj.sessionname ] ;
-            obj.Params.B0MoCo.FS = obj.fsdir;
             obj.Params.B0MoCo.in.movefiles = '../03_B0s_MoCo/';
-            obj.Params.B0MoCo.in.prefix = 'moco_';
-            obj.Params.B0MoCo.in.nDoF = '12' ;
-            obj.Params.B0MoCo.in.grad_rel = obj.Params.GradNonlinCorrect.out.warpfile;
-            
             obj.Params.B0MoCo.in.fn = obj.Params.GradNonlinCorrect.out.fn;
             obj.Params.B0MoCo.in.bvals = obj.Params.DropVols.out.bvals;
             obj.Params.B0MoCo.in.bvecs = obj.Params.DropVols.out.bvecs;
+            obj.Params.B0MoCo.in.prefix = 'moco_';
+            
+            obj.Params.B0MoCo.FS = [obj.FS_location obj.sessionname ];
+            obj.Params.B0MoCo.in.refB0 = 1 ; %First b0! 
             obj.Params.B0MoCo.in.sh_rotate_bvecs = obj.b0MoCo_rotate_bvecs_sh;
-            obj.proc_b0s_MoCo();
+            
+            obj.proc_b0s_MoCo(1); %First argument '1' denotes the refB0 is the first volume (in index FSL 0000.nii.gz)
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -670,7 +670,7 @@ classdef dwi_ADRC < dwiMRI_Session
                         strtrim(tmp_bvecs) ' | wc -l ' ]);
                     obj.Params.DCM2NII.in(ii).first_dcmfiles = [] ; %No need to same first_dcmfile since its already been unpacked with *.bvecs
                 else
-                    fprinft(['ERROR! \n 1. No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ...
+                    fprintf(['ERROR! \n 1. No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ...
                         ' \nor 2.Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ]);
                     error('Please verify that DCM files have been unpacked. Exiting now...');
                 end
