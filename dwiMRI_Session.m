@@ -2246,11 +2246,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING MOTION CORRECTION - PROC_B0S_MOCO():');
             if ~exist('exec_cmd')
-<<<<<<< HEAD
-                exec_cmd{:}='INIT PROC_B0s_MOCO()';
-=======
                 exec_cmd{:}='#INIT PROC_B0s_MOCO()';
->>>>>>> improved up to proc_eddy()
             end
             %Check if the FreeSurfer location exists (due to bbreg dependency):
             if exist(obj.Params.B0MoCo.FS,'dir') ~=0 %if so continue, else break!
