@@ -761,11 +761,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 if exist(final_nii_dwi2B0{ii} ,'file') == 0
                                     exec_cmd{end+1,:}=[ 'cp -r ' cur_in_dwi{ii} ' ' final_nii_dwi2B0{ii}  ];
                                     obj.RunBash(exec_cmd{end});
+                                    wasRun=true;
                                 end
                                 %Copy eye.mat matrix
                                 if exist(final_mat_dwi2B0{ii} ,'file') == 0
                                     exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{ii} ' ' final_mat_dwi2B0{ii}  ]; %only for consistency
                                     obj.RunBash(exec_cmd{end});
+                                    wasRun=true;
                                 end
                             
                             else
@@ -778,6 +780,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     if exist(final_mat_dwi2B0{ii} ,'file') == 0
                                         exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{bb} ' ' final_mat_dwi2B0{ii}  ];
                                         obj.RunBash(exec_cmd{end});
+                                        wasRun=true;
                                     end
                                 else
                                     %Working here with DWIs (not b0s...)
@@ -788,6 +791,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                         if exist(final_mat_dwi2B0{ii} ,'file') == 0
                                             exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{end} ' ' final_mat_dwi2B0{ii}  ];
                                             obj.RunBash(exec_cmd{end});
+                                            wasRun=true;
                                         end
                                     else
                                         %If not, what b0 are in between?
@@ -801,6 +805,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                             % Given C=refB0, A=lateB0 and B=early b0 --> convert_xfm  -omat <outmat_AtoC> -concat <mat_BtoC> <mat_AtoB>
                                             exec_cmd{end+1,:}=[ 'convert_xfm -omat ' final_mat_dwi2B0{ii} ' -concat ' B0torefB0 ' ' B0_btw   ];
                                             obj.RunBash(exec_cmd{end});
+                                            wasRun=true;
                                         end
                                     end
                                 end
@@ -809,6 +814,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     exec_cmd{end+1,:}=[ 'flirt -in ' cur_in_dwi{ii} ...
                                         ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp nearestneighbour'  ];
                                     obj.RunBash(exec_cmd{end});
+                                    wasRun=true;
                                 end
                             end
                         end
@@ -829,6 +835,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                         ' ' final_mat_dwi2B0{pp} ...
                                         ' >> ' (obj.Params.B0MoCo.out.bvecs{jj}) ];
                                     obj.RunBash(exec_cmd{end});
+                                    wasRun=true;
                                 end
                                 fprintf('...done');
                             end
@@ -838,6 +845,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0
                                 exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
                                 obj.RunBash(exec_cmd{end});
+                                wasRun=true;
                             end
                         end
                         fprintf('\n\t \tDONE STEP5! (APPLYING TRANSFORMS TO BVECS AND COPY BVALS) \n'); pause(1);
@@ -856,10 +864,19 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 end
                                 display(['Merging all volumes (total: ' num2str(numel(final_nii_dwi2B0)) ')']);
                                 exec_cmd{end+1,:}=['fslmerge -t '  obj.Params.B0MoCo.out.fn{jj} ' ' all_niis{jj} ];
+                                wasRun=true;
                                 obj.RunBash(exec_cmd{end});
                             end
                         end
                         fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
+                        %%%%%%%%
+                        
+                        %%%%%%%%
+                        %TO UPDATE HISTORY AND RESAVE:
+                        if wasRun == true
+                            obj.UpdateHist_v2(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun,exec_cmd');
+                            obj.resave();
+                        end
                         %%%%%%%%
                     end
                 end
@@ -902,6 +919,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Record if some RunBash process is applied
                 if wasRun==true
                     obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd');
+                    obj.resave();
                 end
             end
         end
@@ -971,6 +989,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Update history if wasRun==1
             if wasRun == true
                 obj.UpdateHist_v2(obj.Params.Eddy,'proc_eddy', obj.Params.Eddy.out.fn{ii},wasRun,exec_cmd');
+                obj.resave();
             end
         end
         
@@ -1501,7 +1520,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Doing Grad-non linearity in T1:
             if strcmp(obj.projectID,'ADRC')
                 obj.Params.FreeSurfer.in.T1_grad_non = [obj.Params.FreeSurfer.in.T1_dir filesep 'gnc_T1.nii' ];
-                obj.Params.FreeSurfer.in.T1_warpfile  = strtrim([obj.Params.FreeSurfer.in.T1_dir filesep  T1_fname '_deform_grad_rel.nii']);
+                
+                %TO fix issues with previous unpack...
+                [~, warpfile_tmp] =system(['ls  ' obj.Params.FreeSurfer.in.T1_dir filesep   '*_deform_grad_rel.nii' ])
+                obj.Params.FreeSurfer.in.T1_warpfile = strtrim(warpfile_tmp);
+                %obj.Params.FreeSurfer.in.T1_warpfile  = strtrim([obj.Params.FreeSurfer.in.T1_dir filesep  T1_fname '_deform_grad_rel.nii']);
+                
                 %Getting the warp fields....
                 if exist( obj.Params.FreeSurfer.in.T1_warpfile, 'file' ) == 0
                     exec_cmd{:,end+1}=['sh ' obj.sh_gradfile ' ' strtrim(obj.Params.FreeSurfer.in.T1raw) ' ' obj.Params.FreeSurfer.in.T1_grad_non ' ' obj.gradfile ' '];
@@ -1592,7 +1616,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 [~,bb,cc ] = fileparts(obj.Params.FreeSurfer.out.aparcaseg) ;
                 fprintf(['The aparc aseg file ' bb cc ' exists. \n' ]);
             end
-            
+            if wasRun== true
+                obj.UpdateHist_v2(obj.Params.FreeSurfer,'proc_getFreeSurfer()', obj.Params.FreeSurfer.out.aparcaseg,wasRun,exec_cmd');
+            end
             %OBSOLETE CODE, PLEASE REMOVE:
             %             %Convert final brain.mgz into brain.nii so it can be used for
             %             %normalization purposes
@@ -1625,11 +1651,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %                 obj.UpdateHist_v2(obj.Params.FreeSurfer,'proc_FreeSurfer', obj.Params.FreeSurfer.out.aparcaseg,wasRun,exec_cmd);
             %             end
             %END OF OBSOLETE CODE. 
-            if wasRun== true
-                 obj.UpdateHist_v2(obj.Params.FreeSurfer,'proc_FreeSurfer()', obj.Params.FreeSurfer.out.aparcaseg,wasRun,exec_cmd');
-            end
         end
-  
         
         %Use when multiple DWIs sequences are acquired
         function obj = proc_coreg_multiple(obj)
@@ -2612,8 +2634,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     outpath = [ '/eris/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
                     exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
                     obj.RunBash(exec_cmd{:,end});
-                    exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
-                    obj.RunBash(exec_cmd{:,end});
+                    if exist([replaced_outpath filesep obj.sessionname]) == 0
+                        exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
+                        obj.RunBash(exec_cmd{:,end});
+                    end
                 end
             end
             %Create the necessary dcmirc file:
@@ -2766,7 +2790,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %T1:
                 if exist( obj.Params.tracxBYmask.T1coregDWI.in_T1, 'file') == 0
                     display('Copying the T1...');
-                    exec_cmd{:,end+1} = ['cp ' obj.Params.FreeSurfer.in.T1 ' ' obj.Params.tracxBYmask.T1coregDWI.in_T1  ];
+                    exec_cmd{:,end+1} = ['mri_convert ' strtrim(obj.Params.FreeSurfer.in.T1) ' ' strtrim(obj.Params.tracxBYmask.T1coregDWI.in_T1)  ];
                     obj.RunBash(exec_cmd{end});
                 end
                 %B0:
@@ -3608,7 +3632,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 end
                             end
                             wasRun=true;
-                            obj.UpdateHisty(obj.Trkland.cingulum,'trkland_cingulum', obj.Trkland.cingulum.out.raw_rh,wasRun);
+                            obj.UpdateHistory_v2(obj.Trkland.cingulum,'trkland_cingulum', obj.Trkland.cingulum.out.raw_rh,wasRun);
                         end
                     else
                         display('QC_flag_rh found in trkland_cingulum. Skipping and removing data points...')

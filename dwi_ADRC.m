@@ -446,28 +446,28 @@ classdef dwi_ADRC < dwiMRI_Session
             end
             % [TO MODIFY ROIs/ROAs] TRKLAND_HIPPOCING:
             for tohide=1:1
-                obj.Trkland.hippocing.in.hippo_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Hippocampus.nii.gz');
-                obj.Trkland.hippocing.in.hippo_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Right-Hippocampus.nii.gz');
-                obj.Trkland.hippocing.in.postcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-posteriorcingulate.nii.gz');
-                obj.Trkland.hippocing.in.postcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-posteriorcingulate.nii.gz');
-                
-                %Interpolation n (for cingulum):
-                obj.Trkland.hippocing.in.n_interp=33;
-                obj.trkland_hippocing(); obj.resave();
+%                 obj.Trkland.hippocing.in.hippo_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Hippocampus.nii.gz');
+%                 obj.Trkland.hippocing.in.hippo_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Right-Hippocampus.nii.gz');
+%                 obj.Trkland.hippocing.in.postcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-posteriorcingulate.nii.gz');
+%                 obj.Trkland.hippocing.in.postcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-posteriorcingulate.nii.gz');
+%                 
+%                 %Interpolation n (for cingulum):
+%                 obj.Trkland.hippocing.in.n_interp=33;
+%                 obj.trkland_hippocing(); 
             end
             %  [TO MODIFY ROIs/ROAs] TRKLAND_CINGULUM:
             for tohide=1:1
-                obj.Trkland.cingulum.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
-                obj.Trkland.cingulum.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
-                obj.Trkland.cingulum.in.postcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-posteriorcingulate.nii.gz');
-                obj.Trkland.cingulum.in.postcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-posteriorcingulate.nii.gz');
-                
-                % BASE ON THESE VALUES (FROM EARLIER ADRC_PROCESSING W/O INTERP:
-                % ninter_fx = 40;
-                % ninter_cingulum = 32;
-                % ninter_hippocing = 33;
-                obj.Trkland.cingulum.in.n_interp = 32;
-                trkland_cingulum(obj); obj.resave();
+%                 obj.Trkland.cingulum.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
+%                 obj.Trkland.cingulum.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
+%                 obj.Trkland.cingulum.in.postcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-posteriorcingulate.nii.gz');
+%                 obj.Trkland.cingulum.in.postcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-posteriorcingulate.nii.gz');
+%                 
+%                 % BASE ON THESE VALUES (FROM EARLIER ADRC_PROCESSING W/O INTERP:
+%                 % ninter_fx = 40;
+%                 % ninter_cingulum = 32;
+%                 % ninter_hippocing = 33;
+%                 obj.Trkland.cingulum.in.n_interp = 32;
+%                 trkland_cingulum(obj); 
             end
             
             %% [ DEPRECATED METHODS ]
@@ -531,7 +531,7 @@ classdef dwi_ADRC < dwiMRI_Session
         
         %UNDER DEVELOPMENT
         function obj = post_tracx_by_txt(obj,masktxt_fname,masktxt_dir,replace_masktxt_info)
-            %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR RPOB TRACTOGRAPHY%
+            %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR PROB TRACTOGRAPHY%
             for tohide=1:1
                 if nargin<2 || isempty(masktxt_fname)
                     masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
@@ -623,7 +623,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'all_masks' filesep  tmp_txtfname ];
             
             obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args = ...
-                ' -l --onewaycondition --omatrix1 -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
+                ' -l --onewaycondition -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
             
             proc_tracxBYmask(obj,tmp_txtfname); %obj.resave()
             %%%%%%%%%%%%%%% END VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%
