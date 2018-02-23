@@ -318,7 +318,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('\n\n%s\n', ['PROC_DCM2NII(): MOVING RAW NIIs TO ORIG FOLDER (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
             % Initializing exec_cmd (variable to store all cmds
             if ~exist('exec_cmd','var')
-                exec_cmd{:}='INIT proc_dcm2nii()';
+                exec_cmd{:}='#INIT proc_dcm2nii()';
             end
             %Checking if module is complete
             wasRun = false;
@@ -449,7 +449,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('\n%s\n', 'PERFORMING PROC_DROP_VOLS():');
             wasRun=false;
             if ~exist('exec_cmd','var')
-                exec_cmd{:}='INIT PROC_DROP_VOLS()';
+                exec_cmd{:}='#INIT PROC_DROP_VOLS()';
             end
             %Looping on every DWI image(if 1+ sequences are input)
             for ii=1:numel(obj.Params.DropVols.in.fn)
@@ -520,7 +520,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             wasRun = false;
             in_fn = obj.Params.GradNonlinCorrect.in.fn;
             if ~exist('exec_cmd','var')
-                exec_cmd{:}='INIT PROC_GNC()';
+                exec_cmd{:}='#INIT PROC_GNC()';
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %APPLYING GRADIENT_NON_LIN CORRECTION TO set4 and THEN EXPAND
@@ -608,7 +608,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING MOTION CORRECTION - PROC_B0S_MOCO():');
             if ~exist('exec_cmd')
-               
+                exec_cmd{:}='#INIT PROC_B0s_MOCO()';
+            end
             %Align all images interpersed to the refB0 image. If not
             %outputted, then assigning the first one. 
             %refB0 index starts at 1. so if first b0 is used
@@ -618,8 +619,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 display('proc_b0S_MoCo(): No refB0 inputted. Assigning the first volume')
                 pause(2)
             end
-            exec_cmd{:}='INIT PROC_B0s_MOCO()';
-            end
+
             %Check if the FreeSurfer location exists (due to bbreg dependency):
             if exist(obj.Params.B0MoCo.FS,'dir') ~=0 %if so continue, else break!
                 for jj=1:numel(obj.Params.B0MoCo.in.fn)
@@ -743,9 +743,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                         fprintf('\n\t\tDONE STEP3! (STEP3: CREATING MATFILES WITHIN B0s)'); pause(1);
                         %%%%%%%%
-                        
-                        
-                        %%%%%%%%STEP4: APPLYING TRANSFORMS TO CREATE AFFINE CORRECTED B0s and DWIs
+
+                        %%%%%%%%STEP4: APPLYING TRANSFORMS TO 3D VOLUMES TO
+                        %%%%%%%%CREATE FINAL MATFILES AND NIIs
                         fprintf('\n\n\tSTEP4: APPLYING TRANSFORMS TO CREATE AFFINE CORRECTED B0s and DWIs \n'); pause(1);
                         for ii=1:numel(tmp_bval_idx)
                             %Create a number to compare
@@ -812,7 +812,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 end
                             end
                         end
-                        fprintf('\n\t \tDONE STEP4! (STEP4: APPLYING TRANSFORMS TO CREATE AFFINE CORRECTED B0s and DWIs)'); pause(1);
+                        fprintf('\n\t \tDONE STEP4! (STEP4: APPLYING TRANSFORMS)'); pause(1);
                         %%%%%%%%
                         
                         %%%%%%%%STEP5: APPLYING TRANSFORMS TO BVECS AND COPY BVALS
@@ -844,19 +844,20 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         %%%%%%%%
                         
                         %%%%%%%%STEP6: MERGING MOTION CORRECTED DWI
-                        fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);
-                        if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0
-                            clear all_niis
-                            for bb=1:numel(final_nii_dwi2B0)
-                                if bb==1
-                                    all_niis{jj} = [ final_nii_dwi2B0{bb} ' ' ];
-                                else
-                                    all_niis{jj} = [ all_niis{jj} final_nii_dwi2B0{bb} ' ' ];
+                        fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
+                            if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0
+                                clear all_niis
+                                for bb=1:numel(final_nii_dwi2B0)
+                                    if bb==1
+                                        all_niis{jj} = [ final_nii_dwi2B0{bb} ' ' ];
+                                    else
+                                        all_niis{jj} = [ all_niis{jj} final_nii_dwi2B0{bb} ' ' ];
+                                    end
                                 end
+                                display(['Merging all volumes (total: ' num2str(numel(final_nii_dwi2B0)) ')']);
+                                exec_cmd{end+1,:}=['fslmerge -t '  obj.Params.B0MoCo.out.fn{jj} ' ' all_niis{jj} ];
+                                obj.RunBash(exec_cmd{end});
                             end
-                            display(['Merging all volumes (total: ' num2str(numel(final_nii_dwi2B0)) ')']);
-                            exec_cmd{end+1,:}=['fslmerge -t '  obj.Params.B0MoCo.out.fn{jj} ' ' all_niis{jj} ];
-                            obj.RunBash(exec_cmd{end});
                         end
                         fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
                         %%%%%%%%
@@ -868,6 +869,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_bet2(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_BET2():');
+            
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_BET2()';
+            end
             
             for ii=1:numel(obj.Params.Bet2.in.fn)
                 clear cur_fn;
@@ -883,34 +888,30 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Bet2.out.mask{ii} = strrep(obj.Params.Bet2.out.skull{ii},'.nii.gz','_mask.nii.gz');
                 %EXEC command to store:
                 [~, to_exec] =system(['which bet2']);
-                exec_cmd{ii,1} = [  strtrim(to_exec) ' ' obj.Params.Bet2.in.fn{ii} ' ' obj.Params.Bet2.out.skull{ii}  ' -m -f ' num2str(obj.Params.Bet2.in.fracthrsh) ];
                 if exist( obj.Params.Bet2.out.mask{ii},'file')==0
+                    exec_cmd{:,end+1} = [  strtrim(to_exec) ' ' obj.Params.Bet2.in.fn{ii} ' ' obj.Params.Bet2.out.skull{ii}  ' -m -f ' num2str(obj.Params.Bet2.in.fracthrsh) ];
                     fprintf(['\nExtracting the skull using bet2 for : ' obj.Params.Bet2.in.fn{ii} ]);
-                    obj.RunBash(exec_cmd{ii,1});
-                    system(['mv ' obj.Params.Bet2.out.skull{ii} '_mask.nii.gz ' obj.Params.Bet2.out.mask{ii} ] ) ;
+                    obj.RunBash(exec_cmd{end});
+                    exec_cmd{:,end+1} = (['mv ' obj.Params.Bet2.out.skull{ii} '_mask.nii.gz ' obj.Params.Bet2.out.mask{ii} ] ) ;
+                    obj.RunBash(exec_cmd{end});
                     wasRun=true;
-                    obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd{ii,1});
                 else
                     [aa, bb, cc ] = fileparts(obj.Params.Bet2.out.mask{ii});
                     fprintf([' File ' bb cc ' is now comple. \n']) ;
                 end
-            end
-            
-            
-            %Update history if possible...
-            if ~isfield(obj.Params.Bet2,'history_saved') || wasRun == true
-                obj.Params.Bet2.history_saved = 0 ;
-            end
-            if obj.Params.Bet2.history_saved == 0
-                obj.Params.Bet2.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd);
+                %Record if some RunBash process is applied
+                if wasRun==true
+                    obj.UpdateHist_v2(obj.Params.Bet2,'proc_bet2', obj.Params.Bet2.out.mask{ii},wasRun,exec_cmd');
+                end
             end
         end
         
         function obj = proc_eddy(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_EDDY():');
-            
+           if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_EDDY()'
+            end
             for ii=1:numel(obj.Params.Eddy.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.Eddy.in.fn{ii})
@@ -921,33 +922,30 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 [a b c ] = fileparts(cur_fn);
                 outpath=obj.getPath(a,obj.Params.Eddy.in.movefiles);
                 clear outfile
-                
                 %(dependency) Attempting to create acqp file:
                 obj.Params.Eddy.out.fn_acqp{ii}= [ outpath 'acqp.txt' ] ;
-                
-                exec_cmd{ii,1}=['echo " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
                 if exist(obj.Params.Eddy.out.fn_acqp{ii},'file')==0
+                    exec_cmd{:,end+1}=['echo " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_acqp{ii}  ]);
-                    obj.RunBash(exec_cmd{ii,1});
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                     fprintf(' ...done\n');
                 end
                 %(dependency) Attempting to create index file:
                 obj.Params.Eddy.out.fn_index{ii}= [ outpath 'index.txt' ] ;
-                
-                exec_cmd{ii,2}=['echo " ' num2str(obj.Params.Eddy.in.index) ' " >> ' obj.Params.Eddy.out.fn_index{ii}  ];
                 if exist(obj.Params.Eddy.out.fn_index{ii},'file')==0
+                    exec_cmd{:,end+1}=['echo "' num2str(obj.Params.Eddy.in.index) '" >> ' obj.Params.Eddy.out.fn_index{ii}  ];
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_index{ii}  ]);
-                    obj.RunBash(exec_cmd{ii,2});
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                     fprintf(' ...done\n');
                 end
                 %Attempting to run eddy_openmp now:
                 obj.Params.Eddy.out.fn{ii} = [ outpath obj.Params.Eddy.in.prefix  b c ];
                 obj.Params.Eddy.out.bvecs{ii} = [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','.eddy_rotated_bvecs') ];
-                
-                
                 %EXEC command to store:
                 [~, to_exec] =system(['which eddy_openmp']);
-                exec_cmd{ii,3}=[  strtrim(to_exec) ' --imain=' obj.Params.Eddy.in.fn{ii} ...
+                exec_cmd{:,end+1}=[  strtrim(to_exec) ' --imain=' obj.Params.Eddy.in.fn{ii} ...
                     ' --mask=' obj.Params.Eddy.in.mask{ii} ...
                     ' --index=' obj.Params.Eddy.out.fn_index{ii} ...
                     ' --acqp='  obj.Params.Eddy.out.fn_acqp{ii}  ...
@@ -957,30 +955,23 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist( obj.Params.Eddy.out.fn{ii},'file')==0
                     try
                         fprintf(['\nApplying eddy in: ' obj.Params.Eddy.in.fn{ii} ]);
-                        fprintf('\n this will take a couple of minutes...');
-                        obj.RunBash(exec_cmd{ii,3},44);
+                        fprintf('\n this will take a couple  of minutes...');
+                        obj.RunBash(exec_cmd{end},44);
                         fprintf('...done \n');
                         wasRun=true;
                     catch
                         errormsg=['PROC_EDDY: Cannnot run eddy in: ' ...
                             obj.Params.Eddy.in.fn{ii} 'please double check parameters?\n' ];
-                        obj.UpdateErrors(errormsg);
                     end
                 else
                     [aa, bb, cc] = fileparts(obj.Params.Eddy.out.fn{ii});
                     fprintf(['File ' bb cc ' is now complete \n']) ;
                 end
             end
-            
-            %Update history if possible
-            if ~isfield(obj.Params.Eddy,'history_saved') || wasRun == true
-                obj.Params.Eddy.history_saved = 0 ;
+            %Update history if wasRun==1
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.Eddy,'proc_eddy', obj.Params.Eddy.out.fn{ii},wasRun,exec_cmd');
             end
-            if obj.Params.Eddy.history_saved == 0
-                obj.Params.Eddy.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.Eddy,'proc_eddy', obj.Params.Eddy.out.fn{ii},wasRun,exec_cmd);
-            end
-            clear exec_cmd to_exec wasRun;
         end
         
         function obj = proc_get_eddymotion(obj)
@@ -1235,7 +1226,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_FS2DWI():');
             if ~exist('exec_cmd','var')
-                exec_cmd{:}='INIT PROC_FS2dwi()';
+                exec_cmd{:}='#INIT PROC_FS2dwi()';
             end
             %INIT SPECS:
             for tohide=1:1
@@ -1494,7 +1485,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_getFreeSurfer(obj)
             wasRun=false;
             if ~exist('exec_cmd','var')
-                exec_cmd{:}='INIT PROC_getFreeSurfer()';
+                exec_cmd{:}='#INIT PROC_getFreeSurfer()';
             end
             fprintf('\n%s\n', 'PERFORMING PROC_GETFREESURFER():');
             %display([ 'The whoami output is: obj.Params.FreeSurfer.shell ])
@@ -2255,7 +2246,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING MOTION CORRECTION - PROC_B0S_MOCO():');
             if ~exist('exec_cmd')
+<<<<<<< HEAD
                 exec_cmd{:}='INIT PROC_B0s_MOCO()';
+=======
+                exec_cmd{:}='#INIT PROC_B0s_MOCO()';
+>>>>>>> improved up to proc_eddy()
             end
             %Check if the FreeSurfer location exists (due to bbreg dependency):
             if exist(obj.Params.B0MoCo.FS,'dir') ~=0 %if so continue, else break!
@@ -2608,7 +2603,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_tracula(obj)
             % try
             wasRun=false;
-            exec_cmd{:}='INIT proc_tracula()_step1 exec_cmd:';
+            exec_cmd{:}='#INIT proc_tracula()_step1 exec_cmd:';
             fprintf('\n%s\n', 'PERFORMING PROC_TRACULA():');
             %Creating root directory:
             for tohide=1:1
@@ -2667,7 +2662,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
                 end
                 %Step 2: Trac-all -prep
-                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step2_bedpostx exec_cmd:';
+                clear exec_cmd; exec_cmd{:}='#INIT proc_tracula()_step2_bedpostx exec_cmd:';
                 obj.Params.Tracula.out.bedp_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dmri.bedpostX' filesep 'mean_fsumsamples.nii.gz' ];
                 if exist(obj.Params.Tracula.out.bedp_check, 'file') == 0
@@ -2684,7 +2679,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['trac-all -bedp file ' bb cc ' exists.\n']);
                 end
                 %Step 3: Trac-all -path
-                clear exec_cmd; exec_cmd{:}='INIT proc_tracula()_step3_tract-all exec_cmd:';
+                clear exec_cmd; exec_cmd{:}='#INIT proc_tracula()_step3_tract-all exec_cmd:';
                 obj.Params.Tracula.out.path_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dpath' filesep 'merged_avg33_mni_bbr.mgz' ];
                 if exist(obj.Params.Tracula.out.path_check,'file') == 0
@@ -4467,7 +4462,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             [~, tmp_MNI_mask_fname, tmp_mask_ext ] = fileparts(obj.Params.ants_dwi2MNI.in.MNI_tocopy); %MNI to be copied into output_dir
             obj.Params.ants_dwi2MNI.in.mni_template = [obj.Params.ants_dwi2MNI.out.dir ...
                 filesep tmp_MNI_mask_fname tmp_mask_ext ] ;
-            exec_cmd{:} = 'INITIALIZING PROC_ANTS_DWI2MNI() EXEC_CMD';
+            exec_cmd{:} = '#INITIALIZING PROC_ANTS_DWI2MNI() EXEC_CMD';
             
             %IMPLEMENTATION STARTS HERE
             %copying location of MNI to actual MNI to be used:
