@@ -2629,6 +2629,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 outpath=obj.getPath(a,obj.Params.Tracula.in.movefiles);
                 obj.Params.Tracula.out.dcmirc = [outpath 'dcmrirc.' obj.Params.Tracula.in.prefix] ;
                 
+                %Creating a symbolic link due to file mount space concerns
+                %(Change this if /eris/** is replaced)
                 if strcmp(obj.projectID,'HAB')
                     replaced_outpath = outpath ;
                     outpath = [ '/eris/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
@@ -2638,6 +2640,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
                         obj.RunBash(exec_cmd{:,end});
                     end
+                    
+                    %After creating ln -s, select outpath to be the
+                    %symbolic link:
+                    outpath=[replaced_outpath obj.sessionname filesep];
                 end
             end
             %Create the necessary dcmirc file:
@@ -2734,7 +2740,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             in_txtfname     = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname;
             in_movefiles    = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles;
             %Creating working directory and assigning a short name:
-            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir=obj.getPath(in_bedp_dir,in_movefiles);
+            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir=obj.getPath(obj.root,in_movefiles);
             out_dir = obj.Params.tracxBYmask.allmasks.(tmp_txtfname).out.dir; %short-naming
             
             %~~~
@@ -5354,7 +5360,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %%%% Do I want to do the below?
             if ~exist(outpath,'dir');
-                mkdir(outpath);
+                obj.mkdir(outpath);
             end
             hm = pwd;
             cd(outpath)

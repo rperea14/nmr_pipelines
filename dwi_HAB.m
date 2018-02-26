@@ -488,108 +488,111 @@ classdef dwi_HAB < dwiMRI_Session
     methods
         %UNDER DEVELOPMENT
            %UNDER DEVELOPMENT
-        function obj = post_tracx_by_txt(obj,masktxt_fname,masktxt_dir,replace_masktxt_info)
-            %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR PROB TRACTOGRAPHY%
-            for tohide=1:1
-                if nargin<2 || isempty(masktxt_fname)
-                    masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
-                    masktxt_fname = 'default_mask'; %obj.dep_dir / fMRI_masks/maskt_txt/default_mask.txt
-                end
-                if nargin < 3 || isempty(masktxt_dir)
-                     masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
-                end
-                
-                %Verify you don't want to replace the processing of the
-                %specific mask:
-                if nargin <4
-                    replace_masktxt_info=false;
-                end
-                
-                %Initialize the Params structure if not already:
-                if ~isfield(obj.Params,'tracxBYmask')
-                    obj.Params.tracxBYmask=[];
-                end
-                
-                %Check if this is the first txt_filename that is inputted
-                %*This will allow us to run different instances of tractxBYmask
-                %without losing information about what was ran:
-                [~ , tmp_txtfname, ~ ]  = fileparts(masktxt_fname);
-                if ~isfield(obj.Params.tracxBYmask,'list_txt_fnames')
-                    obj.Params.tracxBYmask.list_txt_fnames{1} = {tmp_txtfname};
-                else
-                    %Double check that the txt_fname hasn't been used or else
-                    %it will be replaced
-                    flag_list_exist=0;
-                    for ijk=1:numel(obj.Params.tracxBYmask.list_txt_fnames)
-                        if strcmp(tmp_txtfname,obj.Params.tracxBYmask.list_txt_fnames{ijk})
-                            if replace_masktxt_info ~= 1
-                                warning(['The name for the mask_txt fname: ' tmp_txtfname ' has been used (and probably already ran, not necessarily successfully).'])
-                                display(['Either 1) change the masktxt_fname (1st argument in obj.post_tracx_by_txt() ) filename or' ])
-                                display('       2) check the obj.Params.tracxBYmask.(masktxt_fname) structure or')
-                                display('       3) re-run the obj.post_tracx_by_txt with a 3rd argument as True (*info data will be replaced)')
-                                display('Returning...')
-                                return
-                            end
-                            %This flag tells me that the same name exists!
-                            flag_list_exist=1;
-                        end
-                    end
-                    %Add the newer txt_fname is the list of tracx parameters,
-                    %it replace_masktxt_info is true then no need as the values
-                    %will be explicitly be replace
-                    if flag_list_exist == 0
-                        obj.Params.tracxBYmask.list_txt_fnames{end+1} = {tmp_txtfname};
-                    else
-                        warning(['All the Params info for obj.Params.tracxBTmask.' tmp_txtfname ' will be replaced...'])
-                    end
-                end
-            end
-            %%%%%% END DEALING WITH VARIABLE NUMBER OF MASK FOR TRACX%%%%%%
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-          %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
-            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir = masktxt_dir;
-            for tohide=1:1
-                %Check to see whether a mask directory locations is input
-                %Check to see what mask_txt file is inputted
-                if nargin <2
-                    tmp_txt_fullpath = [ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
-                    display(['DENOTING: ' tmp_txt_fullpath ' as the default mask filename to process (no arguments passed).'])
-                    pause(1)
-                else
-                    tmp_txt_fullpath =[ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
-                    display(['DEFAULT MASK FILENAME: ' tmp_txt_fullpath])
-                end
-                
-                %
-            end
-            %%%%%%%%%%%%%%%END CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
-            
-            
-            %%%%%%%%%%%%%%%%%% VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%%
-            %VARIABLE INITIALIZATION:
-            %TRACULA related:            
-            obj.Params.tracxBYmask.tracula.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
-            obj.Params.tracxBYmask.T1_tmp = [fileparts(which('spm')) '/canonical/single_subj_T1.nii'];;
-            obj.Params.tracxBYmask.tracula.b0 = [obj.Params.tracxBYmask.tracula.bedp_dir ... 
-                filesep '..' filesep 'dmri' filesep 'lowb.nii.gz' ];
-            
-            
-            %TXT file related:
-            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
-            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles = ...
-                ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'all_masks' filesep  tmp_txtfname ];
-            
-            obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args = ...
-                ' -l --onewaycondition -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
-            
-            proc_tracxBYmask(obj,tmp_txtfname); %obj.resave()
-            %%%%%%%%%%%%%%% END VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%
-            
-            
-            %%%%%%%%%%%%%%%% IMPLEMENTATION STARTS HERE %%%%%%%%%%%%%%%%%%%
-            %%%%%%%%%%%%%%%%%% END OF IMPLEMENTATION  %%%%%%%%%%%%%%%%%%%%%
-        
-        end
+           function obj = post_tracx_by_txt(obj,masktxt_fname,masktxt_dir,replace_masktxt_info)
+               %%%%%% CODE FOR DEALING WITH DIFFERNT MASK FOR PROB TRACTOGRAPHY%
+               for tohide=1:1
+                   if nargin<2 || isempty(masktxt_fname)
+                       masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
+                       masktxt_fname = 'default_mask'; %obj.dep_dir / fMRI_masks/maskt_txt/default_mask.txt
+                   end
+                   if nargin < 3 || isempty(masktxt_dir)
+                       masktxt_dir=[obj.dependencies_dir 'fMRI_masks' filesep 'mask_txt' filesep ];
+                   end
+                   
+                   %Verify you don't want to replace the processing of the
+                   %specific mask:
+                   if nargin <4
+                       replace_masktxt_info=false;
+                   end
+                   
+                   %Initialize the Params structure if not already:
+                   if ~isfield(obj.Params,'tracxBYmask')
+                       obj.Params.tracxBYmask=[];
+                   end
+                   
+                   %Check if this is the first txt_filename that is inputted
+                   %*This will allow us to run different instances of tractxBYmask
+                   %without losing information about what was ran:
+                   [~ , tmp_txtfname, ~ ]  = fileparts(masktxt_fname);
+                   if ~isfield(obj.Params.tracxBYmask,'list_txt_fnames')
+                       obj.Params.tracxBYmask.list_txt_fnames{1} = {tmp_txtfname};
+                   else
+                       %Double check that the txt_fname hasn't been used or else
+                       %it will be replaced
+                       flag_list_exist=0;
+                       for ijk=1:numel(obj.Params.tracxBYmask.list_txt_fnames)
+                           if strcmp(tmp_txtfname,obj.Params.tracxBYmask.list_txt_fnames{ijk})
+                               if replace_masktxt_info ~= 1
+                                   warning(['The name for the mask_txt fname: ' tmp_txtfname ' has been used (and probably already ran, not necessarily successfully).'])
+                                   display(['Either 1) change the masktxt_fname (1st argument in obj.post_tracx_by_txt() ) filename or' ])
+                                   display('       2) check the obj.Params.tracxBYmask.(masktxt_fname) structure or')
+                                   display('       3) re-run the obj.post_tracx_by_txt with a 3rd argument as True (*info data will be replaced)')
+                                   display('Returning...')
+                                   return
+                               end
+                               %This flag tells me that the same name exists!
+                               flag_list_exist=1;
+                           end
+                       end
+                       %Add the newer txt_fname is the list of tracx parameters,
+                       %it replace_masktxt_info is true then no need as the values
+                       %will be explicitly be replace
+                       if flag_list_exist == 0
+                           obj.Params.tracxBYmask.list_txt_fnames{end+1} = {tmp_txtfname};
+                       else
+                           warning(['All the Params info for obj.Params.tracxBTmask.' tmp_txtfname ' will be replaced...'])
+                       end
+                   end
+               end
+               %%%%%% END DEALING WITH VARIABLE NUMBER OF MASK FOR TRACX%%%%%%
+               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+               
+               %%%%%%%%%%%%%%%%%% CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+               obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir = masktxt_dir;
+               for tohide=1:1
+                   %Check to see whether a mask directory locations is input
+                   %Check to see what mask_txt file is inputted
+                   if nargin <2
+                       tmp_txt_fullpath = [ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir 'try_masks.txt' ] ;
+                       display(['DENOTING: ' tmp_txt_fullpath ' as the default mask filename to process (no arguments passed).'])
+                       pause(1)
+                   else
+                       tmp_txt_fullpath =[ obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.dir masktxt_fname '.txt' ] ;
+                       display(['DEFAULT MASK FILENAME: ' tmp_txt_fullpath])
+                   end
+                   
+                   %
+               end
+               %%%%%%%%%%%%%%%END CHECKING ARGUMENTS INPUTTED%%%%%%%%%%%%%%%%%
+               
+               
+               %%%%%%%%%%%%%%%%%% VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%%
+               %VARIABLE INITIALIZATION:
+               %TRACULA related:
+               obj.Params.tracxBYmask.tracula.bedp_dir = fileparts(obj.Params.Tracula.out.bedp_check);
+               obj.Params.tracxBYmask.T1_tmp = [fileparts(which('spm')) '/canonical/single_subj_T1.nii'];;
+               obj.Params.tracxBYmask.tracula.b0 = [obj.Params.tracxBYmask.tracula.bedp_dir ...
+                   filesep '..' filesep 'dmri' filesep 'lowb.nii.gz' ];
+               
+               
+               %TXT file related:
+               obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.txt_fname = tmp_txt_fullpath;
+               
+               
+               obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles = [ '.' filesep 'post_tracx' filesep 'all_masks' filesep  tmp_txtfname ];
+               %obj.Params.tracxBYmask.allmasks.(tmp_txtfname).in.movefiles = ...
+               %      ['..' filesep '..' filesep '..' filesep 'post_tracx' filesep 'all_masks' filesep  tmp_txtfname ];
+               
+               obj.Params.tracxBYmask.allmasks.(tmp_txtfname).probtracx2_args = ...
+                   ' -l --onewaycondition -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
+               
+               proc_tracxBYmask(obj,tmp_txtfname); %obj.resave()
+               %%%%%%%%%%%%%%% END VARIABLE INITIALIZATION%%%%%%%%%%%%%%%%%%%%
+               
+               
+               %%%%%%%%%%%%%%%% IMPLEMENTATION STARTS HERE %%%%%%%%%%%%%%%%%%%
+               %%%%%%%%%%%%%%%%%% END OF IMPLEMENTATION  %%%%%%%%%%%%%%%%%%%%%
+               
+           end
     end
 end
