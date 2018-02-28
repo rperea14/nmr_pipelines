@@ -217,9 +217,9 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %DERIVED MOVEMENT FROM EDDY:
             obj.Params.EddyMotion.in.movefiles = ['..' filesep '05_MotionFromEDDY'];
-            obj.Params.EddyMotion.in.fn_eddy = obj.Params.Eddy.out.fn ;
+            obj.Params.EddyMotion.in.fn_eddy = obj.Params.Eddy.out.fn;
             
-            obj.proc_get_eddymotion(); obj.resave();
+            obj.proc_get_eddymotion();
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %To generate a mask after Eddy:
@@ -228,7 +228,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %the edges of the brain when using the --wls option in dtifit!\
             %Reference: https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;6eb4d787.1610
             obj.Params.MaskAfterEddy.in.movefiles = ['..' filesep '05_MaskAfterEddy'];
-            obj.Params.MaskAfterEddy.in.fn = obj.Params.Eddy.in.fn; %Since we don't have a b0, we pass the full dwi and the method will take care of
+            obj.Params.MaskAfterEddy.in.fn = obj.Params.Eddy.out.fn; %Since we don't have a b0, we pass the full dwi and the method will take care of the rest
             obj.Params.MaskAfterEddy.in.prefix = 'after_eddy';
             obj.Params.MaskAfterEddy.in.fracthrsh = '0.4';
             
