@@ -195,7 +195,7 @@ classdef dwi_HAB < dwiMRI_Session
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Coregistering the T1 to B0:
             obj.Params.T1toDWI.in.movefiles = './05_T1toDWI/';
-            obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n special character
+            obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n speci
             obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
             
             obj.proc_T1toDWI();

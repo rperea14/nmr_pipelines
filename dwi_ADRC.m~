@@ -175,6 +175,11 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.proc_getFreeSurfer();
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Coregistering the T1 to B0:
+            obj.Params.T1toDWI.in.movefiles = './02_GradCorrect/';
+           
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %T1_02_Getting the necessary values from FreeSurfer's output:
             obj.getdata_FreeSurfer();
             
@@ -250,16 +255,6 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             obj.proc_coreg_multiple();
-            
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Coregistering the T1 to B0:
-            obj.Params.T1toDWI.in.movefiles = './07_T1toDWI/';
-            obj.Params.T1toDWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
-            obj.Params.T1toDWI.in.T1 = obj.Params.FreeSurfer.in.T1;
-            
-            obj.proc_T1toDWI();
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1666,6 +1666,67 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %END OF OBSOLETE CODE. 
         end
         
+        function obj = proc_T1toDWI(obj)
+            wasRun=false;
+            fprintf('\n%s\n', 'PERFORMING PROC_T1toDWI():');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_T1toDWI()';
+            end
+            
+            outpath=obj.getPath(obj.root,obj.Params.T1toDWI.in.movefiles);
+            
+            %Filepart the inputs
+            [ ~, T1_bname, T1_ext ] = fileparts(obj.Params.T1toDWI.in.T1);
+            [ ~, b0_bname, b0_ext ] = fileparts(obj.Params.T1toDWI.in.b0);
+            
+            %if files are *.nii.gz, then remove the *.nii as part of
+            %thename:
+            if strcmp(T1_bname(end-3:end),'.nii')
+                T1_bname=T1_bname(1:end-4);
+            end
+            
+            if strcmp(b0_bname(end-3:end),'.nii')
+                b0_bname=b0_bname(1:end-4);
+            end
+            
+            %Initialize output files
+            obj.Params.T1toDWI.out.dir=outpath;
+            obj.Params.T1toDWI.out.origT1 = [ outpath  T1_bname '.nii'];
+            obj.Params.T1toDWI.out.origb0 = [ outpath  b0_bname '.nii'];
+            
+            obj.Params.T1toDWI.out.T12b0 = [ outpath  'coreg2dwi_' T1_bname '.nii'];
+            obj.Params.T1toDWI.out.reslicedT12b0 = [ outpath 'resliced_coreg2dwi_' T1_bname '.nii'];
+            
+            %Unsliced T1:
+            if exist( obj.Params.T1toDWI.out.T12b0,'file') == 0
+                %MRI_convert to get the *.nii format
+                exec_cmd{:,end+1} = ['mri_convert ' strtrim(obj.Params.T1toDWI.in.T1) ' ' obj.Params.T1toDWI.out.origT1 ];
+                obj.RunBash(exec_cmd{end});
+                
+                exec_cmd{:,end+1} = ['mri_convert ' strtrim(obj.Params.T1toDWI.in.b0) ' ' obj.Params.T1toDWI.out.origb0 ];
+                obj.RunBash(exec_cmd{end});
+                
+                %Creating the CoReg.mat file:
+                exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj.Params.T1toDWI.out.origT1,obj.Params.T1toDWI.out.origb0,outpath);';
+                eval(exec_cmd{end});
+                
+                %Applying this CoReg.mat file:
+                exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.out.origb0);';
+                eval(exec_cmd{end});
+                wasRun=true;
+            else
+                display('proc_T1toDWI is complete.');
+                
+            end  
+            
+            %Update history if wasRun==1
+             if wasRun == true
+                obj.UpdateHist_v2(obj.Params.T1toDWI,'proc_T1toDWI()', obj.Params.T1toDWI.out.reslicedT12b0,wasRun,exec_cmd');
+                obj.resave();
+            end
+            
+        end
+        
         %Use when multiple DWIs sequences are acquired
         function obj = proc_coreg_multiple(obj)
             wasRun=false;
@@ -2737,7 +2798,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
             end
         end
-        
         %fMRI or any txt_with masks to probabilistic tracking (it will
         %generate a shell script to run it from SHELL):
         function obj = proc_tracxBYmask(obj,tmp_txtfname)
@@ -2835,7 +2895,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 
                 if exist(obj.Params.tracxBYmask.T1coregDWI.out_dwiT1,'file') == 0
-                    exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0);';
+                    exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.tracxBYmask.T1coregDWI.in_T1,0,obj.Params.tracxBYmask.T1coregDWI.in_b0);';
                     eval(exec_cmd{end});
                 end
                 %END OF COREGISTRERING T1 to DWI
@@ -3028,7 +3088,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
             
         end
-        
          %TRKLAND related
         function obj = trkland_fx(obj)
             wasRun = false ;
@@ -3318,22 +3377,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             clear exec_cmd to_exec wasRun;
         end        
-        
-        %The method below is used to remove trks informatin in
-        %obj.Trkland.Trks.XXX
-        function obj = remove_trkland_data(obj,TOI)
-            if nargin <2
-                error('Please provide the prefix or TOI to be deleted (e.g. ''fx'')')
-            end
-            allfields=fields(obj.Trkland.Trks);
-            for ii=1:numel(allfields)
-                PREFIX=strsplit(allfields{ii},'_');
-                if strcmp(PREFIX(1),TOI)
-                    obj.Trkland.Trks=rmfield(obj.Trkland.Trks,allfields{ii})  ;
-                end
-            end
-            obj.resave()
-        end
         
         %!!!
         %ON THE WORKS:
@@ -4651,40 +4694,43 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %START TRIMMED PROCESS:~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 if exist(obj.Trkland.(TOI).out.(['trimmed_' HEMI ]),'file') == 0
                     %Trim tracts here:
-                    if strcmp('fx',TOI)
+                    switch TOI
+                        case 'fx'
                         obj.Trkland.Trks.([TOI '_trimmed_' HEMI ]) = rotrk_trimmedbyTOI(obj.Trkland.Trks.([ TOI '_raw_' HEMI]), ...
                             [ {obj.Trkland.(TOI).in.(['hippo_' HEMI])} {obj.Trkland.(TOI).in.(['thalamus_' HEMI])}  ], [ TOI '_' HEMI ]);
-                    elseif strcmp('cingulum',TOI)
+                        case 'cingulum'
                         obj.Trkland.Trks.([TOI '_trimmed_' HEMI ])  = rotrk_trimmedbyTOI(obj.Trkland.Trks.([ TOI '_raw_' HEMI]), ...
                             [ {obj.Trkland.(TOI).in.(['seed_postcing_' HEMI ])}  {obj.Trkland.(TOI).in.(['rostantcing_' HEMI ])}  ], ['cingulum_' HEMI]);
-                    elseif strcmp('hippocing',TOI)
+                        case 'hippocing'
                         obj.Trkland.Trks.([TOI '_trimmed_' HEMI]) = rotrk_trimmedbyTOI(obj.Trkland.Trks.([ TOI '_raw_' HEMI]), ...
                             [ {obj.Trkland.(TOI).in.(['hippo_' HEMI ])} {obj.Trkland.(TOI).in.(['roi_postcing_' HEMI ])} ], ['postcing_' HEMI]);
+                        otherwise
+                            error(['In obj.applyTRKLAND(): Canot recognize ''' TOI ''' as an implemented tract of interest. Please check!'])
                     end
-                    
-                    %Saving trimmed tracts:
-                    rotrk_write(obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).header,...
-                        obj.Trkland.Trks.([TOI '_trimmed_' HEMI]).sstr,obj.Trkland.(TOI).out.(['trimmed_' HEMI ]));
-                    obj.Trkland.(TOI).data.([HEMI '_done' ]) = 0;
-                    
-                    %Empty the fields in the MATLAB envinronment:
-                    obj.Trkland.Trks = rmfield(obj.Trkland.Trks,[TOI '_trimmed_' HEMI]) ;
+                    if ~isempty(obj.Trkland.Trks.([TOI '_trimmed_' HEMI ]).sstr)
+                        %Saving trimmed tracts:
+                        rotrk_write(obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).header,...
+                            obj.Trkland.Trks.([TOI '_trimmed_' HEMI]).sstr,obj.Trkland.(TOI).out.(['trimmed_' HEMI ]));
+                        fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_trimmed_' HEMI '...']);
+                        obj.Trkland.Trks.([TOI '_trimmed_' HEMI]) = rotrk_read(obj.Trkland.(TOI).out.([ 'trimmed_' HEMI]),obj.sessionname,obj.Params.Dtifit.out.FA{end},[TOI '_trimmed_' HEMI]);
+                        obj.addDTI([TOI '_trimmed_' HEMI]);
+                        obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
+                        fprintf('done\n');
+                        
+                    else
+                        %Empty the fields in the MATLAB envinronment:
+                        obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).header = [];
+                        obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).sstr = [];
+                        obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
+                    end
                 end
-                                
-                %If the file trk is not a field in the MATLAB environment, populate :
-                if ~isfield(obj.Trkland.Trks,[TOI '_trimmed_' HEMI])
-                    fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_trimmed_' HEMI '...']);
-                    obj.Trkland.Trks.([TOI '_trimmed_' HEMI]) = rotrk_read(obj.Trkland.(TOI).out.([ 'trimmed_' HEMI]),obj.sessionname,obj.Params.Dtifit.out.FA{end},[TOI '_trimmed_' HEMI]);
-                    obj.addDTI([TOI '_trimmed_' HEMI]);
-                    obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                    fprintf('done\n');
-                end
-                %~~~~~~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMED PROCESSS
             else
                 obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).header = [];
                 obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).sstr = [];
                 obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
             end
+            %~~~~~~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMED PROCESSS
+
             
             
             %TRIMMEDCLEAN, INTERPOLATION, CLINEHIGHFA nad HAUSDORFF
@@ -4904,18 +4950,20 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
             
-            
-            %REMOVE obj.Trkland.Trks now...
-            allfields=fields(obj.Trkland.Trks);
-            for ii=1:numel(allfields)
-                SPLIT=strsplit(allfields{ii},'_');
-                %Check what TOI:
-                if strcmp(SPLIT(1),TOI)
-                    %Check what hemisphere:
-                    if strcmp(HEMI,'bil')
-                        obj.Trkland.Trks=rmfield(obj.Trkland.Trks,allfields{ii});
-                    elseif strcmp(TOI,allfields{ii}(end-1:end))
-                        obj.Trkland.Trks=rmfield(obj.Trkland.Trks,allfields{ii});
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %REMOVE obj.Trkland.Trks INFORMATION NOW:
+            if ~isempty(obj.Trkland.Trks)
+                allfields=fields(obj.Trkland.Trks);
+                for ii=1:numel(allfields)
+                    SPLIT=strsplit(allfields{ii},'_');
+                    %Check what TOI:
+                    if strcmp(SPLIT(1),TOI)
+                        %Check what hemisphere:
+                        if strcmp(HEMI,'bil')
+                            obj.Trkland.Trks=rmfield(obj.Trkland.Trks,allfields{ii});
+                        elseif strcmp(HEMI,allfields{ii}(end-1:end))
+                            obj.Trkland.Trks=rmfield(obj.Trkland.Trks,allfields{ii});
+                        end
                     end
                 end
             end
@@ -5108,7 +5156,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             spm_write_vol(V,Y);
             fprintf(' ...done\n');
         end
-        function obj = proc_coreg2dwib0(obj,source,target,outdir)
+        function obj = proc_coreg2dwib0(obj,mov,ref,outdir)
             fprintf('\n%s\n', 'PERFORMING COREGISTRATION');
             wasRun = false;
             
@@ -5116,14 +5164,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 error('Invalid number of arguments. Please enter the source and target images');
             end
             
-            [a b c] = fileparts(source);
+            [a b c] = fileparts(mov);
             outpath2 = obj.getPath(outdir,'./');
             disp('USING SPM:');
             if exist([outpath2 'CoReg.mat'],'file')==0
                 wasRun=true;
                 
-                VG = spm_vol(target);
-                VF = spm_vol(source);
+                VG = spm_vol(ref);
+                VF = spm_vol(mov);
                 
                 %flags (copy from obj.Params.Coreg.in.spm):
                 flags.sep = [4  2 ] ;
@@ -5142,8 +5190,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             disp('Coregistration has been applied to the mean image:');
         end
-        function obj = proc_apply_coreg2dwib0(obj,fn,reslice)
-            fprintf('\n%s\n', 'PERFORMING COREGISTRATION TO B0...');
+        function obj = proc_apply_coreg2dwib0(obj,fn,reslice,dwib0)
+            fprintf('\n%s\n', '\t\tPERFORMING COREGISTRATION TO B0...');
             wasRun = false;
             if ischar(fn)
                 fn = cellstr(fn);
@@ -5170,10 +5218,20 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     MM = spm_get_space(nfn{ii});
                     spm_get_space(nfn{ii}, M\MM);
                     if reslice == 1
-                        h1 = spm_vol(obj.Params.tracxBYmask.T1coregDWI.in_b0);
+                        %h1 = spm_vol(obj.Params.tracxBYmask.T1coregDWI.in_b0);
+                        [dwi_dir,dwib0_bname,dwib0_ext] = fileparts(dwib0);
+                        if strcmp(dwib0_ext,'.gz') %assume gzip
+                            system(['gunzip ' dwib0 ] );
+                        end                        
+                        h1 = spm_vol(dwib0);
+                        if strcmp(dwib0_ext,'.gz') %gzip now
+                            system(['gzip ' dwi_dir filesep dwib0_bname ] );
+                        end
                         h2 = spm_vol(nfn{ii});
                         m = resizeVol2(h2,h1,[3 0 ]);
-                        h1.fname = h2.fname;
+                        %Adding resclied to the naming convention
+                        [res_dirname, res_bname , res_ext ] = fileparts(h2.fname);
+                        h1.fname = [res_dirname filesep 'resliced_' res_bname res_ext];
                         h1.dt = h2.dt;
                         spm_write_vol(h1,m);
                     end
@@ -5884,8 +5942,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
             end
         end
-        
-        
         
     end
 end
