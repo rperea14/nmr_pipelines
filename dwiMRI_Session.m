@@ -4724,6 +4724,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
                     end
                 end
+                
+                %Check if the obj.Trkland.Trks.<TRIMMED_VALUES> are empty:
+                if isempty(obj.Trkland.Trks.([ TOI '_trimmed_' HEMI]).sstr)
+                    obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]) = rotrk_read(obj.Trkland.(TOI).out.(['trimmed_' HEMI]),obj.sessionname,obj.Params.Dtifit.out.FA{end},[TOI '_trimmed_' HEMI]);
+                    obj.addDTI([ TOI '_trimmed_' HEMI]);
+                end
             else
                 obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).header = [];
                 obj.Trkland.Trks.([ TOI '_trimmed_' HEMI ]).sstr = [];
@@ -4738,6 +4744,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %AS IT's DEPENDENT ON A SUCCESSFULL TRIMMING...
             if  exist(obj.Trkland.(TOI).out.(['trimmed_' HEMI ]),'file') ~= 0
                 %START TRIMMEDCLEAN PROCESS:~~~~~~~~~~~~~~~~~~~~~~~
+                %Check if the object Trks is located, if not loaded.
                 if exist(obj.Trkland.(TOI).out.(['trimmedclean_' HEMI ]),'file') == 0
                     %Adding criteria 4 (for FX only, separating FX vs.
                     %stria terminalis:

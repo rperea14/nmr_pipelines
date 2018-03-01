@@ -259,7 +259,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.T1toDWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
             obj.Params.T1toDWI.in.T1 = obj.Params.FreeSurfer.in.T1;
             
-            obj.proc_T1toDWI();
+            
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
