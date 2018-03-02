@@ -1960,6 +1960,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Init variable names:
                 obj.Params.Dtifit.out.FA{ii} = [ outpath  obj.Params.Dtifit.in.prefix '_FA.nii.gz' ] ;
                 obj.Params.Dtifit.out.prefix{ii} = [ outpath  obj.Params.Dtifit.in.prefix ];
+                %Check if *FA.nii is unzipped, if so gzip it. 
+                if exist(strrep(obj.Params.Dtifit.out.FA{ii},'.nii.gz','.nii'),'file')==2
+                    system(['gzip ' strrep(obj.Params.Dtifit.out.FA{ii},'.nii.gz','.nii')]);
+                end
+                
                 %Attempting to dtifit:
                 if exist( obj.Params.Dtifit.out.FA{ii},'file')==0
                     fprintf('Dtifit reconstruction...');
@@ -1975,7 +1980,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     
                     fprintf('\nCopying L1 to AxD...');
                     exec_cmd{:,end+1} = [ 'cp  ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','AxD') ] ;
-                    obj.RunBash(exec_cmd{end},44);
+                    obj.RunBash(exec_cmd{end});
                     fprintf('...done');
                     wasRun=true;
                 else
