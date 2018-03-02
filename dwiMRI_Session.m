@@ -1245,7 +1245,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %REMOVING VARIABLES THAT WERE PREVIOUSLY CREATED
             if isfield(obj.Params.MaskAfterEddy,'history_saved')
-                obj.Params.MaskAfterEddy = rmfield(obj.Params.MaskAfterEddy,'history_saved')
+                obj.Params.MaskAfterEddy = rmfield(obj.Params.MaskAfterEddy,'history_saved');
             end
             clear exec_cmd to_exec wasRun;
             
@@ -1665,8 +1665,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %             end
             %END OF OBSOLETE CODE. 
         end
-        
-        function obj = proc_T1toDWI(obj)
+       
+         function obj = proc_T1toDWI(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_T1toDWI():');
             if ~exist('exec_cmd','var')
@@ -1692,45 +1692,47 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Initialize output files
             obj.Params.T1toDWI.out.dir=outpath;
             obj.Params.T1toDWI.out.origT1 = [ outpath  T1_bname '.nii'];
-            obj.Params.T1toDWI.out.origb0 = [ outpath  b0_bname '.nii'];
             
             obj.Params.T1toDWI.out.T12b0 = [ outpath  'coreg2dwi_' T1_bname '.nii'];
             obj.Params.T1toDWI.out.reslicedT12b0 = [ outpath 'resliced_coreg2dwi_' T1_bname '.nii'];
             
             %Unsliced T1:
-            if exist( obj.Params.T1toDWI.out.T12b0,'file') == 0
+            if exist(obj.Params.T1toDWI.out.reslicedT12b0,'file') == 0
                 %MRI_convert to get the *.nii format
+                display('Copying T1...');
                 exec_cmd{:,end+1} = ['mri_convert ' strtrim(obj.Params.T1toDWI.in.T1) ' ' obj.Params.T1toDWI.out.origT1 ];
                 obj.RunBash(exec_cmd{end});
-                
-                exec_cmd{:,end+1} = ['mri_convert ' strtrim(obj.Params.T1toDWI.in.b0) ' ' obj.Params.T1toDWI.out.origb0 ];
-                obj.RunBash(exec_cmd{end});
+      
                 
                 %Creating the CoReg.mat file:
-                exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj.Params.T1toDWI.out.origT1,obj.Params.T1toDWI.out.origb0,outpath);';
+                display('Creating CoReg.mat matrix...');
+                exec_cmd{:,end+1} = 'obj.proc_coreg2dwib0(obj.Params.T1toDWI.out.origT1,obj.Params.T1toDWI.in.b0,outpath);';
                 eval(exec_cmd{end});
                 
                 %Applying this CoReg.mat file:
-                exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.out.origb0);';
+                display('Applying the CoReg.mat matrix...');
+                exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.in.b0);';
                 eval(exec_cmd{end});
                 wasRun=true;
             else
                 display('proc_T1toDWI is complete.');
-                
             end  
             
             %Update history if wasRun==1
              if wasRun == true
                 obj.UpdateHist_v2(obj.Params.T1toDWI,'proc_T1toDWI()', obj.Params.T1toDWI.out.reslicedT12b0,wasRun,exec_cmd');
                 obj.resave();
-            end
-            
+             end
         end
+        
         
         %Use when multiple DWIs sequences are acquired
         function obj = proc_coreg_multiple(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_COREG_MULTIPLE():');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:}='#INIT PROC_getFreeSurfer()';
+            end
             %First, select the ref_files needed:
             for ii=1:numel(obj.Params.CoRegMultiple.in.fn)
                 [a b c ] = fileparts(obj.Params.CoRegMultiple.in.fn{ii});
@@ -1747,21 +1749,24 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %Copy the files in this for loop (since nothing will be done to ref)
                     if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0
                         %*.nii.gz:
-                        exec_cmd=(['cp ' obj.Params.CoRegMultiple.in.fn{ii} ...
+                        exec_cmd{:,end+1}=(['cp ' obj.Params.CoRegMultiple.in.fn{ii} ...
                             ' ' obj.Params.CoRegMultiple.out.fn{ii}  ]);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
+                        wasRun=true;
                     end
                     if exist(obj.Params.CoRegMultiple.out.bvals{ii},'file') == 0
                         %*.bvals:
-                        exec_cmd=(['cp ' obj.Params.CoRegMultiple.in.bvals{ii} ...
+                        exec_cmd{:,end+1}=(['cp ' obj.Params.CoRegMultiple.in.bvals{ii} ...
                             ' ' obj.Params.CoRegMultiple.out.bvals{ii}  ]);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
+                        wasRun=true;
                     end
                     if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 0
                         %*.bvecs:
-                        exec_cmd=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
+                        exec_cmd{:,end+1}=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
                             ' > ' obj.Params.CoRegMultiple.out.bvecs{ii}  ]);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
+                        wasRun=true;
                     end
                 end
             end
@@ -1777,24 +1782,25 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if ii ~=  obj.Params.CoRegMultiple.in.ref_iteration
                     %Dealing with *.nii.gz:
-                    
                     if exist(obj.Params.CoRegMultiple.out.matfile{ii},'file') == 0
                         %Creating matfiles:
-                        exec_cmd=['flirt -in ' obj.Params.CoRegMultiple.in.b0{ii} ...
+                        exec_cmd{:,end+1}=['flirt -in ' obj.Params.CoRegMultiple.in.b0{ii} ...
                             ' -ref ' obj.Params.CoRegMultiple.in.ref_file ...
                             ' -omat ' obj.Params.CoRegMultiple.out.matfile{ii} ...
                             ' -interp spline ' ];
                         fprintf(['\n proc_coreg_multiple: rigid coregistratio with iteration: ' num2str(ii)]);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
+                        wasRun=true;
                         fprintf('...done\n');
                     end
                     if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0
                         %Applying the matfile from b0s:
-                        exec_cmd=(['applywarp -i ' obj.Params.CoRegMultiple.in.fn{ii} ' -r ' obj.Params.CoRegMultiple.in.ref_file ...
+                        exec_cmd{:,end+1}=(['applywarp -i ' obj.Params.CoRegMultiple.in.fn{ii} ' -r ' obj.Params.CoRegMultiple.in.ref_file ...
                             ' -o ' obj.Params.CoRegMultiple.out.fn{ii} ...
                             ' --postmat=' obj.Params.CoRegMultiple.out.matfile{ii} ' --interp=spline ' ]);
                         fprintf(['\n proc_coreg_multiple: applying warp (iter ' num2str(ii) ')']);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
+                        wasRun=true;
                         fprintf('...done\n');
                     end
                     
@@ -1804,54 +1810,50 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %*.bvecs:
                             %% from rows 3-by-XX to cols XX-by-3:
                             out_tmp_bvecs{ii}= [outpath 'tmp_bvecs_iter' num2str(ii) ] ;
-                            exec_cmd=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
+                            exec_cmd{:,end+1}=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
                                 ' > ' out_tmp_bvecs{ii}  ]);
-                            obj.RunBash(exec_cmd);
-                            
-                            
+                            obj.RunBash(exec_cmd{end});
+                            wasRun=true;
                             %Extracing the rotation matrix only using
                             %avscale (this will be used for modifying
                             %the bvecs output)
                             tmp_rot_avscale{ii}= [outpath 'tmp_rotonly_iter' num2str(ii) ] ;
                             if exist(tmp_rot_avscale{ii}, 'file' ) == 0
-                                exec_cmd=(['avscale ' obj.Params.CoRegMultiple.out.matfile{ii} ...
+                                exec_cmd{:,end+1}=(['avscale ' obj.Params.CoRegMultiple.out.matfile{ii} ...
                                     ' | head -5 | tail -4 > ' tmp_rot_avscale{ii} ]);
-                                obj.RunBash(exec_cmd);
+                                obj.RunBash(exec_cmd{end});
+                                wasRun=true;
                             end
-                            
-                            
                             %Now apply rotation values to the newer bvecs:
                             fprintf('Applying rotation only .mat files to bvecs..');
                             TEMP_BVEC{ii} = load(out_tmp_bvecs{ii});
-                            
                             %remove cause it will be replaced:
                             if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 2
                                 system(['rm ' obj.Params.CoRegMultiple.out.bvecs{ii} ]);
                             end
                             for pp=1:size(TEMP_BVEC{ii},1)
-                                exec_cmd=[obj.b0MoCo_rotate_bvecs_sh ...
+                                exec_cmd{:,end+1}=[obj.b0MoCo_rotate_bvecs_sh ...
                                     ' ' num2str(TEMP_BVEC{ii}(pp,:)) ...
                                     ' ' tmp_rot_avscale{ii}  ...
                                     ' >> ' (obj.Params.CoRegMultiple.out.bvecs{ii}) ];
-                                obj.RunBash(exec_cmd);
+                                obj.RunBash(exec_cmd{end});
+                                wasRun=true;
                             end
                             system(['rm ' tmp_rot_avscale{ii}]);
                             system(['rm ' out_tmp_bvecs{ii}]);
                             fprintf('...done');
-                            
                         end
                     end
                     %Copying bvals:
                     if exist(obj.Params.CoRegMultiple.out.bvals{ii},'file') == 0
                         %*.bvals:
-                        exec_cmd=(['cp ' obj.Params.CoRegMultiple.in.bvals{ii} ...
+                        exec_cmd{:,end+1}=(['cp ' obj.Params.CoRegMultiple.in.bvals{ii} ...
                             ' ' obj.Params.CoRegMultiple.out.bvals{ii}  ]);
-                        obj.RunBash(exec_cmd);
+                        obj.RunBash(exec_cmd{end});
+                        wasRun=true;
                     end
-                    
                 end
             end
-            
             %Creating the combined niftiis:
             for tohide=1:1
                 obj.Params.CoRegMultiple.out.combined_fn = [outpath 'combined_preproc_' num2str(numel(obj.Params.CoRegMultiple.out.fn)) 'sets' '.nii.gz' ] ;
@@ -1862,11 +1864,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             tmp_nii_cmd = [  tmp_nii_cmd ' ' obj.Params.CoRegMultiple.out.fn{ii} ] ;
                         end
                     end
-                    exec_cmd = [ 'fslmerge -t ' obj.Params.CoRegMultiple.out.combined_fn ...
+                    exec_cmd{:,end+1} = [ 'fslmerge -t ' obj.Params.CoRegMultiple.out.combined_fn ...
                         ' ' obj.Params.CoRegMultiple.out.fn{obj.Params.CoRegMultiple.in.ref_iteration} ...
                         ' ' tmp_nii_cmd ];
                     fprintf('\nMerging niis...')
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                     fprintf('...done\n')
                 end
                 
@@ -1879,10 +1882,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             tmp_bvals_cmd = [  tmp_bvals_cmd ' ' obj.Params.CoRegMultiple.out.bvals{ii} ] ;
                         end
                     end
-                    exec_cmd = [ 'cat '  obj.Params.CoRegMultiple.out.bvals{obj.Params.CoRegMultiple.in.ref_iteration} ...
+                    exec_cmd{:,end+1} = [ 'cat '  obj.Params.CoRegMultiple.out.bvals{obj.Params.CoRegMultiple.in.ref_iteration} ...
                         ' ' tmp_bvals_cmd ' > ' obj.Params.CoRegMultiple.out.combined_bvals     ];
                     fprintf('\nMerging bvals...')
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                     fprintf('\n...done.')
                 end
                 
@@ -1895,10 +1899,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             tmp_bvecs_cmd = [  tmp_bvecs_cmd ' ' obj.Params.CoRegMultiple.out.bvecs{ii} ] ;
                         end
                     end
-                    exec_cmd = [ 'cat '  obj.Params.CoRegMultiple.out.bvecs{obj.Params.CoRegMultiple.in.ref_iteration} ...
+                    exec_cmd{:,end+1} = [ 'cat '  obj.Params.CoRegMultiple.out.bvecs{obj.Params.CoRegMultiple.in.ref_iteration} ...
                         ' ' tmp_bvecs_cmd ' > ' obj.Params.CoRegMultiple.out.combined_bvecs     ];
                     fprintf('\nMerging bvecs...')
-                    obj.RunBash(exec_cmd);
+                    obj.RunBash(exec_cmd{end});
+                    wasRun=true;
                     fprintf('\n...done.')
                 end
             end
@@ -1910,27 +1915,38 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.CoRegMultiple.out.combined_mask = [outpath 'combined_preproc_bet_mask.nii.gz'] ;
             %b0:
             if exist(obj.Params.CoRegMultiple.out.combined_b0,'file') == 0
-                exec_cmd = [ 'cp '  obj.Params.CoRegMultiple.in.b0{obj.Params.CoRegMultiple.in.ref_iteration} ...
-                    ' ' obj.Params.CoRegMultiple.out.combined_b0 ]
+                exec_cmd{:,end+1} = [ 'cp '  obj.Params.CoRegMultiple.in.b0{obj.Params.CoRegMultiple.in.ref_iteration} ...
+                    ' ' obj.Params.CoRegMultiple.out.combined_b0 ];
                 fprintf('\n Copying b0 combined...')
-                obj.RunBash(exec_cmd);
+                obj.RunBash(exec_cmd{end});
+                wasRun=true;
                 fprintf('..done \n')
             end
             %bet and mask:
             if exist(obj.Params.CoRegMultiple.out.combined_bet,'file') == 0
-                exec_cmd = [ 'bet2 ' obj.Params.CoRegMultiple.out.combined_b0 ...
-                    ' ' obj.Params.CoRegMultiple.out.combined_bet  ' -f 0.3 -m ' ]
+                exec_cmd{:,end+1} = [ 'bet2 ' obj.Params.CoRegMultiple.out.combined_b0 ...
+                    ' ' obj.Params.CoRegMultiple.out.combined_bet  ' -f 0.3 -m ' ];
                 fprintf('\n Bet masking combined...')
-                obj.RunBash(exec_cmd);
+                obj.RunBash(exec_cmd{end});
+                wasRun=true;
                 fprintf('..done \n')
                 movefile([obj.Params.CoRegMultiple.out.combined_bet '_mask.nii.gz'],  obj.Params.CoRegMultiple.out.combined_mask);
             end
-            fprintf(' proc_coreg_multiple(obj) is complete\n');
+            
+            if wasRun==true
+                obj.UpdateHist_v2(obj.Params.CoRegMultiple,'proc_corg_multiple()', obj.Params.CoRegMultiple.out.combined_bet,wasRun,exec_cmd');
+                obj.resave();                
+                %fprintf(' proc_coreg_multiple(obj) is complete\n');
+            end
+            
         end
         
         function obj = proc_dtifit(obj)
             wasRun=false; %internal flag denoting whether the last process in this method has been run
             fprintf('\n%s\n', 'PERFORMING PROC_DTIFIT():');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_DTIFIT()';
+            end
             for ii=1:numel(obj.Params.Dtifit.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.Dtifit.in.fn{ii})
@@ -1944,65 +1960,44 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Init variable names:
                 obj.Params.Dtifit.out.FA{ii} = [ outpath  obj.Params.Dtifit.in.prefix '_FA.nii.gz' ] ;
                 obj.Params.Dtifit.out.prefix{ii} = [ outpath  obj.Params.Dtifit.in.prefix ];
-                % try
                 %Attempting to dtifit:
                 if exist( obj.Params.Dtifit.out.FA{ii},'file')==0
+                    fprintf('Dtifit reconstruction...');
                     [~, to_exec ] = system('which dtifit');
-                    exec_cmd{ii,1}=[  strtrim(to_exec)  ' -k ' obj.Params.Dtifit.in.fn{ii} ...
+                    exec_cmd{:,end+1}=[  strtrim(to_exec)  ' -k ' obj.Params.Dtifit.in.fn{ii} ...
                         ' -o ' obj.Params.Dtifit.out.prefix{ii} ...
                         ' -m ' obj.Params.Dtifit.in.mask{ii} ...
                         ' -r ' obj.Params.Dtifit.in.bvecs{ii} ...
                         ' -b ' obj.Params.Dtifit.in.bvals{ii} ...
                         ' --wls --sse' ]; %weighted least squared for improving inadequate noisy data
-                    exec_cmd{ii,2} = [ 'cp  ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','AxD') ] ;
-                    %Check if the *.nii exists but not *.nii.gz
-                    if exist(strrep(obj.Params.Dtifit.out.FA{ii},'.nii.gz','.nii'))==0
-                        fprintf('\nDtifit reconstruction...');
-                        %REF:
-                        obj.RunBash(exec_cmd{ii,1},44);
-                        fprintf('...done');
-                        wasRun=true;
-                        
-                        %Coopy L1 to AxD:
-                        obj.RunBash(exec_cmd{ii,2});
-                    else
-                        display([ 'Gzipping: ' strrep(obj.Params.Dtifit.out.FA{ii},'.nii.gz','.nii')  '...'] );
-                        system([ 'gzip ' strrep(obj.Params.Dtifit.out.FA{ii},'.nii.gz','.nii') ] );
-                    end
+                    obj.RunBash(exec_cmd{end});
+                    fprintf('...done');
+                    
+                    fprintf('\nCopying L1 to AxD...');
+                    exec_cmd{:,end+1} = [ 'cp  ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','AxD') ] ;
+                    obj.RunBash(exec_cmd{end},44);
+                    fprintf('...done');
+                    wasRun=true;
                 else
                     [~,bb,cc] = fileparts(obj.Params.Dtifit.out.FA{ii} );
                     fprintf([ ' File ' bb cc ' is now complete.\n'])
                 end
-                %                 catch
-                %                     errormsg=['PROC_DTIFIT: Cannot apply dtifit:'  ...
-                %                         'Please check dtifit input location!\n' ];
-                %                     error('Exiting now, cannot apply dtifit');
-                %                     obj.UpdateErrors(errormsg);
-                %                 end
                 
                 %Outputting RD:
                 obj.Params.Dtifit.out.RD{ii} = strrep(obj.Params.Dtifit.out.FA{ii},'FA','RD');
-                exec_cmd{ii,3}=[ ' fslmaths ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L2') ...
-                    ' -add ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L3') ...
-                    ' -div 2 ' obj.Params.Dtifit.out.RD{ii}  ];
-                
-                if exist(obj.Params.Dtifit.out.RD{ii})==0
+                if exist(obj.Params.Dtifit.out.RD{ii},'file')==0
                     fprintf('\nCreating RD dtifit...');
-                    obj.RunBash(exec_cmd{ii,3});
+                    exec_cmd{:,end+1}=[ ' fslmaths ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L2') ...
+                        ' -add ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L3') ...
+                        ' -div 2 ' obj.Params.Dtifit.out.RD{ii}  ];
                     fprintf('...done \n');
+                    wasRun=true;
                 end
             end
-            
             %Update history if possible
-            if ~isfield(obj.Params.Dtifit,'history_saved') || wasRun == true
-                obj.Params.Dtifit.history_saved = 0 ;
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.Dtifit,'proc_dtifit()', obj.Params.Dtifit.out.RD{ii},wasRun,exec_cmd');
             end
-            if obj.Params.Dtifit.history_saved == 0
-                obj.Params.Dtifit.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.Dtifit,'proc_mask_after_eddy', obj.Params.Dtifit.out.RD{ii},wasRun,exec_cmd);
-            end
-            clear exec_cmd to_exec wasRun;
-            
         end
         
         function obj = proc_gqi(obj)
@@ -5183,7 +5178,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %flags (copy from obj.Params.Coreg.in.spm):
                 flags.sep = [4  2 ] ;
                 params = [ 0 0 0 0 0 0 ];
-                cost_func = 'nmi'
+                cost_func = 'nmi';
                 tol = [0.0200 0.0200 0.0200 1.0000e-03 1.0000e-03 1.0000e-03 0.0100 0.0100 0.0100 1.0000e-03 1.0000e-03 1.0000e-03] ;
                 fwhm = [ 7 7 ] ;
                 graphics = 1;
@@ -5194,8 +5189,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             else
                 load([outpath2 'CoReg.mat']);
             end
-            
-            disp('Coregistration has been applied to the mean image:');
+            disp('CoReg.mathas been saved.');
         end
         function obj = proc_apply_coreg2dwib0(obj,fn,reslice,dwib0)
             fprintf('\n%s\n', '\t\tPERFORMING COREGISTRATION TO B0...');
@@ -5229,16 +5223,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         [dwi_dir,dwib0_bname,dwib0_ext] = fileparts(dwib0);
                         if strcmp(dwib0_ext,'.gz') %assume gzip
                             system(['gunzip ' dwib0 ] );
-                        end                        
-                        h1 = spm_vol(dwib0);
+                            h1 = spm_vol([dwi_dir filesep dwib0_bname]);
+                        else
+                            h1 = spm_vol(dwib0);
+                        end
                         if strcmp(dwib0_ext,'.gz') %gzip now
                             system(['gzip ' dwi_dir filesep dwib0_bname ] );
                         end
                         h2 = spm_vol(nfn{ii});
-                        m = resizeVol2(h2,h1,[3 0 ]);
+                        m = dwi_resizeVol2(h2,h1,[3 0 ]);
                         %Adding resclied to the naming convention
-                        [res_dirname, res_bname , res_ext ] = fileparts(h2.fname);
-                        h1.fname = [res_dirname filesep 'resliced_' res_bname res_ext];
+                        [res_dirname, res_bname , res_ext ] = fileparts(fn{1});
+                        h1.fname = [res_dirname filesep 'resliced_coreg2dwi_' res_bname res_ext];
                         h1.dt = h2.dt;
                         spm_write_vol(h1,m);
                     end
@@ -5884,7 +5880,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %                          if obj.Params.Coreg.in.reslice
             %                              h1 = spm_vol(obj.Params.Coreg.in.target);
             %                              h2 = spm_vol(new);
-            %                              m = resizeVol2(h2,h1,obj.Params.Coreg.in.resampopt);
+            %                              m = dwi_resizeVol2(h2,h1,obj.Params.Coreg.in.resampopt);
             %                              [a b c] = fileparts(new);
             %                              h1.fname = [a filesep 'rs_' b c];
             %                              h1.dt = h2.dt;

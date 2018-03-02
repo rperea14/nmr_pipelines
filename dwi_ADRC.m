@@ -240,12 +240,12 @@ classdef dwi_ADRC < dwiMRI_Session
             %Until now, we have treated all images separately, so now we
             %will rigid-body coregister all *using flirst and spline
             %interpolation (proved to be more accurate):
+            obj.Params.CoRegMultiple.in.movefiles = ['..' filesep '06_CoRegDWIs'];
             obj.Params.CoRegMultiple.in.fn = obj.Params.Eddy.in.fn;
-            obj.Params.CoRegMultiple.in.b0 = obj.Params.MaskAfterEddy.in.b0 ;
+            obj.Params.CoRegMultiple.in.b0 = obj.Params.MaskAfterEddy.in.b0;
             obj.Params.CoRegMultiple.in.bvals = obj.Params.Eddy.in.bvals;
             obj.Params.CoRegMultiple.in.bvecs = obj.Params.Eddy.out.bvecs;
             
-            obj.Params.CoRegMultiple.in.movefiles = ['..' filesep '06_CoRegDWIs'];
             obj.Params.CoRegMultiple.in.ref_iteration = 2; % All images will be registered to this iteration (in ADRC, 7p5_set1, index 1 is for 2p7_set4!)
             
             
@@ -259,7 +259,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.T1toDWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
             obj.Params.T1toDWI.in.T1 = obj.Params.FreeSurfer.in.T1;
             
-            
+            obj.proc_T1toDWI();
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -292,7 +292,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %diverge for linearity (2.5k is close to linearity than
             %non-linear signal drop at 7.5k)
             obj.Params.Dtifit.in.movefiles = [ '..' filesep '06_2k5DTIFIT' ];
-            obj.Params.Dtifit.in.fn ={obj.Params.CoRegMultiple.out.fn{1}}; %{obj.Params.CoRegMultiple.out.combined_fn};
+            obj.Params.Dtifit.in.fn ={obj.Params.CoRegMultiple.out.fn{1}}; %idx=1 for set4, lowest DWI gradient
             obj.Params.Dtifit.in.prefix = 'DTIFIT_FSLv509' ; %Double check this so you prefix the version of FSL!
             obj.Params.Dtifit.in.bvecs = {obj.Params.CoRegMultiple.out.bvecs{1}};
             obj.Params.Dtifit.in.bvals = {obj.Params.CoRegMultiple.out.bvals{1}};
