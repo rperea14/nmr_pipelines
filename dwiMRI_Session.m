@@ -49,7 +49,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         Trkland = [] ;
     end
     
-    %MISC and Pre- processing public methods:
+    %Pre- processing public methods (and MISC):
     methods
         %Constructor:
         function obj=dwiMRI_Session()
@@ -2705,7 +2705,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for tohide=1:1
                 [a b c ] = fileparts(obj.Params.Tracula.in.fn);
                 outpath=obj.getPath(a,obj.Params.Tracula.in.movefiles);
-                obj.Params.Tracula.out.dcmirc = [outpath 'dcmrirc.' obj.Params.Tracula.in.prefix] ;
+                obj.Params.Tracula.out.dcmirc = [outpath 'dcmrirc.' obj.projectID ] ;
                 
                 %Creating a symbolic link due to file mount space concerns
                 %(Change this if /eris/** is replaced)
@@ -2718,7 +2718,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
                         obj.RunBash(exec_cmd{:,end});
                     end
-                    
                     %After creating ln -s, select outpath to be the
                     %symbolic link:
                     outpath=[replaced_outpath obj.sessionname filesep];
@@ -2735,6 +2734,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         '%g | sed s%''<NB0>''%' num2str(obj.Params.Tracula.in.nb0) ...
                         '%g > ' obj.Params.Tracula.out.dcmirc ];
                     obj.RunBash(exec_cmd{:,end});
+                    wasRun=true;
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.dcmirc);
                     fprintf(['The file ' bb cc ' exists.\n']);
@@ -2751,7 +2751,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 obj.Params.Tracula.out.isrunning = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep  'scripts' filesep 'IsRunning.trac' ];
-                
                 if exist(obj.Params.Tracula.out.prep_check,'file') == 0
                     %Remove IsRunning.trac if exists
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
@@ -2760,7 +2759,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     exec_cmd{:,end+1} = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
                     obj.RunBash(exec_cmd{:,end},44);
                     wasRun=true;
-                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step1_prep', obj.Params.Tracula.out.prep_check,wasRun,exec_cmd);
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.prep_check);
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
@@ -2775,9 +2773,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     exec_cmd{:,end+1} = ['trac-all -bedp -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
-                    wasRun=true;
                     obj.RunBash(exec_cmd{:,end},44);
-                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_bedpostx', obj.Params.Tracula.out.bedp_check,wasRun,exec_cmd);
+                    wasRun = true;
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.bedp_check);
                     fprintf(['trac-all -bedp file ' bb cc ' exists.\n']);
@@ -2792,14 +2789,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     exec_cmd{:,end+1} = ['trac-all -path -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
-                    wasRun=true;
                     obj.RunBash(exec_cmd{:,end},44);
-                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula_step2_tractall', obj.Params.Tracula.out.path_check,wasRun,exec_cmd);
+                    wasRun = true;
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.path_check);
                     fprintf(['trac-all -path ' bb cc ' exists.\n']);
                 end
                 
+                %Check if saved in history:
+                if wasRun == true
+                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula()', obj.Params.Tracula.out,wasRun,exec_cmd');
+                     obj.resave();
+                end
             end
         end
         

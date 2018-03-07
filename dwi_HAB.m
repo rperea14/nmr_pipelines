@@ -340,10 +340,8 @@ classdef dwi_HAB < dwiMRI_Session
                 %b0 params:
                 obj.Trkland.fx.in.b0 = obj.Params.B0mean.out.fn{end}; % obj.Params.MaskAfterEddy.out.brainonly; % obj.Params.B0mean.out.fn{end}; --> BAD 
                 obj.Trkland.fx.in.movefiles = ['..' filesep 'post_TRKLAND' ];
-                
-                
-                
-                  %Based on orientation, we will chooose a specific template
+               
+                %Based on orientation, we will chooose a specific template
                 %(usually RAS) 
                 [~, Ori ] = system(['mri_info ' obj.Trkland.fx.in.b0 ' | grep Orientation | awk ''{print $3}'''] );
                 obj.Trkland.fx.tmp.ori = strtrim(Ori);
@@ -448,7 +446,6 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.Tracula.in.bvec = obj.Params.Eddy.out.bvecs{1};  
             obj.Params.Tracula.in.bval = obj.Params.Eddy.in.bvals{1};
             obj.Params.Tracula.in.nb0 = 5;
-            obj.Params.Tracula.in.prefix = 'hab';
             
             %IMPLEMENTED BUT FULLY TESTED HENCE COMMENTED BELOW:
             obj.proc_tracula();
