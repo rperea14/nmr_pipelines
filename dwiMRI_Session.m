@@ -913,7 +913,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     wasRun=true;
                 else
                     [aa, bb, cc ] = fileparts(obj.Params.Bet2.out.mask{ii});
-                    fprintf([' File ' bb cc ' is now comple. \n']) ;
+                    fprintf(['File ' bb cc ' is now comple. \n']) ;
                 end
             end
             %Record if some RunBash process is applied
@@ -1952,7 +1952,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     wasRun=true;
                 else
                     [~,bb,cc] = fileparts(obj.Params.Dtifit.out.FA{ii} );
-                    fprintf([ ' File ' bb cc ' is now complete.\n'])
+                    fprintf([ 'File ' bb cc ' is now complete.\n'])
                 end
                 
                 %Outputting RD:
@@ -3383,8 +3383,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
             
         end
-        
-        
         
         %!!!
         %ON THE WORKS:
