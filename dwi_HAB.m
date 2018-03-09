@@ -55,12 +55,10 @@ classdef dwi_HAB < dwiMRI_Session
     
     methods
         function obj = dwi_HAB(sessionname,opt)
-            
             %For compiler code:
             if ~isdeployed()
                 addpath(genpath(obj.object_dir));
             end
-            
             %%%  If opt is passed, then the root Sessions folder will be
             %%%  replaced with this argument.
             if nargin>1
@@ -116,11 +114,8 @@ classdef dwi_HAB < dwiMRI_Session
             else
                 obj.dctl_flag = false ;
             end
-            
-            
             %Continue with CommonPreProc
             obj.CommonPreProc();
-            
             %Continue with CommonPostProc
             obj.CommonPostProc();
             
@@ -134,13 +129,11 @@ classdef dwi_HAB < dwiMRI_Session
         
         function obj = CommonPreProc(obj)
             obj.dosave = true ; %To record process in MAT file
-            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Get DCM2NII File location:
             %
             RunFlag=false; %here, we only allocate variable, not run proc_dcm2nii
             obj.getDCM2nii(RunFlag);
-            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For BET2:
@@ -162,13 +155,6 @@ classdef dwi_HAB < dwiMRI_Session
             
             obj.proc_eddy();
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %To calculate mean motion based on edddy output:
-            obj.Params.EddyMotion.in.movefiles = ['..' filesep '03_EddyMotion']; 
-            obj.Params.EddyMotion.in.fn_eddy = obj.Params.Eddy.out.fn ;
-            
-            obj.proc_get_eddymotion();
-                        
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For B0mean:
@@ -178,6 +164,15 @@ classdef dwi_HAB < dwiMRI_Session
             
             obj.proc_meanb0();
             
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %To calculate mean motion based on edddy output:
+            obj.Params.EddyMotion.in.movefiles = ['..' filesep '03_EddyMotion']; 
+            obj.Params.EddyMotion.in.fn_eddy = obj.Params.Eddy.out.fn ;
+            
+            obj.proc_get_eddymotion();
+                        
+                
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %To generate a mask after Eddy:
             %This step will 1) define a better mask if eddy affected the
@@ -190,15 +185,6 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.MaskAfterEddy.in.fracthrsh = '0.4';
             
             obj.proc_mask_after_eddy();
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Coregistering the T1 to B0:
-            obj.Params.T1toDWI.in.movefiles = './05_T1toDWI/';
-            obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n special character
-            obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
-            
-            obj.proc_T1toDWI();
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -226,16 +212,38 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.GQI.out.export = 'gfa,nqa0,nqa1';
             
             obj.proc_gqi();
-       
+      
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Coregistering the T1 to B0:
+            obj.Params.T1toDWI.in.movefiles = './05_T1toDWI/';
+            obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n special character
+            obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
+            
+            obj.proc_T1toDWI();
+            
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %For AntsReg:
+            obj.Params.AntsReg.in.movefiles = ['..' filesep '06_Ants_CoReg' ];
+            obj.Params.AntsReg.in.run_ants = '/eris/bang/sw/ANTs/ANTS-2.1.0-redhat';
+            obj.Params.AntsReg.in.prefix = 'Antsv201_2_HABn272_';
+            obj.Params.AntsReg.in.fn = obj.Params.Dtifit.out.FA;
+            obj.Params.AntsReg.in.ref = obj.HABn272_meanFA;
+            obj.Params.AntsReg.in.antsparams = ' -d 3 -n 4 -t s -r 4 -p d ' ;
+            
+            obj.proc_antsreg(); 
+            
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For Skeletonize:
             obj.Params.Skeletonize.in.movefiles = ['..' filesep '07_Skeletonize' ];
-            obj.Params.Skeletonize.in.fn = obj.Params.AntsReg.out.fn ;
+            obj.Params.Skeletonize.in.fn = obj.Params.AntsReg.out.fn;
             obj.Params.Skeletonize.in.meanFA = obj.HABn272_meanFA;
             obj.Params.Skeletonize.in.skel_dst = obj.HABn272_meanFA_skel_dst;
             obj.Params.Skeletonize.in.thr = '0.3';
             obj.Params.Skeletonize.in.ref_region = obj.ref_region;
-            obj.Params.Skeletonize.in.prefix = [ 'FSLv509_skelHABn272' ] ; %check fsl versio you are calling!
+            obj.Params.Skeletonize.in.prefix = [ 'FSLv509_skelHABn272' ]; %check fsl versio you are calling!
             
             obj.proc_skeletonize();
             

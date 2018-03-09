@@ -913,7 +913,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     wasRun=true;
                 else
                     [aa, bb, cc ] = fileparts(obj.Params.Bet2.out.mask{ii});
-                    fprintf([' File ' bb cc ' is now comple. \n']) ;
+                    fprintf(['File ' bb cc ' is now comple. \n']) ;
                 end
             end
             %Record if some RunBash process is applied
@@ -1121,12 +1121,15 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.EddyMotion=rmfield(obj.Params.EddyMotion,'history_saved');
                 obj.resave();
             end
-            
         end
         
         function obj = proc_meanb0(obj)
             wasRun=false;
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_MEANB0()';
+            end
             fprintf('\n%s\n', 'PERFORMING PROC_MEANB0():');
+            
             for ii=1:numel(obj.Params.B0mean.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.B0mean.in.fn{ii})
@@ -1134,7 +1137,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 else
                     cur_fn=obj.Params.B0mean.in.fn{ii};
                 end
-                [a b c ] = fileparts(cur_fn);
+                [a, b, c ] = fileparts(cur_fn);
                 outpath=obj.getPath(a,obj.Params.B0mean.in.movefiles);
                 clear outfile
                 %Init variable names:
@@ -1142,21 +1145,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.B0mean.out.fn{ii}= [ outpath 'b0mean_' b c ] ;
                 try
                     %Attempting to create B0means:
-                    [~, to_exec] =system(['which fslroi']);
-                    exec_cmd{ii,1}=[  strtrim(to_exec) ' ' cur_fn ' ' obj.Params.B0mean.out.allb0s{ii} ' 0 ' ...
-                        num2str(obj.Params.B0mean.in.b0_nvols)  ];
                     if exist( obj.Params.B0mean.out.allb0s{ii},'file')==0
+                        [~, to_exec] =system(['which fslroi']);
+                        exec_cmd{:,end+1}=[  strtrim(to_exec) ' ' cur_fn ' ' obj.Params.B0mean.out.allb0s{ii} ' 0 ' ...
+                            num2str(obj.Params.B0mean.in.b0_nvols)  ];
                         fprintf(['\nMerging all b0s from : ' cur_fn]);
-                        obj.RunBash(exec_cmd{ii,1});
+                        obj.RunBash(exec_cmd{end});
                         fprintf('...done');
+                        wasRun=true;
                     end
-                    
-                    [~, to_exec] =system(['which fslmaths']);
-                    exec_cmd{ii,2}=[  strtrim(to_exec) ' ' obj.Params.B0mean.out.allb0s{ii} ...
-                        ' -Tmean ' obj.Params.B0mean.out.fn{ii}];
                     if exist( obj.Params.B0mean.out.fn{ii},'file')==0
+                        [~, to_exec] =system(['which fslmaths']);
+                        exec_cmd{:,end+1}=[  strtrim(to_exec) ' ' obj.Params.B0mean.out.allb0s{ii} ...
+                            ' -Tmean ' obj.Params.B0mean.out.fn{ii}];
                         fprintf(['\n Meaning all b0s from : ' cur_fn]);
-                        obj.RunBash(exec_cmd{ii,2});
+                        obj.RunBash(exec_cmd{end});
                         fprintf('...done \n');
                         wasRun=true;
                     else
@@ -1170,15 +1173,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             
             %Update history if possible
-            if ~isfield(obj.Params.B0mean,'history_saved') || wasRun == true
-                obj.Params.B0mean.history_saved = 0 ;
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.B0mean,'proc_B0Mean()', obj.Params.B0mean.out.allb0s{ii},wasRun,exec_cmd');
+                obj.resave();
             end
-            if obj.Params.B0mean.history_saved == 0
-                obj.Params.B0mean.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.B0mean,'proc_B0Mean', obj.Params.B0mean.out.allb0s{ii},wasRun,exec_cmd);
-            end
-            clear exec_cmd wasRun;
             
+            %REMOVE PREVIOUS ADD-ON IF EXISTS (02/26/2018)
+            if isfield(obj.Params.B0mean,'history_saved')
+                obj.Params.B0mean=rmfield(obj.Params.B0mean,'history_saved');
+                obj.resave();
+            end
         end
         
         function obj = proc_mask_after_eddy(obj)
@@ -1952,7 +1956,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     wasRun=true;
                 else
                     [~,bb,cc] = fileparts(obj.Params.Dtifit.out.FA{ii} );
-                    fprintf([ ' File ' bb cc ' is now complete.\n'])
+                    fprintf([ 'File ' bb cc ' is now complete.\n'])
                 end
                 
                 %Outputting RD:
@@ -2091,11 +2095,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if isfield( obj.Params.GQI,'history_saved')
                obj.Params.GQI=rmfield(obj.Params.GQI,'history_saved');
             end
-            
         end
         
         function obj = proc_skeletonize(obj)
             wasRun=false;
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_SKELETONIZE()';
+            end
             fprintf('\n%s\n', 'PERFORMING PROC_SKELETONIZE():');
             for ii=1:numel(obj.Params.Skeletonize.in.fn)
                 clear cur_fn;
@@ -2104,24 +2110,23 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 else
                     cur_fn=obj.Params.Skeletonize.in.fn{ii};
                 end
-                [a, b, c ] = fileparts(cur_fn);
+                [a, ~, ~] = fileparts(cur_fn);
                 outpath=obj.getPath(a,obj.Params.Skeletonize.in.movefiles);
                 clear outfile
                 obj.Params.Skeletonize.out.fn{ii} = [ outpath obj.Params.Skeletonize.in.prefix '.nii.gz' ];
-                [ ~, to_exec ] = system('which tbss_skeleton');
-                exec_cmd{ii,1}=[  strtrim(to_exec) ' ' ...
-                    ' -i '  obj.Params.Skeletonize.in.meanFA ...
-                    ' -p '  obj.Params.Skeletonize.in.thr ...
-                    ' '  obj.Params.Skeletonize.in.skel_dst ...
-                    ' '  obj.Params.Skeletonize.in.ref_region  ...
-                    ' '  obj.Params.Skeletonize.in.fn{ii} ...
-                    ' '  obj.Params.Skeletonize.out.fn{ii} ];
-                
                 if exist(obj.Params.Skeletonize.out.fn{ii},'file')==0
+                    [ ~, to_exec ] = system('which tbss_skeleton');
+                    exec_cmd{:,end+1}=[  strtrim(to_exec) ' ' ...
+                        ' -i '  obj.Params.Skeletonize.in.meanFA ...
+                        ' -p '  obj.Params.Skeletonize.in.thr ...
+                        ' '  obj.Params.Skeletonize.in.skel_dst ...
+                        ' '  obj.Params.Skeletonize.in.ref_region  ...
+                        ' '  obj.Params.Skeletonize.in.fn{ii} ...
+                        ' '  obj.Params.Skeletonize.out.fn{ii} ];
                     fprintf('\nSkeletonizing to reference... ');
                     tic
                     %Running the object:
-                    obj.RunBash(exec_cmd{ii,1})
+                    obj.RunBash(exec_cmd{end})
                     obj.Params.Skeletonize.out.time_taken=[ toc ' seconds'];
                     fprintf('...done.\n');
                     wasRun=true;
@@ -2129,61 +2134,52 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     [ ~ , bb, cc ] = fileparts(obj.Params.AntsReg.out.fn{ii});
                     fprintf(['The file ' bb cc ' is comeplete.\n']) ;
                 end
-                
-                
                 %NOW OTHER METRICS:
                 obj.Params.Skeletonize.in.FA{ii}  = obj.Params.AntsReg.out.FA{ii} ;
                 obj.Params.Skeletonize.out.FA{ii} = [ outpath obj.Params.Skeletonize.in.prefix '_FA.nii.gz' ];
-                
-                %FA:
-                exec_cmd{ii,2} =[ 'cp ' obj.Params.Skeletonize.out.fn{ii} ' ' obj.Params.Skeletonize.out.FA{ii} ];
-                %RD:
-                [~ , to_exec ] = system('which tbss_skeleton');
-                exec_cmd{ii,3}=[ strtrim(to_exec) ' ' ...
-                    ' -i '  obj.Params.Skeletonize.in.meanFA ...
-                    ' -p '  obj.Params.Skeletonize.in.thr ...
-                    ' '  obj.Params.Skeletonize.in.skel_dst ...
-                    ' '  obj.Params.Skeletonize.in.ref_region  ...
-                    ' '  obj.Params.Skeletonize.in.FA{ii} ...
-                    ' '  strrep(obj.Params.Skeletonize.out.FA{ii},'FA','RD') ...
-                    ' -a ' strrep(obj.Params.Skeletonize.in.FA{ii},'FA','RD')  ];
-                %AxD:
-                exec_cmd{ii,4}=[ strtrim(to_exec) ' ' ...
-                    ' -i '  obj.Params.Skeletonize.in.meanFA ...
-                    ' -p '  obj.Params.Skeletonize.in.thr ...
-                    ' '  obj.Params.Skeletonize.in.skel_dst ...
-                    ' '  obj.Params.Skeletonize.in.ref_region  ...
-                    ' '  obj.Params.Skeletonize.in.FA{ii} ...
-                    ' '  strrep(obj.Params.Skeletonize.out.FA{ii},'FA','AxD') ...
-                    ' -a ' strrep(obj.Params.Skeletonize.in.FA{ii},'FA','AxD')  ];
-                
-                %MD:
-                exec_cmd{ii,5}=[ strtrim(to_exec) ' ' ...
-                    ' -i '  obj.Params.Skeletonize.in.meanFA ...
-                    ' -p '  obj.Params.Skeletonize.in.thr ...
-                    ' '  obj.Params.Skeletonize.in.skel_dst ...
-                    ' '  obj.Params.Skeletonize.in.ref_region  ...
-                    ' '  obj.Params.Skeletonize.in.FA{ii} ...
-                    ' '  strrep(obj.Params.Skeletonize.out.FA{ii},'FA','MD') ...
-                    ' -a ' strrep(obj.Params.Skeletonize.in.FA{ii},'FA','MD')  ];
-                
-                %CHECK IF EXISTS:
                 if exist(obj.Params.Skeletonize.out.FA{ii},'file')==0
                     fprintf('\nSkeletonizing  dtimetrics... ');
-                    fprintf('\n in FA...');
-                    %For FA we move the projected skeletonize into FA
-                    %(as we use this metric for the initial guess)
-                    obj.RunBash(exec_cmd);
-                    fprintf('...done\n');
-                    
-                    %For RD/AxD//MD a -a (alternative metrics) should
-                    %be added...
+                    %FA:
+                    exec_cmd{:,end+1} =[ 'cp ' obj.Params.Skeletonize.out.fn{ii} ' ' obj.Params.Skeletonize.out.FA{ii} ];
+                    fprintf('...FA');
+                    obj.RunBash(exec_cmd{end});
                     %RD:
-                    fprintf('\n in RD...'); obj.RunBash(exec_cmd{ii,3}); fprintf('...done\n');
+                    [~ , to_exec ] = system('which tbss_skeleton');
+                    exec_cmd{:,end+1}=[ strtrim(to_exec) ' ' ...
+                        ' -i '  obj.Params.Skeletonize.in.meanFA ...
+                        ' -p '  obj.Params.Skeletonize.in.thr ...
+                        ' '  obj.Params.Skeletonize.in.skel_dst ...
+                        ' '  obj.Params.Skeletonize.in.ref_region  ...
+                        ' '  obj.Params.Skeletonize.in.FA{ii} ...
+                        ' '  strrep(obj.Params.Skeletonize.out.FA{ii},'FA','RD') ...
+                        ' -a ' strrep(obj.Params.Skeletonize.in.FA{ii},'FA','RD')  ];
+                    fprintf('...RD');
+                    obj.RunBash(exec_cmd{end});
                     %AxD:
-                    fprintf('\n in AxD...'); obj.RunBash(exec_cmd{ii,4}); fprintf('...done\n');
+                    exec_cmd{:,end+1}=[ strtrim(to_exec) ' ' ...
+                        ' -i '  obj.Params.Skeletonize.in.meanFA ...
+                        ' -p '  obj.Params.Skeletonize.in.thr ...
+                        ' '  obj.Params.Skeletonize.in.skel_dst ...
+                        ' '  obj.Params.Skeletonize.in.ref_region  ...
+                        ' '  obj.Params.Skeletonize.in.FA{ii} ...
+                        ' '  strrep(obj.Params.Skeletonize.out.FA{ii},'FA','AxD') ...
+                        ' -a ' strrep(obj.Params.Skeletonize.in.FA{ii},'FA','AxD')  ];
+                    fprintf('...AxD');
+                    obj.RunBash(exec_cmd{end});
+                    
                     %MD:
-                    fprintf('\n in MD...');  obj.RunBash(exec_cmd{ii,5}); fprintf('...done\n');
+                    exec_cmd{:,end+1}=[ strtrim(to_exec) ' ' ...
+                        ' -i '  obj.Params.Skeletonize.in.meanFA ...
+                        ' -p '  obj.Params.Skeletonize.in.thr ...
+                        ' '  obj.Params.Skeletonize.in.skel_dst ...
+                        ' '  obj.Params.Skeletonize.in.ref_region  ...
+                        ' '  obj.Params.Skeletonize.in.FA{ii} ...
+                        ' '  strrep(obj.Params.Skeletonize.out.FA{ii},'FA','MD') ...
+                        ' -a ' strrep(obj.Params.Skeletonize.in.FA{ii},'FA','MD')  ];
+                    fprintf('...MD');
+                    obj.RunBash(exec_cmd{end});
+                    fprintf('...done\n');
+                    wasRun = true;
                 else
                     [~, bb, cc ] = fileparts(obj.Params.AntsReg.out.fn{ii});
                     fprintf(['The file ' bb cc ' is complete.\n']) ;
@@ -2191,16 +2187,15 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 obj.Params.Skeletonize.out.diffmetrics={ 'FA' 'RD' 'AxD' 'MD' } ;
             end
-            
-            
             %Update history if possible
-            if ~isfield(obj.Params.Skeletonize,'history_saved') || wasRun == true
-                obj.Params.Skeletonize.history_saved = 0 ;
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.Skeletonize,'proc_skeletonize', strrep(obj.Params.Skeletonize.in.FA{ii},'FA','MD'),wasRun,exec_cmd');
+                obj.resave();
             end
-            if obj.Params.Skeletonize.history_saved == 0
-                obj.Params.Skeletonize.history_saved = 1 ;
-                
-                obj.UpdateHist_v2(obj.Params.Skeletonize,'proc_skeletonize', strrep(obj.Params.Skeletonize.in.FA{ii},'FA','MD'),wasRun,exec_cmd);
+            %Remove earlier .history_saved variable (previously created) that is not needed anymore
+            if isfield( obj.Params.Skeletonize,'history_saved')
+                obj.Params.Skeletonize=rmfield(obj.Params.Skeletonize,'history_saved');
+                obj.resave();
             end
             clear exec_cmd to_exec wasRun;
         end
@@ -2306,6 +2301,115 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('...done \n');
         end
         
+        
+        %TBSS related:
+        function obj = proc_antsreg(obj)
+            wasRun=false;
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_ANTSREG()';
+            end
+            fprintf('\n%s\n', 'PERFORMING PROC_ANTSREG() :');
+            for ii=1:numel(obj.Params.AntsReg.in.fn)
+                clear cur_fn;
+                if iscell(obj.Params.AntsReg.in.fn{ii})
+                    cur_fn=cell2char(obj.Params.AntsReg.in.fn{ii});
+                else
+                    cur_fn=obj.Params.AntsReg.in.fn{ii};
+                end
+                [a b c ] = fileparts(cur_fn);
+                outpath=obj.getPath(a,obj.Params.AntsReg.in.movefiles);
+                clear outfile
+                obj.Params.AntsReg.out.fn{ii} = [ outpath obj.Params.AntsReg.in.prefix 'Warped.nii.gz' ];
+                if exist(obj.Params.AntsReg.out.fn{ii},'file')==0
+                    % [~, to_exec ] = system('which
+                    %exec_cmd{:,end+1}=[ strtrim(to_exec) ' '  ...
+                    % NOTE: antsRegistrationSyN.sh'); %due to many versions, we
+                    % modify this and call the one we needed explicitly
+                    % with obj.Params.AntsReg.in.run_ants
+                    exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'antsRegistrationSyN.sh  '  ...
+                        obj.Params.AntsReg.in.antsparams ...
+                        ' -f '  obj.Params.AntsReg.in.ref ...
+                        ' -m '  obj.Params.AntsReg.in.fn{ii} ...
+                        ' -o '  [ outpath obj.Params.AntsReg.in.prefix]  ];
+                    fprintf('\nCoregistering Ants to reference... ');
+                    tic
+                    obj.RunBash(exec_cmd{end},44)
+                    obj.Params.AntsReg.out.time_taken=[ toc ' seconds'];
+                    fprintf('...done.\n');
+                    wasRun=true;
+                else
+                    [~, bb,cc ] = fileparts(obj.Params.AntsReg.out.fn{ii} );
+                    fprintf(['In ' obj.sessionname '.The file ' bb cc ' is complete\n']) ;
+                end
+                for tocomment_diffmetrics=1:1
+                    obj.Params.AntsReg.out.FA{ii} = [ outpath obj.Params.AntsReg.in.prefix 'FA.nii.gz' ];
+                     if  exist(obj.Params.AntsReg.out.FA{ii},'file')==0
+                         fprintf('\n Warping dtifit metrics...');
+                         %FA:                         
+                         %[~, to_exec ] = system('which WarpImageMultiTransform');
+                         %exec_cmd{:,end+1}=[ strtrim(to_exec)  ' 3 ' ...
+                         exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'WarpImageMultiTransform 3  '  ...
+                             ' ' obj.Params.Dtifit.out.FA{ii}  ...
+                             ' ' obj.Params.AntsReg.out.FA{ii} ...
+                             ' -R '  obj.Params.AntsReg.in.ref ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat')];
+                         fprintf('FA...');
+                         obj.RunBash(exec_cmd{end});
+                         %RD:
+                         %exec_cmd{:,end+1}=[ strtrim(to_exec) ' 3 ' ...
+                         exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'WarpImageMultiTransform 3  '  ...
+                             ' ' obj.Params.Dtifit.out.RD{ii}  ...
+                             ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','RD') ...
+                             ' -R '  obj.Params.AntsReg.in.ref ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                         fprintf('RD...');
+                         obj.RunBash(exec_cmd{end});
+                         %AxD:
+                         %exec_cmd{:,end+1}=[ strtrim(to_exec) ' 3 ' ...
+                         exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'WarpImageMultiTransform 3  '  ...    
+                             ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ...
+                             ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','AxD') ...
+                             ' -R '  obj.Params.AntsReg.in.ref ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                         fprintf('AxD...');
+                         obj.RunBash(exec_cmd{end});
+                         %MD:
+                         %exec_cmd{:,end+1}=[ strtrim(to_exec) ' 3 ' ...
+                         exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'WarpImageMultiTransform 3  '  ...
+                             ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','MD')  ...
+                             ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','MD') ...
+                             ' -R '  obj.Params.AntsReg.in.ref ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
+                             ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
+                         fprintf('MD...');
+                         obj.RunBash(exec_cmd{end});
+                         fprintf('...done.\n');
+                         wasRun=true;
+                    end
+                end
+            end
+            
+            %Update history if possible
+            if ~isfield(obj.Params.AntsReg,'history_saved') || wasRun == true
+                obj.Params.AntsReg.history_saved = 0 ;
+            end
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.AntsReg,'proc_antsReg()', obj.Params.AntsReg.out.fn{ii},wasRun,exec_cmd');
+                obj.resave();
+            end
+            clear exec_cmd to_exec wasRun;
+            
+            %#########
+            %Remove earlier .history_saved variable (previously create) that is not needed anymore
+            if isfield( obj.Params.AntsReg,'history_saved')
+                obj.Params.AntsReg=rmfield(obj.Params.AntsReg,'history_saved');
+                obj.resave();
+            end
+            
+        end
         
         %!!!
         %DEPRECATED methods: Methods that were not finished and unusable but the code could be recycle 
@@ -2592,101 +2696,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         
-        function obj = deprecated_proc_antsreg(obj)
-            wasRun=false;
-            fprintf('\n%s\n', 'PERFORMING PROC_ANTSREG():');
-            for ii=1:numel(obj.Params.AntsReg.in.fn)
-                clear cur_fn;
-                if iscell(obj.Params.AntsReg.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.AntsReg.in.fn{ii});
-                else
-                    cur_fn=obj.Params.AntsReg.in.fn{ii};
-                end
-                [a b c ] = fileparts(cur_fn);
-                outpath=obj.getPath(a,obj.Params.AntsReg.in.movefiles);
-                clear outfile
-                obj.Params.AntsReg.out.fn{ii} = [ outpath obj.Params.AntsReg.in.prefix 'Warped.nii.gz' ];
-                [~, to_exec ] = system('which antsRegistrationSyN.sh');
-                exec_cmd{ii,1}=[ strtrim(to_exec) ' '  ...
-                    ' -d '  obj.Params.AntsReg.in.dim ...
-                    ' -n '  obj.Params.AntsReg.in.threads ...
-                    ' -t '  obj.Params.AntsReg.in.transform ...
-                    ' -r '  obj.Params.AntsReg.in.radius  ...
-                    ' -p '  obj.Params.AntsReg.in.precision ...
-                    ' -f '  obj.Params.AntsReg.in.ref ...
-                    ' -m '  obj.Params.AntsReg.in.fn{ii} ...
-                    ' -o '  [ outpath obj.Params.AntsReg.in.prefix]  ];
-                
-                if exist(obj.Params.AntsReg.out.fn{ii},'file')==0
-                    fprintf('\nCoregistering Ants to reference... ');
-                    tic
-                    system(exec_cmd{ii,1})
-                    obj.Params.AntsReg.out.time_taken=[ toc ' seconds'];
-                    fprintf('...done.\n');
-                    wasRun=true;
-                else
-                    [~, bb,cc ] = fileparts(obj.Params.AntsReg.out.fn{ii} );
-                    fprintf(['The file ' bb cc ' is complete\n']) ;
-                end
-                for tocomment=1:1
-                    obj.Params.AntsReg.out.FA{ii} = [ outpath obj.Params.AntsReg.in.prefix 'FA.nii.gz' ];
-                    %FA:
-                    [~, to_exec ] = system('which WarpImageMultiTransform');
-                    exec_cmd{ii,2}=[ strtrim(to_exec)  ' 3 ' ...
-                        ' ' obj.Params.Dtifit.out.FA{ii}  ...
-                        ' ' obj.Params.AntsReg.out.FA{ii} ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat')];
-                    %RD:
-                    exec_cmd{ii,3}=[ strtrim(to_exec) ' 3 ' ...
-                        ' ' obj.Params.Dtifit.out.RD{ii}  ...
-                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','RD') ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                    %AxD:
-                    exec_cmd{ii,4}=[ strtrim(to_exec) ' 3 ' ...
-                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L1') ...
-                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','AxD') ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                    %MD:
-                    exec_cmd{ii,5}=[ strtrim(to_exec) ' 3 ' ...
-                        ' ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','MD')  ...
-                        ' ' strrep(obj.Params.AntsReg.out.FA{ii},'FA','MD') ...
-                        ' -R '  obj.Params.AntsReg.in.ref ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped','_1Warp') ...
-                        ' ' strrep(obj.Params.AntsReg.out.fn{ii},'_Warped.nii.gz','_0GenericAffine.mat') ];
-                    
-                    if  exist(obj.Params.AntsReg.out.FA{ii},'file')==0
-                        fprintf('\n Warping dtifit metrics...');
-                        %FA:
-                        obj.RunBash(exec_cmd{ii,2})
-                        %RD:
-                        obj.RunBash(exec_cmd{ii,3})
-                        %AxD:
-                        obj.RunBash(exec_cmd{ii,4});
-                        %MD:
-                        obj.RunBash(exec_cmd{ii,5});
-                        fprintf('...done.\n');
-                        wasRun=true;
-                    end
-                end
-            end
-            
-            %Update history if possible
-            if ~isfield(obj.Params.AntsReg,'history_saved') || wasRun == true
-                obj.Params.AntsReg.history_saved = 0 ;
-            end
-            if obj.Params.AntsReg.history_saved == 0
-                obj.Params.AntsReg.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.AntsReg,'proc_antsReg', obj.Params.AntsReg.out.fn{ii},wasRun,exec_cmd);
-            end
-            clear exec_cmd to_exec wasRun;
-            
-        end
         %%%%%%%%%%%%%%%%%%% END  Pre-Processing Methods %%%%%%%%%%%%%%%%%%
         %------------------------------------------------------------------
         
@@ -5240,9 +5249,22 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             disp('USING SPM:');
             if exist([outpath2 'CoReg.mat'],'file')==0
                 wasRun=true;
-                
-                VG = spm_vol(ref);
-                VF = spm_vol(mov);
+                %READING VG:
+                [ref_dir,ref_bname,ref_ext] = fileparts(ref);
+                if strcmp(ref_ext,'.gz') %assume gzip
+                    system(['gunzip ' ref ] );
+                    VG = spm_vol([ref_dir filesep ref_bname]);
+                else
+                    VG = spm_vol(ref);
+                end
+                %READING VF:
+                [mov_dir,mov_bname,mov_ext] = fileparts(mov);
+                if strcmp(mov_ext,'.gz') %assume gzip
+                    system(['gunzip ' mov ] );
+                    VF = spm_vol([mov_dir filesep mov_bname]);
+                else
+                    VF = spm_vol(mov);
+                end
                 
                 %flags (copy from obj.Params.Coreg.in.spm):
                 flags.sep = [4  2 ] ;
@@ -5255,6 +5277,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 x = spm_coreg(VG,VF,flags);
                 M  = spm_matrix(x);
                 save([outpath2 'CoReg.mat'],'x','M');
+                
+                %TAKING CARE OF GZIP:
+                %VG (mov):
+                if strcmp(mov_ext,'.gz') %gzip now
+                    system(['gzip ' mov_dir filesep mov_bname]);
+                end
+                %VF (mov):
+                if strcmp(ref_ext,'.gz') %gzip now
+                    system(['gzip ' ref_dir filesep ref_bname ] );
+                end
+                
             else
                 load([outpath2 'CoReg.mat']);
             end
