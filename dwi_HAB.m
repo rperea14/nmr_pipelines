@@ -20,7 +20,7 @@ classdef dwi_HAB < dwiMRI_Session
         
         %root directoy where raw data lives:
         object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
-        root_location='/cluster/sperling/HAB/Project1/DWIs_30b700/Sessions/';
+        root_location='/cluster/sperling/HAB/Project1/Sessions/';
         dcm_location='/cluster/sperling/HAB/Project1/DICOM_ARCHIVE/All_DICOMS/';
         session_location='/cluster/sperling/HAB/Project1/Sessions/';
         
@@ -34,7 +34,7 @@ classdef dwi_HAB < dwiMRI_Session
         dependencies_dir='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/';
         %Freesurfer Dependencies:
         init_FS = '/usr/local/freesurfer/stable6';
-        FS_location='/eris/bang/HAB_Project1/FreeSurferv6.0';
+        FS_location='/cluster/bang/HAB_Project1/FreeSurferv6.0';
         %DataCentral (if false, we won't upload)
         dctl_flag = false;
         
@@ -87,6 +87,30 @@ classdef dwi_HAB < dwiMRI_Session
             else
                 donothing='';
                 %obj.setMyParams;
+            end
+            
+            %CHECK CHANGES MADE FROM DWIs_XX/Sessions/DWIs to
+            %Sessions/DWIs:
+            if strcmp(strtrim(['/cluster/sperling/HAB/Project1/DWIs_30b700/Sessions/' obj.sessionname '/DWIs/' ] ),obj.root)
+                display('Changing sessions folder...');
+                %Then apply the mod to cluster...
+                newobj = replaceObjText_v2(obj,{obj.root},{['/cluster/sperling/HAB/Project1/Sessions/' obj.sessionname '/DWIs/']});
+                obj=newobj;
+                obj.objectHome = obj.root ;
+                display(['CHANGING: ''<HAB1>/DWIs_30b700/Sessions/' obj.sessionname  'DWIs'' was changed to ''<HAB1>/Sessions/' obj.sessionname   '/DWIs/'' ']);
+                obj.resave();
+            end
+            
+            
+            %CHECK CHANGES MADE FROM /eris to /cluster
+            if strcmp(strtrim(obj.FS_location),'/eris/bang/HAB_Project1/FreeSurferv6.0')
+                display('Changing eris to cluster folder...');
+                %Then apply the mod to cluster...
+                newobj = replaceObjText_v2(obj,{'eris'},{'cluster'});
+                obj=newobj;
+                obj.objectHome = obj.root ;
+                display('CHANGING: ''eris'' was changes to ''cluster'' ');
+                obj.resave();
             end
             
             %Assign Project ID:
@@ -226,7 +250,7 @@ classdef dwi_HAB < dwiMRI_Session
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For AntsReg:
             obj.Params.AntsReg.in.movefiles = ['..' filesep '06_Ants_CoReg' ];
-            obj.Params.AntsReg.in.run_ants = '/eris/bang/sw/ANTs/ANTS-2.1.0-redhat';
+            obj.Params.AntsReg.in.run_ants = '/cluster/bang/sw/ANTs/ANTS-2.1.0-redhat';
             obj.Params.AntsReg.in.prefix = 'Antsv201_2_HABn272_';
             obj.Params.AntsReg.in.fn = obj.Params.Dtifit.out.FA;
             obj.Params.AntsReg.in.ref = obj.HABn272_meanFA;
@@ -299,7 +323,7 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
                 filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ] ;
             
-            %IF CODE LIVES IN /eris/**, 
+            %IF CODE LIVES IN /cluster/**, 
             obj.proc_getFreeSurfer();
              
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -408,8 +432,8 @@ classdef dwi_HAB < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to average value on previous studies in connectome!
-                obj.trkland_fx(); 
-                obj.resave();
+               % obj.trkland_fx(); 
+               
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %TRKLAND_HIPPOCING:

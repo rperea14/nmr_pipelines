@@ -1365,8 +1365,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Running the script:
                 obj.RunBash(exec_cmd{end},44); % '44' codes for seeing the output!
                 %THE PREVIOUS LINE OF CODE MAY NOT WORK DUE TO PERMISSION
-                %ERRORS READING /eris/* folder. To see if this is not the
-                %error try a simple `ls` command (e.g.  ls /eris/bang/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
+                %ERRORS READING /cluster/* folder. To see if this is not the
+                %error try a simple `ls` command (e.g.  ls /cluster/bang/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
                 obj.Params.FreeSurfer.out.timelapsed_mins=[ 'FreeSurfer took ' toc/60 ' minutes to complete'];
                 disp('Done with FreeSurfer');
                 wasRun=true;
@@ -1999,7 +1999,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     [~, nrow ]=system(['cat ' obj.Params.GQI.in.bvecs{ii} ' | wc -l | awk  '' {print $1} '' '  ] );
                     nrow=str2num(nrow);
                     if nrow == 3 ; %then its in column form, change it...
-                        exec_cmd{:,end+1}=[ '/eris/bang/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
+                        exec_cmd{:,end+1}=[ '/cluster/bang/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
                             ' > ' temp_bvecs{ii}];
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
@@ -2716,13 +2716,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Tracula.out.dcmirc = [outpath 'dcmrirc.' obj.projectID ] ;
                 
                 %Creating a symbolic link due to file mount space concerns
-                %(Change this if /eris/** is replaced)
+                %(Change this if /cluster/** is replaced)
                 if strcmp(obj.projectID,'HAB')
                     replaced_outpath = outpath ;
-                    outpath = [ '/eris/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
+                    outpath = [ '/cluster/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
                     exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
                     obj.RunBash(exec_cmd{:,end});
-                    if exist([replaced_outpath filesep obj.sessionname]) == 0
+                    if exist([replaced_outpath  obj.sessionname]) == 0
                         exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
                         obj.RunBash(exec_cmd{:,end});
                     end
@@ -3134,7 +3134,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Check to see that all filepaths/nii.gzs exist in the
                 %in_txtfname:
                 fileID=fopen(in_txtfname);
-                %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+                %TODEBUG fileID=fopen('/cluster/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
                 tmp_txtscan=textscan(fileID,'%s');
                 list_MASKS=tmp_txtscan{1};
                 for ii=1:numel(list_MASKS)
@@ -4434,7 +4434,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %
             %                 %Check to see that all filepaths and image exist in in_txtfname
             %                 fileID=fopen(in_txtfname);
-            %                 %TODEBUG fileID=fopen('/eris/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+            %                 %TODEBUG fileID=fopen('/cluster/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
             %                 tmp_txtscan=textscan(fileID,'%s');
             %                 list_MASKS=tmp_txtscan{1};
             %                 for ii=1:numel(list_MASKS)
