@@ -11,21 +11,21 @@ classdef dwi_ADRC < dwiMRI_Session
         %Check protected method initProperties()
         %root directoy where raw data lives:
         object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
-        session_location='/eris/bang/ADRC/Sessions/';
-        dcm_location = '/eris/bang/ADRC/DICOM_Archive/';
+        session_location='/cluster/bang/ADRC/Sessions/';
+        dcm_location = '/cluster/bang/ADRC/DICOM_Archive/';
         gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
-        dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
+        dependencies_dir='/cluster/bang/ADRC/Scripts/DEPENDENCIES/';
         %FreeSurfer Dependencies
-        FS_location='/eris/bang/ADRC/FreeSurferv6.0/';
+        FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
         fx_template_dir='/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
         %Dep properties:
-        sh_gradfile=['/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
+        sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
-        b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
-        col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+        b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
+        init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
     end
     
     methods
@@ -71,6 +71,17 @@ classdef dwi_ADRC < dwiMRI_Session
                 donothing=1;
             end
             
+            
+            %CHECK CHANGES MADE FROM /eris to /cluster
+            if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
+                display('Changing eris to cluster folder...');
+                %Then apply the mod to cluster...
+                newobj = replaceObjText_v2(obj,{'eris'},{'cluster'});
+                obj=newobj;
+                obj.objectHome = obj.root ;
+                display('CHANGING: ''eris'' was changed to ''cluster'' ');
+                obj.resave();
+            end
             %Init project ID
             obj.projectID='ADRC';
             
@@ -320,7 +331,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Params.Tracula.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
                 obj.Params.Tracula.in.nb0 = 28;
                 
-                obj.proc_tracula();
+            %    obj.proc_tracula();
             end
             
             %TRKLAND RELATED - FX:
@@ -339,7 +350,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
-                obj.trkland_fx();
+               % obj.trkland_fx();
             end
             
             %FOR MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
@@ -378,7 +389,7 @@ classdef dwi_ADRC < dwiMRI_Session
                         %            obj.Params.WMLs2DWI.in.movefiles = ['..' filesep 'post_WML2DWI' ];
                         %            obj.Params.WMLs2DWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
                         %
-                        %            obj.Params.WMLs2DWI.in.dir = '/eris/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/' ;
+                        %            obj.Params.WMLs2DWI.in.dir = '/cluster/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/' ;
                         %            obj.Params.WMLs2DWI.in.FLAIR = [obj.Params.WMLs2DWI.in.dir 'm' obj.sessionname '_FLAIR.nii' ];
                         %            obj.Params.WMLs2DWI.in.WMLprobmap = [obj.Params.WMLs2DWI.in.dir 'ples_lpa_m' ...
                         %                obj.sessionname '_FLAIR.nii' ];

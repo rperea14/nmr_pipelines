@@ -109,7 +109,7 @@ classdef dwi_HAB < dwiMRI_Session
                 newobj = replaceObjText_v2(obj,{'eris'},{'cluster'});
                 obj=newobj;
                 obj.objectHome = obj.root ;
-                display('CHANGING: ''eris'' was changes to ''cluster'' ');
+                display('CHANGING: ''eris'' was changed to ''cluster'' ');
                 obj.resave();
             end
             
