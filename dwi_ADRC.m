@@ -131,6 +131,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %01_DropVols
             % For proc_dropvols
             obj.Params.DropVols.in.movefiles=['..' filesep '01_DropVols' filesep ];
+            obj.Params.DropVols.in.prefix='dv_';
             obj.Params.DropVols.in.tmin='1';
             obj.Params.DropVols.in.tsize='67';
             obj.Params.DropVols.in.fn=obj.rawfiles;
@@ -182,11 +183,11 @@ classdef dwi_ADRC < dwiMRI_Session
             [ tmpa, tmpb ] = system('whoami ');
             obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
             
-            obj.proc_getFreeSurfer();
+%            obj.proc_getFreeSurfer();
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %T1_02_Getting the necessary values from FreeSurfer's output:
-            obj.getdata_FreeSurfer();
+%            obj.getdata_FreeSurfer();
             
             
             
@@ -255,7 +256,9 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.CoRegMultiple.in.b0 = obj.Params.MaskAfterEddy.in.b0;
             obj.Params.CoRegMultiple.in.bvals = obj.Params.Eddy.in.bvals;
             obj.Params.CoRegMultiple.in.bvecs = obj.Params.Eddy.out.bvecs;
-            
+            obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+            obj.b0MoCo_rotate_bvecs_sh ='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh';
+            obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
             obj.Params.CoRegMultiple.in.ref_iteration = 2; % All images will be registered to this iteration (in ADRC, 7p5_set1, index 1 is for 2p7_set4!)
             
             

@@ -2815,6 +2815,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %TRKLAND related
         function obj = trkland_fx(obj)
             wasRun = false ;
+            %SINCE I ACCESS OTHER METHODS WIHTIN THIS METHOD, WE HAVE THE VARIABLE BELOW:
+            obj.Trkland.fx.wasRun = false;
+            
             fprintf('\n%s\n', 'PERFORMING TRKLAND FORNIX: TRKLAND_FX():');
             if ~exist('exec_cmd','var')
                 exec_cmd{:}='#INIT proc_trkland_fx()_step1 exec_cmd:';
@@ -3071,33 +3074,37 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %CLEAN UP OF THE TRACT, EXTRACTING CENTERLINE AND GET DATA
             %For left side (centerline approach):
             obj.applyTRKLAND('fx','lh');
+            
             obj.getdataTRKLAND('fx','lh');%getting the lh data
             %For right side (centerline approach):
             obj.applyTRKLAND('fx','rh');
+            
             obj.getdataTRKLAND('fx','rh');%getting the rh data
             
             %Update history if possible
             exec_cmd{:,end+1} = 'THIS COMMAND HISTORY DOES NOT SHOW THE CLEANING PROCESSES.';
             exec_cmd{:,end+1} = 'REFER TO obj.applyTRKLAND(''fx'',''lh/rh'') and  obj.getdataTRKLAND(''fx'',''lh/rh'') FOR ADDITIONAL INFORMATION.';
             
-            if ~isfield(obj.Trkland.fx,'history_saved') || wasRun == true
-                obj.Trkland.fx.history_saved = 0 ;
-            end
-            if obj.Trkland.fx.history_saved == 0
-                obj.Trkland.fx.history_saved = 1 ;
+            if wasRun == true || obj.Trkland.fx.wasRun
                 if exist(obj.Trkland.fx.QCfile_lh,'file') == 2
                     obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_lh', obj.Trkland.fx.QCfile_lh, wasRun,exec_cmd');
                 elseif exist(obj.Trkland.fx.QCfile_rh,'file') == 2
-                    obj.UpdateHist_v2(obj.Trkland.fx,'EXCL_rh: proc_trkland_fx() - excl_rh', obj.Trkland.fx.QCfile_rh, wasRun,exec_cmd');
+                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_rh', obj.Trkland.fx.QCfile_rh, wasRun,exec_cmd');
                 elseif exist(obj.Trkland.fx.QCfile_bil,'file') == 2
-                    obj.UpdateHist_v2(obj.Trkland.fx,'EXCL_bil: proc_trkland_fx() - excl_bil', obj.Trkland.fx.QCfile_bil, wasRun,exec_cmd');
+                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_bil', obj.Trkland.fx.QCfile_bil, wasRun,exec_cmd');
                 else
-                     obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx()', obj.Trkland.fx.out.clineFAHighFA_lh, wasRun,exec_cmd');
+                     obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx()', obj.Trkland.fx.out.clineFAHighFA_rh, wasRun,exec_cmd');
                 end
+                obj.resave();
             end
             clear exec_cmd to_exec wasRun;
         end        
      
+        function obj = trkland_fx_nonFA(obj,diffM)
+            obj.applyTRKLAND_nonFA(diffM, 'fx','lh');
+            obj.applyTRKLAND_nonFA(diffM, 'fx','rh');
+            obj.resave();
+        end
         
         %fMRI or any txt_with masks to probabilistic tracking (it will
         %generate a shell script to run it from SHELL):
@@ -4834,18 +4841,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %matlab environment with the newer value:
                             obj.Trkland.Trks = rmfield(obj.Trkland.Trks,[TOI '_trimmedC4_' HEMI]);
                         end
-                        
-                        %If the file trk is not a field in the MATLAB environment, populate :
-                        if ~isfield(obj.Trkland.Trks,[TOI '_trimmedC4_' HEMI])
-                            fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_trimmedC4_' HEMI '...']);
-                            obj.Trkland.Trks.([TOI '_trimmedC4_' HEMI]) = rotrk_read(obj.Trkland.(TOI).out.([ 'trimmedC4_' HEMI]),obj.sessionname,obj.Params.Dtifit.out.FA{end},[TOI '_trimmedC4_' HEMI]);
-                            obj.addDTI([TOI '_trimmedC4_' HEMI]);
-                            obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                            fprintf('done\n');
-                        end
+                        obj.repopulateTRKLAND(obj,[TOI '_trimmedC4_' HEMI],TOI,HEMI);
+
+                        %remove field for matlab environment to re-populate:
+                        obj.Trkland.Trks=rmfield(obj.Trkland.Trks,[ TOI '_trimmedC4_' HEMI]);
                         %~~~~~~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMEDC4 PROCESSS
                     end
-                    
+                    %TRIMMED PROCESSING STARTS HERE:
                     if strcmp(TOI,'fx')
                         %Select the HDorff centerline(first pass)
                         obj.Trkland.Trks.([ TOI '_clineinit_' HEMI ]) = rotrk_centerline(obj.Trkland.Trks.([ TOI '_trimmedC4_' HEMI ]),'hausdorff');
@@ -4862,18 +4864,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %Saving trimmed and trimmed_clean trks:
                     rotrk_write(obj.Trkland.Trks.([TOI '_trimmedclean_' HEMI ]).header,obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]).sstr,obj.Trkland.(TOI).out.(['trimmedclean_' HEMI ]));
                     obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                    
-                    %empty field for MATLAB environment:
-                    obj.Trkland.Trks = rmfield(obj.Trkland.Trks,[TOI '_trimmedclean_' HEMI]);
                 end
-                %If the file trk is empty:
-                if ~isfield(obj.Trkland.Trks,[TOI '_trimmedclean_' HEMI])
-                    fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_trimmedclean_' HEMI ' ...']);
-                    obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]) = rotrk_read(obj.Trkland.(TOI).out.(['trimmedclean_' HEMI]),obj.sessionname,obj.Params.Dtifit.out.FA{end},[TOI '_trimmedclean_' HEMI]);
-                    obj.addDTI([ TOI '_trimmedclean_' HEMI]);
-                    obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                    fprintf('done\n');
-                end
+                obj.repopulateTRKLAND([TOI '_trimmedclean_' HEMI],TOI,HEMI);
                 %~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMEDCLEAN PROCESSS
                 
                 %START TRIMMEDCLEAN_INTERP PROCESS:~~~~~~~~~~~~~~~~
@@ -4883,18 +4875,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         obj.Trkland.Trks.([TOI '_trimmedclean_interp_' HEMI ]).sstr,obj.Trkland.(TOI).out.(['trimmedclean_interp_' HEMI ]));
                     obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
                     
-                    %remove field for matlab environment to populate:
+                    %remove field for matlab environment to re-populate:
                     obj.Trkland.Trks=rmfield(obj.Trkland.Trks,[ TOI '_trimmedclean_interp_' HEMI]);
                 end
-                
-                %If the file trk is empty:
-                if ~isfield(obj.Trkland.Trks,[ TOI '_trimmedclean_interp_' HEMI])
-                    fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_trimmedclean_interp_' HEMI ' ...']);
-                    obj.Trkland.Trks.([TOI '_trimmedclean_interp_' HEMI ]) = rotrk_read(obj.Trkland.(TOI).out.(['trimmedclean_interp_' HEMI ]),obj.sessionname,obj.Params.Dtifit.out.FA{end},[TOI '_trimmedclean_' HEMI]);
-                    obj.addDTI([ TOI '_trimmedclean_interp_' HEMI]);
-                    obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                    fprintf('done\n');
-                end
+                obj.repopulateTRKLAND([ TOI '_trimmedclean_interp_' HEMI],TOI,HEMI);
                 %~~~~~~~~~~~~~~~END OF TRIMMEDCLEAN_INTERP PROCESS
                 
                 %START SELECTING HIGHFA PROCESS:~~~~~~~~~~~~~~~~~~~
@@ -4908,15 +4892,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %remove field for matlab envinronment to repopulate
                     obj.Trkland.Trks=rmfield(obj.Trkland.Trks,[TOI '_clineFAHighFA_' HEMI]);
                 end
-                %If the file trk is empty:
-                if ~isfield(obj.Trkland.Trks,[TOI '_clineFAHighFA_' HEMI])
-                    fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_clineFAHighFA_' HEMI ' ...']);
-                    obj.Trkland.Trks.([ TOI '_clineFAHighFA_' HEMI ]) = rotrk_read(obj.Trkland.(TOI).out.(['clineFAHighFA_' HEMI ]), ...
-                        obj.sessionname,obj.Params.Dtifit.out.FA{end},[ TOI '_clineFAHighFA_' HEMI]);
-                    obj.addDTI([ TOI '_clineFAHighFA_' HEMI]);
-                    obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
-                    fprintf('done\n');
-                end
+                obj.repopulateTRKLAND([TOI '_clineFAHighFA_' HEMI],TOI,HEMI);
                 %~~~~~~~~~~~~~~~~~~~END OF SELECTING HIGHFA PROCESS
                 
                 %START SELECTING MOD-HAUSDORFF PROCESS:~~~~~~~~~~~~
@@ -4929,8 +4905,23 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %Remove MATLAB environment field to repopulate:
                     obj.Trkland.Trks=rmfield(obj.Trkland.Trks,[TOI '_clineHDorff_' HEMI]);
                 end
+                
+                %CANNOT USE --> obj.repopulateTRKLAND([TOI '_clineHDorff_' HEMI],TOI,HEMI);
+                %BECAUSETHERE ARE ISSUES WITH NAMING CONVENTION (TOFIX)
+                %_clineHDorff_ vs. _clineFAHDorff_ 
+                %DO IT SEPARATELY!
                 %If the file trk is empty:
+                %Two conditions: 1) if the file trk is not a field:
                 if ~isfield(obj.Trkland.Trks,[TOI '_clineHDorff_' HEMI])
+                    fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_clineHDorff_' HEMI ' ...']);
+                    obj.Trkland.Trks.([TOI '_clineHDorff_' HEMI]) = rotrk_read(obj.Trkland.(TOI).out.(['clineFAHDorff_' HEMI ]), ...
+                        obj.sessionname,obj.Params.Dtifit.out.FA{end},[ TOI '_clineHDorff_' HEMI ]);
+                    obj.addDTI([ TOI '_clineHDorff_' HEMI]);
+                    obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
+                    fprintf('done\n');
+                end
+                %Two conditions: 2) if the file trk.headaer is empty:
+                if ~isempty(obj.Trkland.Trks.([TOI '_clineHDorff_' HEMI]).header)
                     fprintf(['\nPopulating obj.Trkland.Trks.' TOI '_clineHDorff_' HEMI ' ...']);
                     obj.Trkland.Trks.([TOI '_clineHDorff_' HEMI]) = rotrk_read(obj.Trkland.(TOI).out.(['clineFAHDorff_' HEMI ]), ...
                         obj.sessionname,obj.Params.Dtifit.out.FA{end},[ TOI '_clineHDorff_' HEMI ]);
@@ -4955,6 +4946,48 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf(['INFORMATION FOR obj.Trkland_' TOI '() - ' HEMI ' - IS COMPLETE. NOTHING TO DO.\n'])
             end
         end
+        
+        function obj = applyTRKLAND_nonFA(obj,diffM, TOI,HEMI)
+            if strcmp(diffM,'MD') || strcmp(diffM,'AxD') || strcmp(diffM,'RD')
+                TRK_NAME = ['clineLow' diffM '_' HEMI ];
+                lowFLAG=true; %Flagging for the naming convention...
+            else
+                TRK_NAME = ['clineHigh' diffM '_' HEMI ];
+                lowFLAG=false;
+            end
+            if exist(obj.Trkland.(TOI).QCfile_bil,'file') == 0
+                if exist(obj.Trkland.(TOI).(['QCfile_' HEMI]),'file') == 0 
+                    %INIT output trk.gz file:
+                    obj.Trkland.(TOI).out.(TRK_NAME) = [ obj.Trkland.root  'trkk_' TOI '_' TRK_NAME '.trk.gz'];
+                    %START SELECTING HIGH-NONDIFF PROCESS:~~~~~~~~~~~~~~~~~~~
+                    if exist(obj.Trkland.(TOI).out.(TRK_NAME),'file') == 0
+                        obj.addDTI([ TOI '_trimmedclean_interp_' HEMI]);
+                        %Method to use (Either low_sc or high_sc, depending on the metric of interest):
+                        if lowFLAG == true
+                            obj.Trkland.Trks.([ TOI '_' TRK_NAME]) = rotrk_centerline(obj.Trkland.Trks.([ TOI '_trimmedclean_interp_' HEMI]), 'low_sc',diffM);
+                            rotrk_write(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).header, ...
+                                obj.Trkland.Trks.([ TOI '_' TRK_NAME]).sstr,[ obj.Trkland.root  'trkk_' TOI '_' TRK_NAME '.trk.gz']);
+                        else
+                            obj.Trkland.Trks.([ TOI '_' TRK_NAME]) = rotrk_centerline(obj.Trkland.Trks.([ TOI '_trimmedclean_interp_' HEMI]), 'high_sc',diffM);
+                            rotrk_write(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).header, ...
+                                obj.Trkland.Trks.([ TOI '_' TRK_NAME]).sstr,[ obj.Trkland.root  'trkk_' TOI '_' TRK_NAME '.trk.gz']);
+                        end
+                        obj.repopulateTRKLAND(TRK_NAME,TOI,HEMI);
+                        %Adding data:
+                        match_diffM=find(ismember(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).header.scalar_IDs(:),diffM));
+                        obj.Trkland.(TOI).data.(TRK_NAME) =  mean(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).unique_voxels(:,3+match_diffM(1)));
+                    end
+                else
+                    obj.Trkland.(TOI).data.(TRK_NAME) = [] ; 
+                end
+            else
+                obj.Trkland.(TOI).data.(TRK_NAME) = [] ; 
+            end
+
+            %~~~~~~~~~~~~~~~~~~~END OF SELECTING HIGHFA PROCESS
+        end
+        
+        
         function obj = getdataTRKLAND(obj,TOI,HEMI)
             if  obj.Trkland.(TOI).data.([HEMI '_done']) ~= 1
                 %Get data for all interesting values:
@@ -5000,6 +5033,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 clear data_trks
                 obj.Trkland.(TOI).data.([HEMI '_done']) = 1;
+                obj.Trkland.(TOI).wasRun = true ; 
             end
         end
         function obj = clearTRKLANDdata(obj,TOI,HEMI)
@@ -5045,7 +5079,25 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
         end
-      
+        function obj = repopulateTRKLAND(obj,TRK_NAME,TOI,HEMI)
+            %Two conditions: 1) if the file trk is not a field:
+            if ~isfield(obj.Trkland.Trks,TRK_NAME)
+                fprintf(['\nPopulating obj.Trkland.Trks.' TRK_NAME ' ...']);
+                obj.Trkland.Trks.([TOI '_' TRK_NAME]) = rotrk_read(obj.Trkland.(TOI).out.(strrep(TRK_NAME,[ TOI '_'],'')),obj.sessionname,obj.Params.Dtifit.out.FA{end},TRK_NAME);
+                obj.addDTI([TOI '_' TRK_NAME]);
+                obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
+                fprintf('done\n');
+            end
+            
+            %Two conditions: 2) if the file trk.headaer is empty:
+            if isempty(obj.Trkland.Trks.([TOI '_' TRK_NAME]).header)
+                fprintf(['\nPopulating obj.Trkland.Trks.' TRK_NAME ' ...']);
+                obj.Trkland.Trks.([TOI '_' TRK_NAME]) = rotrk_read(obj.Trkland.(TOI).out.(strrep(TRK_NAME,[ TOI '_'],'')),obj.sessionname,obj.Params.Dtifit.out.FA{end},TRK_NAME);
+                obj.addDTI([TOI '_' TRK_NAME]);
+                obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
+                fprintf('done\n');
+            end
+        end
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)

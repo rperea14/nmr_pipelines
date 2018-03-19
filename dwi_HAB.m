@@ -432,7 +432,7 @@ classdef dwi_HAB < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to average value on previous studies in connectome!
-               % obj.trkland_fx(); 
+                obj.trkland_fx(); 
                
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
