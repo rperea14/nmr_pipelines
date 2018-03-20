@@ -24,7 +24,7 @@ classdef dwi_ADRC < dwiMRI_Session
         sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
         b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        %TORM--> REPLACED BY PROPERTY ABOVE and UNUSED: init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
         col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
     end
     
@@ -155,7 +155,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.FreeSurfer.init_location = obj.init_FS;
             obj.Params.FreeSurfer.dir = obj.FS_location;
             obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
-                filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ];
+                obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ];
             %T1_01_For FreeSurfer Segmentation (needed for segmenting ROIs to diffusion space)
             %Retrieving a T1 scan:
             [~ , obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep 'rawT1_HCPF_1mm_001.nii | head -1' ]);
@@ -257,7 +257,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.CoRegMultiple.in.bvals = obj.Params.Eddy.in.bvals;
             obj.Params.CoRegMultiple.in.bvecs = obj.Params.Eddy.out.bvecs;
             obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-            obj.b0MoCo_rotate_bvecs_sh ='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh';
+            obj.b0MoCo_rotate_bvecs_sh ='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh';
             obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
             obj.Params.CoRegMultiple.in.ref_iteration = 2; % All images will be registered to this iteration (in ADRC, 7p5_set1, index 1 is for 2p7_set4!)
             
@@ -321,7 +321,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_aparc2009.txt' ];
             obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_hippolabels_bil.txt' ];
             
-            obj.proc_FS2dwi();
+            %obj.proc_FS2dwi();
         end
         function obj = CommonPostProc(obj)
             %TRACULA RELATED:

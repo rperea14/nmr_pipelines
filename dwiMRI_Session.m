@@ -1780,11 +1780,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %*.bvecs:
                             %% from rows 3-by-XX to cols XX-by-3:
                             out_tmp_bvecs{ii}= [outpath 'tmp_bvecs_iter' num2str(ii) ] ;
-                            exec_cmd{:,end+1}=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
-                                ' > ' out_tmp_bvecs{ii}  ]);
-                            obj.RunBash(exec_cmd{end});
-                            wasRun=true;
-                            %Extracing the rotation matrix only using
+                            if exist(out_tmp_bvecs{ii},'file') == 0
+                                exec_cmd{:,end+1}=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
+                                    ' > ' out_tmp_bvecs{ii}  ]);
+                                obj.RunBash(exec_cmd{end});
+                                wasRun=true;
+                            end
+                            %Extracting the rotation matrix only using
                             %avscale (this will be used for modifying
                             %the bvecs output)
                             tmp_rot_avscale{ii}= [outpath 'tmp_rotonly_iter' num2str(ii) ] ;
@@ -1795,7 +1797,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 wasRun=true;
                             end
                             %Now apply rotation values to the newer bvecs:
-                            fprintf('Applying rotation only .mat files to bvecs..');
+                            fprintf([' applying rotation only .mat files to bvecs..(iter:' num2str(ii) ') ']);
                             TEMP_BVEC{ii} = load(out_tmp_bvecs{ii});
                             %remove cause it will be replaced:
                             if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 2
@@ -4949,10 +4951,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         function obj = applyTRKLAND_nonFA(obj,diffM, TOI,HEMI)
             if strcmp(diffM,'MD') || strcmp(diffM,'AxD') || strcmp(diffM,'RD')
-                TRK_NAME = ['clineLow' diffM '_' HEMI ];
+                TRK_NAME = ['nonFA_clineLow' diffM '_' HEMI ];
                 lowFLAG=true; %Flagging for the naming convention...
             else
-                TRK_NAME = ['clineHigh' diffM '_' HEMI ];
+                TRK_NAME = ['nonFA_clineHigh' diffM '_' HEMI ];
                 lowFLAG=false;
             end
             if exist(obj.Trkland.(TOI).QCfile_bil,'file') == 0
@@ -4972,7 +4974,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             rotrk_write(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).header, ...
                                 obj.Trkland.Trks.([ TOI '_' TRK_NAME]).sstr,[ obj.Trkland.root  'trkk_' TOI '_' TRK_NAME '.trk.gz']);
                         end
-                        obj.repopulateTRKLAND(TRK_NAME,TOI,HEMI);
+                        obj.repopulateTRKLAND([TOI '_' TRK_NAME],TOI,HEMI);
                         %Adding data:
                         match_diffM=find(ismember(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).header.scalar_IDs(:),diffM));
                         obj.Trkland.(TOI).data.(TRK_NAME) =  mean(obj.Trkland.Trks.([ TOI '_' TRK_NAME]).unique_voxels(:,3+match_diffM(1)));
@@ -4998,34 +5000,37 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %occurs between local function and updated function in
                     %Matlab2017a ]
                     splits=strsplit(data_trks{ii},'_');
-                    for jj=1:numel(splits)
-                        if strcmp(splits(jj),HEMI)
-                            if ~strcmp(data_trks{ii},'QC') %NOT SURE WHY THIS QC variable exists...easy fix for now.
-                                if exist(obj.Trkland.(TOI).out.(data_trks{ii}),'file') ~= 0
-                                    %if isfield(obj.Trkland.Trks.([])
-                                    %Reading and adding scalars:
-                                    temp_read = rotrk_read(obj.Trkland.(TOI).out.(data_trks{ii}),'no_warning',obj.Params.Dtifit.out.FA{end});
-                                    temp_read = rotrk_add_sc(temp_read ,obj.Params.Dtifit.out.FA{end} , 'FA');
-                                    temp_read = rotrk_add_sc(temp_read ,strrep(obj.Params.Dtifit.out.FA{end},'FA','RD') , 'RD');
-                                    temp_read = rotrk_add_sc(temp_read ,strrep(obj.Params.Dtifit.out.FA{end},'FA','AxD') , 'AxD');
-                                    temp_read = rotrk_add_sc(temp_read ,strrep(obj.Params.Dtifit.out.FA{end},'FA','MD') , 'MD');
-                                    
-                                    
-                                    fprintf(['\ntrkland_' TOI '(): Getting ' TOI '_data for ' data_trks{ii} '...'] ) ;
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_vol' ])  = temp_read.num_uvox;
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_FA' ]) = mean(temp_read.unique_voxels(:,4));
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_RD' ]) = mean(temp_read.unique_voxels(:,5));
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_AxD' ]) = mean(temp_read.unique_voxels(:,6));
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_MD' ] ) = mean(temp_read.unique_voxels(:,7));
-                                    fprintf('done\n');
-                                else
-                                    fprintf(['\ntrkland_' TOI '():  No filename found for ' data_trks{ii} '...'] ) ;
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_vol' ]) = [];
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_FA' ]) = [];
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_RD' ]) = [];
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_AxD' ]) = [];
-                                    obj.Trkland.(TOI).data.([ (data_trks{ii}) '_MD' ] ) = [];
-                                    
+                    %First, do not extract all values for nonFA out files:
+                    if ~strcmp(splits(1),'nonFA')
+                        for jj=1:numel(splits)
+                            if strcmp(splits(jj),HEMI)
+                                if ~strcmp(data_trks{ii},'QC') %NOT SURE WHY THIS QC variable exists...easy fix for now.
+                                    if exist(obj.Trkland.(TOI).out.(data_trks{ii}),'file') ~= 0
+                                        %if isfield(obj.Trkland.Trks.([])
+                                        %Reading and adding scalars:
+                                        temp_read = rotrk_read(obj.Trkland.(TOI).out.(data_trks{ii}),'no_warning',obj.Params.Dtifit.out.FA{end});
+                                        temp_read = rotrk_add_sc(temp_read ,obj.Params.Dtifit.out.FA{end} , 'FA');
+                                        temp_read = rotrk_add_sc(temp_read ,strrep(obj.Params.Dtifit.out.FA{end},'FA','RD') , 'RD');
+                                        temp_read = rotrk_add_sc(temp_read ,strrep(obj.Params.Dtifit.out.FA{end},'FA','AxD') , 'AxD');
+                                        temp_read = rotrk_add_sc(temp_read ,strrep(obj.Params.Dtifit.out.FA{end},'FA','MD') , 'MD');
+                                        
+                                        
+                                        fprintf(['\ntrkland_' TOI '(): Getting ' TOI '_data for ' data_trks{ii} '...'] ) ;
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_vol' ])  = temp_read.num_uvox;
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_FA' ]) = mean(temp_read.unique_voxels(:,4));
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_RD' ]) = mean(temp_read.unique_voxels(:,5));
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_AxD' ]) = mean(temp_read.unique_voxels(:,6));
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_MD' ] ) = mean(temp_read.unique_voxels(:,7));
+                                        fprintf('done\n');
+                                    else
+                                        fprintf(['\ntrkland_' TOI '():  No filename found for ' data_trks{ii} '...'] ) ;
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_vol' ]) = [];
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_FA' ]) = [];
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_RD' ]) = [];
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_AxD' ]) = [];
+                                        obj.Trkland.(TOI).data.([ (data_trks{ii}) '_MD' ] ) = [];
+                                        
+                                    end
                                 end
                             end
                         end
@@ -5083,17 +5088,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Two conditions: 1) if the file trk is not a field:
             if ~isfield(obj.Trkland.Trks,TRK_NAME)
                 fprintf(['\nPopulating obj.Trkland.Trks.' TRK_NAME ' ...']);
-                obj.Trkland.Trks.([TOI '_' TRK_NAME]) = rotrk_read(obj.Trkland.(TOI).out.(strrep(TRK_NAME,[ TOI '_'],'')),obj.sessionname,obj.Params.Dtifit.out.FA{end},TRK_NAME);
-                obj.addDTI([TOI '_' TRK_NAME]);
+                obj.Trkland.Trks.(TRK_NAME) = rotrk_read(obj.Trkland.(TOI).out.(strrep(TRK_NAME,[ TOI '_'],'')),obj.sessionname,obj.Params.Dtifit.out.FA{end},TRK_NAME);
+                obj.addDTI(TRK_NAME);
                 obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
                 fprintf('done\n');
             end
             
             %Two conditions: 2) if the file trk.headaer is empty:
-            if isempty(obj.Trkland.Trks.([TOI '_' TRK_NAME]).header)
+            if isempty(obj.Trkland.Trks.(TRK_NAME).header)
                 fprintf(['\nPopulating obj.Trkland.Trks.' TRK_NAME ' ...']);
-                obj.Trkland.Trks.([TOI '_' TRK_NAME]) = rotrk_read(obj.Trkland.(TOI).out.(strrep(TRK_NAME,[ TOI '_'],'')),obj.sessionname,obj.Params.Dtifit.out.FA{end},TRK_NAME);
-                obj.addDTI([TOI '_' TRK_NAME]);
+                obj.Trkland.Trks.(TRK_NAME) = rotrk_read(obj.Trkland.(TOI).out.(strrep(TRK_NAME,[ TOI '_'],'')),obj.sessionname,obj.Params.Dtifit.out.FA{end},TRK_NAME);
+                obj.addDTI(TRK_NAME);
                 obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
                 fprintf('done\n');
             end
