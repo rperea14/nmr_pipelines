@@ -271,7 +271,12 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.T1toDWI.in.movefiles = './07_T1toDWI/';
             obj.Params.T1toDWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
             obj.Params.T1toDWI.in.T1 = obj.Params.FreeSurfer.in.T1;
-            
+           
+            %OLDER PROCESSING FIX:
+            if exist(obj.Params.T1toDWI.in.T1,'file') == 0
+                [~ , obj.Params.T1toDWI.in.T1 ] = system(['ls ' obj.session_location 'T1' filesep 'gnc_T1.nii' ]);
+                obj.Params.T1toDWI.in.T1=strtrim(obj.Params.T1toDWI.in.T1);
+            end
             obj.proc_T1toDWI();
                 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

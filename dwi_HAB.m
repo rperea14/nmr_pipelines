@@ -238,15 +238,6 @@ classdef dwi_HAB < dwiMRI_Session
             obj.proc_gqi();
       
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Coregistering the T1 to B0:
-            obj.Params.T1toDWI.in.movefiles = './05_T1toDWI/';
-            obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n special character
-            obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
-            
-            obj.proc_T1toDWI();
-            
-            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For AntsReg:
             obj.Params.AntsReg.in.movefiles = ['..' filesep '06_Ants_CoReg' ];
@@ -280,9 +271,67 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.Skel_TOI.in.suffix = '_n272TMP';
            
             obj.proc_getskeltois();
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                        
+            %For FreeSurfer recon-all
+            [ tmpa, tmpb ] = system('whoami ');
+            %[ tmpa, tmpb ] = system('echo $0');
+            %[~,  tmpshell , ~] = fileparts(tmpb);
+            obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
+            obj.Params.FreeSurfer.dir = obj.FS_location ;
+            obj.Params.FreeSurfer.init_location = obj.init_FS; 
+            %Retrieving a T1 scan:
+            [sys_error, obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'MPRAGE' filesep '*.mgz | head -1' ]);
+            if sys_error ~= 0 %No problem, we get the T1 the continue...
+                fprintf(['\nError when finding the T1:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
+            end
+            %Retrieving a T2 scan:
+            [sys_error, obj.Params.FreeSurfer.in.T2raw ] = system(['ls ' obj.session_location 'other' filesep '*T2* | head -1' ]);
+            if sys_error ~= 0 %No problem, we get the T1 the continue...
+                fprintf(['\nNo T2 found:'  obj.Params.FreeSurfer.in.T2raw  '\n'])
+                obj.Params.FreeSurfer.in.T2exist=false;
+            else
+                obj.Params.FreeSurfer.in.T2exist=true;
+            end
+            obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
+                filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ] ;
+            
+            obj.proc_getFreeSurfer();
+             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %FS2dwi (move aparc and aparc2009 segmes to dwi space):
+            obj.Params.FS2dwi.in.movefiles = ['..' filesep '05_FS2dwi' ];
+            obj.Params.FS2dwi.in.b0 = obj.Params.B0mean.out.fn ; 
+            obj.Params.FS2dwi.in.aparcaseg = obj.Params.FreeSurfer.out.aparcaseg ; 
+            obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_aparc.txt' ] ; 
+            obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_aparc2009.txt' ] ; 
+            obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_hippolabels_bil.txt' ] ;
+            obj.Params.FS2dwi.in.aparcaseg2009 = ...
+                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','aparc.a2009s+aseg')); 
+            
+            %A possible error is the naming convention when only a T1 was
+            %used!!
+            obj.Params.FS2dwi.in.hippofield_left = ...
+                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
+            obj.Params.FS2dwi.in.hippofield_right = ...
+                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
+            
+            obj.proc_FS2dwi();
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Extracting the value sfrom FreeSurfer:
+            obj.getdata_FreeSurfer();
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+           
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Coregistering the T1 to B0:
+            obj.Params.T1toDWI.in.movefiles = './05_T1toDWI/';
+            obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n special character
+            obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
+            
+            obj.proc_T1toDWI();
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             if obj.dctl_flag == true
@@ -295,71 +344,8 @@ classdef dwi_HAB < dwiMRI_Session
                     end
                 end
             end
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %For FreeSurfer recon-all
-            [ tmpa, tmpb ] = system('whoami ');
-            %[ tmpa, tmpb ] = system('echo $0');
-            %[~,  tmpshell , ~] = fileparts(tmpb);
-            obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
-          
-            obj.Params.FreeSurfer.dir = obj.FS_location ;
-            obj.Params.FreeSurfer.init_location = obj.init_FS; 
-            %Retrieving a T1 scan:
-            [sys_error, obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'MPRAGE' filesep '*.mgz | head -1' ]);
-            if sys_error ~= 0 %No problem, we get the T1 the continue...
-                fprintf(['\nError when finding the T1:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
-            end
-            
-            %Retrieving a T2 scan:
-            [sys_error, obj.Params.FreeSurfer.in.T2raw ] = system(['ls ' obj.session_location 'other' filesep '*T2* | head -1' ]);
-            if sys_error ~= 0 %No problem, we get the T1 the continue...
-                fprintf(['\nNo T2 found:'  obj.Params.FreeSurfer.in.T2raw  '\n'])
-                obj.Params.FreeSurfer.in.T2exist=false;
-            else
-                obj.Params.FreeSurfer.in.T2exist=true;
-            end
-            
-            obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
-                filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ] ;
-            
-            %IF CODE LIVES IN /cluster/**, 
-            obj.proc_getFreeSurfer();
-             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %FS2dwi (move aparc and aparc2009 segmes to dwi space):
-            obj.Params.FS2dwi.in.movefiles = ['..' filesep '05_FS2dwi' ];
-            obj.Params.FS2dwi.in.b0 = obj.Params.B0mean.out.fn ; 
-            obj.Params.FS2dwi.in.aparcaseg = obj.Params.FreeSurfer.out.aparcaseg ; 
-            
-            obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_aparc.txt' ] ; 
-            obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_aparc2009.txt' ] ; 
-            obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_hippolabels_bil.txt' ] ;
-            
-            
-            
-            obj.Params.FS2dwi.in.aparcaseg2009 = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','aparc.a2009s+aseg')); 
-            
-            %A possible error is the naming convention when only a T1 was
-            %used!!
-            obj.Params.FS2dwi.in.hippofield_left = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
-            obj.Params.FS2dwi.in.hippofield_right = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
-            
-            obj.proc_FS2dwi();
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Extracting the value sfrom FreeSurfer:
-            obj.getdata_FreeSurfer();
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
-            
-            
         end
+        
         
         function obj = CommonPostProc(obj) 
             
