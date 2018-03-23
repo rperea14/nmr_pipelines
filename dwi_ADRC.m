@@ -338,7 +338,7 @@ classdef dwi_ADRC < dwiMRI_Session
         function obj = CommonPostProc(obj)
             %TRACULA RELATED:
             for tohide=1:1
-                obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
+                obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULAqboot' ];
                 obj.Params.Tracula.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
                 obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir filesep 'TRACULA_DEPS' filesep 'dcmrirc.template' ];
                 obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
@@ -346,7 +346,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Params.Tracula.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
                 obj.Params.Tracula.in.nb0 = 28;
                 
-            %    obj.proc_tracula();
+                obj.proc_tracula();
             end
             
             %TRKLAND RELATED - FX:

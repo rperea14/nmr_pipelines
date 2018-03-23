@@ -1448,8 +1448,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.T1toDWI.out.T12b0 = [ outpath  'coreg2dwi_' T1_bname '.nii'];
             obj.Params.T1toDWI.out.reslicedT12b0 = [ outpath 'resliced_coreg2dwi_' T1_bname '.nii'];
             
+            obj.Params.T1toDWI.out.gzip_reslicedT12b0 = [ outpath 'resliced_coreg2dwi_' T1_bname '.nii.gz'];
+            
             %Unsliced T1:
-            if exist(obj.Params.T1toDWI.out.reslicedT12b0,'file') == 0
+            if exist(obj.Params.T1toDWI.out.reslicedT12b0,'file') ~= 0 || exist(obj.Params.T1toDWI.out.gzip_reslicedT12b0,'file') ~= 0 
+                 display('proc_T1toDWI is complete.');
+            else
                 %MRI_convert to get the *.nii format
                 display('Copying T1...');
                 exec_cmd{:,end+1} = ['mri_convert ' strtrim(obj.Params.T1toDWI.in.T1) ' ' obj.Params.T1toDWI.out.origT1 ];
@@ -1465,9 +1469,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 display('Applying the CoReg.mat matrix...');
                 exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.in.b0);';
                 eval(exec_cmd{end});
+                
+                exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
+                obj.Bash(exec_cmd{end});
                 wasRun=true;
-            else
-                display('proc_T1toDWI is complete.');
             end  
             
             %Update history if wasRun==1
@@ -1974,6 +1979,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     exec_cmd{:,end+1}=[ ' fslmaths ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L2') ...
                         ' -add ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L3') ...
                         ' -div 2 ' obj.Params.Dtifit.out.RD{ii}  ];
+                    obj.RunBash(exec_cmd{end});
                     fprintf('...done \n');
                     wasRun=true;
                 end
@@ -2744,6 +2750,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %symbolic link:
                     outpath=[replaced_outpath obj.sessionname filesep];
                 end
+                
+                
+                
+                
             end
             %Create the necessary dcmirc file:
             for tohide=1:1
@@ -2778,9 +2788,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
-                    exec_cmd{:,end+1} = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
-                    obj.RunBash(exec_cmd{:,end},44);
-                    wasRun=true;
+                    AA=1;
+                    if strcmp(obj.projectID,'ADRC')
+                        exec_cmd{:,end+1} = ['qboot -k ' obj.Params.Tracula.in.fn ' -m ' obj.Params.CoRegMultiple.out.combined_mask ' -r ' obj.Params.CoRegMultiple.out.combined_bvecs ' -b ' obj.Params.CoRegMultiple.out.combined_bvals ' --model=3 ' ];
+                        obj.RunBash(exec_cmd{:,end},44);
+                        wasRun=true;
+                    else
+                        exec_cmd{:,end+1} = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
+                        obj.RunBash(exec_cmd{:,end},44);
+                        wasRun=true;
+                    end
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.prep_check);
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
