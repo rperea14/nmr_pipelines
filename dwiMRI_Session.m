@@ -931,7 +931,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             fprintf('\n%s\n', 'PERFORMING PROC_EDDY():');
             
             %Init static prefix:
-            obj.Params.Eddy.in.prefix = 'eddy_' 
+            obj.Params.Eddy.in.prefix = 'eddy_'; 
            if ~exist('exec_cmd','var')
                 exec_cmd{:} = '#INIT PROC_EDDY()';
             end
@@ -4869,12 +4869,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %matlab environment with the newer value:
                             obj.Trkland.Trks = rmfield(obj.Trkland.Trks,[TOI '_trimmedC4_' HEMI]);
                         end
-                        obj.repopulateTRKLAND([TOI '_trimmedC4_' HEMI],TOI,HEMI);
-
-                        %remove field for matlab environment to re-populate:
-                        obj.Trkland.Trks=rmfield(obj.Trkland.Trks,[ TOI '_trimmedC4_' HEMI]);
                         %~~~~~~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMEDC4 PROCESSS
                     end
+                    obj.repopulateTRKLAND([TOI '_trimmedC4_' HEMI],TOI,HEMI);
                     %TRIMMED PROCESSING STARTS HERE:
                     if strcmp(TOI,'fx')
                         %Select the HDorff centerline(first pass)
@@ -4892,8 +4889,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %Saving trimmed and trimmed_clean trks:
                     rotrk_write(obj.Trkland.Trks.([TOI '_trimmedclean_' HEMI ]).header,obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI ]).sstr,obj.Trkland.(TOI).out.(['trimmedclean_' HEMI ]));
                     obj.Trkland.(TOI).data.([HEMI '_done']) = 0;
+                    obj.repopulateTRKLAND([TOI '_trimmedclean_' HEMI],TOI,HEMI);
                 end
-                obj.repopulateTRKLAND([TOI '_trimmedclean_' HEMI],TOI,HEMI);
                 %~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMEDCLEAN PROCESSS
                 
                 %START TRIMMEDCLEAN_INTERP PROCESS:~~~~~~~~~~~~~~~~
@@ -4906,8 +4903,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %remove field for matlab environment to re-populate:
                     obj.Trkland.Trks=rmfield(obj.Trkland.Trks,[ TOI '_trimmedclean_interp_' HEMI]);
                 end
-                obj.repopulateTRKLAND([ TOI '_trimmedclean_interp_' HEMI],TOI,HEMI);
                 %~~~~~~~~~~~~~~~END OF TRIMMEDCLEAN_INTERP PROCESS
+                obj.repopulateTRKLAND([ TOI '_trimmedclean_interp_' HEMI],TOI,HEMI);
                 
                 %START SELECTING HIGHFA PROCESS:~~~~~~~~~~~~~~~~~~~
                 if exist(obj.Trkland.(TOI).out.(['clineFAHighFA_' HEMI ]),'file') == 0

@@ -44,7 +44,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %Check if you are in the right project (if not, probably
             %obj.session_location doesn't exist:
             if ~exist([obj.session_location sessionname],'dir')
-                error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you in the right Project ID?']);
+                error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you sure are in the right Project ID?']);
             end
             %Initialize root variables:
             obj.sessionname = sessionname;
@@ -183,11 +183,11 @@ classdef dwi_ADRC < dwiMRI_Session
             [ tmpa, tmpb ] = system('whoami ');
             obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
             
-%            obj.proc_getFreeSurfer();
+            obj.proc_getFreeSurfer();
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %T1_02_Getting the necessary values from FreeSurfer's output:
-%            obj.getdata_FreeSurfer();
+            obj.getdata_FreeSurfer();
             
             
             
@@ -317,16 +317,23 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.FS2dwi.in.aparcaseg = obj.Params.FreeSurfer.out.aparcaseg;
             obj.Params.FS2dwi.in.aparcaseg2009 = ...
                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','aparc.a2009s+aseg'));
-            obj.Params.FS2dwi.in.hippofield_left = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10'));
-            obj.Params.FS2dwi.in.hippofield_right = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10'));
+            
+            %Using this will allow us to automatically select hippo-fields without discriminating whetehr they come from only a T1 or using T1-T2:            
+            [~ , tmp_hippo_L ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels*') ' | tail -1 ']);
+            obj.Params.FS2dwi.in.hippofield_left = strtrim(tmp_hippo_L);
+            [~ , tmp_hippo_R ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels*') ' | tail -1 ']);
+            obj.Params.FS2dwi.in.hippofield_right = strtrim(tmp_hippo_R);
+            clear tmp_hippo_L tmp_hippo_R;
+%             obj.Params.FS2dwi.in.hippofield_left = ...
+%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10'));
+%             obj.Params.FS2dwi.in.hippofield_right = ...
+%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10'));
             
             obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir filesep 'FS_DEPS' filesep  'FS_aparc.txt' ];
             obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_aparc2009.txt' ];
             obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_hippolabels_bil.txt' ];
             
-            %obj.proc_FS2dwi();
+            obj.proc_FS2dwi();
         end
         function obj = CommonPostProc(obj)
             %TRACULA RELATED:
@@ -358,7 +365,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
-               % obj.trkland_fx();
+                obj.trkland_fx();
             end
             
             %FOR MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:

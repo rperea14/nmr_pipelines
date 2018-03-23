@@ -89,6 +89,13 @@ classdef dwi_HAB < dwiMRI_Session
                 %obj.setMyParams;
             end
             
+            
+            %Check if you are in the right project (if not, probably
+            %obj.session_location doesn't exist:
+            if ~exist([obj.session_location sessionname],'dir')
+                error(['Sesion directory: ' obj.session_location ' doesn''t exist. Are you sure you are in the right Project ID?']);
+            end
+            
             %CHECK CHANGES MADE FROM DWIs_XX/Sessions/DWIs to
             %Sessions/DWIs:
             if strcmp(strtrim(['/cluster/sperling/HAB/Project1/DWIs_30b700/Sessions/' obj.sessionname '/DWIs/' ] ),obj.root)
@@ -312,11 +319,18 @@ classdef dwi_HAB < dwiMRI_Session
             
             %A possible error is the naming convention when only a T1 was
             %used!!
-            obj.Params.FS2dwi.in.hippofield_left = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
-            obj.Params.FS2dwi.in.hippofield_right = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
-            
+              
+            %Using this will allow us to automatically select hippo-fields without discriminating whetehr they come from only a T1 or using T1-T2:            
+            [~ , tmp_hippo_L ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels*') ' | tail -1 ']);
+            obj.Params.FS2dwi.in.hippofield_left = strtrim(tmp_hippo_L);
+            [~ , tmp_hippo_R ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels*') ' | tail -1 ']);
+            obj.Params.FS2dwi.in.hippofield_right = strtrim(tmp_hippo_R);
+            clear tmp_hippo_L tmp_hippo_R;
+%             obj.Params.FS2dwi.in.hippofield_left = ...
+%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
+%             obj.Params.FS2dwi.in.hippofield_right = ...
+%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10.FSvoxelSpace')); 
+%             
             obj.proc_FS2dwi();
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Extracting the value sfrom FreeSurfer:
