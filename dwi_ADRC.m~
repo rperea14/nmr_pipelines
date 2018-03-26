@@ -11,21 +11,21 @@ classdef dwi_ADRC < dwiMRI_Session
         %Check protected method initProperties()
         %root directoy where raw data lives:
         object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
-        session_location='/eris/bang/ADRC/Sessions/';
-        dcm_location = '/eris/bang/ADRC/DICOM_Archive/';
+        session_location='/cluster/bang/ADRC/Sessions/';
+        dcm_location = '/cluster/bang/ADRC/DICOM_Archive/';
         gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
-        dependencies_dir='/eris/bang/ADRC/Scripts/DEPENDENCIES/';
+        dependencies_dir='/cluster/bang/ADRC/Scripts/DEPENDENCIES/';
         %FreeSurfer Dependencies
-        FS_location='/eris/bang/ADRC/FreeSurferv6.0/';
+        FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
         fx_template_dir='/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
         %Dep properties:
-        sh_gradfile=['/eris/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
+        sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
-        b0MoCo_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        init_rotate_bvecs_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
-        col2rows_sh='/eris/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+        b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
+        %TORM--> REPLACED BY PROPERTY ABOVE and UNUSED: init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
     end
     
     methods
@@ -44,7 +44,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %Check if you are in the right project (if not, probably
             %obj.session_location doesn't exist:
             if ~exist([obj.session_location sessionname],'dir')
-                error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you in the right Project ID?']);
+                error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you sure are in the right Project ID?']);
             end
             %Initialize root variables:
             obj.sessionname = sessionname;
@@ -71,6 +71,17 @@ classdef dwi_ADRC < dwiMRI_Session
                 donothing=1;
             end
             
+            
+            %CHECK CHANGES MADE FROM /eris to /cluster
+            if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
+                display('Changing eris to cluster folder...');
+                %Then apply the mod to cluster...
+                newobj = replaceObjText_v2(obj,{'eris'},{'cluster'});
+                obj=newobj;
+                obj.objectHome = obj.root ;
+                display('CHANGING: ''eris'' was changed to ''cluster'' ');
+                obj.resave();
+            end
             %Init project ID
             obj.projectID='ADRC';
             
@@ -120,6 +131,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %01_DropVols
             % For proc_dropvols
             obj.Params.DropVols.in.movefiles=['..' filesep '01_DropVols' filesep ];
+            obj.Params.DropVols.in.prefix='dv_';
             obj.Params.DropVols.in.tmin='1';
             obj.Params.DropVols.in.tsize='67';
             obj.Params.DropVols.in.fn=obj.rawfiles;
@@ -143,7 +155,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.FreeSurfer.init_location = obj.init_FS;
             obj.Params.FreeSurfer.dir = obj.FS_location;
             obj.Params.FreeSurfer.out.aparcaseg = [ obj.Params.FreeSurfer.dir ...
-                filesep obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ];
+                obj.sessionname filesep 'mri' filesep 'aparc+aseg.mgz' ];
             %T1_01_For FreeSurfer Segmentation (needed for segmenting ROIs to diffusion space)
             %Retrieving a T1 scan:
             [~ , obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep 'rawT1_HCPF_1mm_001.nii | head -1' ]);
@@ -244,7 +256,9 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.CoRegMultiple.in.b0 = obj.Params.MaskAfterEddy.in.b0;
             obj.Params.CoRegMultiple.in.bvals = obj.Params.Eddy.in.bvals;
             obj.Params.CoRegMultiple.in.bvecs = obj.Params.Eddy.out.bvecs;
-            
+            obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+            obj.b0MoCo_rotate_bvecs_sh ='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh';
+            obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
             obj.Params.CoRegMultiple.in.ref_iteration = 2; % All images will be registered to this iteration (in ADRC, 7p5_set1, index 1 is for 2p7_set4!)
             
             
@@ -257,7 +271,12 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.T1toDWI.in.movefiles = './07_T1toDWI/';
             obj.Params.T1toDWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
             obj.Params.T1toDWI.in.T1 = obj.Params.FreeSurfer.in.T1;
-            
+           
+            %OLDER PROCESSING FIX:
+            if exist(obj.Params.T1toDWI.in.T1,'file') == 0
+                [~ , obj.Params.T1toDWI.in.T1 ] = system(['ls ' obj.session_location 'T1' filesep 'gnc_T1.nii' ]);
+                obj.Params.T1toDWI.in.T1=strtrim(obj.Params.T1toDWI.in.T1);
+            end
             obj.proc_T1toDWI();
                 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -298,10 +317,17 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.FS2dwi.in.aparcaseg = obj.Params.FreeSurfer.out.aparcaseg;
             obj.Params.FS2dwi.in.aparcaseg2009 = ...
                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','aparc.a2009s+aseg'));
-            obj.Params.FS2dwi.in.hippofield_left = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10'));
-            obj.Params.FS2dwi.in.hippofield_right = ...
-                strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10'));
+            
+            %Using this will allow us to automatically select hippo-fields without discriminating whetehr they come from only a T1 or using T1-T2:            
+            [~ , tmp_hippo_L ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels*') ' | tail -1 ']);
+            obj.Params.FS2dwi.in.hippofield_left = strtrim(tmp_hippo_L);
+            [~ , tmp_hippo_R ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels*') ' | tail -1 ']);
+            obj.Params.FS2dwi.in.hippofield_right = strtrim(tmp_hippo_R);
+            clear tmp_hippo_L tmp_hippo_R;
+%             obj.Params.FS2dwi.in.hippofield_left = ...
+%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10'));
+%             obj.Params.FS2dwi.in.hippofield_right = ...
+%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10'));
             
             obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir filesep 'FS_DEPS' filesep  'FS_aparc.txt' ];
             obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_aparc2009.txt' ];
@@ -310,6 +336,17 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.proc_FS2dwi();
         end
         function obj = CommonPostProc(obj)
+            %Multi-shell bedpostX
+            obj.Params.Qboot.in.movefiles = ['..' filesep 'post_TRACULA' ];
+            obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
+            obj.Params.Qboot.in.dcmrirc = [obj.dependencies_dir filesep 'TRACULA_DEPS' filesep 'dcmrirc.template' ];
+          obj.Params.Tracula.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
+            obj.Params.Tracula.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
+            obj.Params.Tracula.in.nb0 = 28;
+            
+            obj.proc_tracula();
+            
+            
             %TRACULA RELATED:
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -378,7 +415,7 @@ classdef dwi_ADRC < dwiMRI_Session
                         %            obj.Params.WMLs2DWI.in.movefiles = ['..' filesep 'post_WML2DWI' ];
                         %            obj.Params.WMLs2DWI.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
                         %
-                        %            obj.Params.WMLs2DWI.in.dir = '/eris/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/' ;
+                        %            obj.Params.WMLs2DWI.in.dir = '/cluster/bang/ADRC/PROJECTS/WMLs_LST_LGA/FLAIRS/' ;
                         %            obj.Params.WMLs2DWI.in.FLAIR = [obj.Params.WMLs2DWI.in.dir 'm' obj.sessionname '_FLAIR.nii' ];
                         %            obj.Params.WMLs2DWI.in.WMLprobmap = [obj.Params.WMLs2DWI.in.dir 'ples_lpa_m' ...
                         %                obj.sessionname '_FLAIR.nii' ];

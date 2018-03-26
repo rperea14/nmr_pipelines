@@ -2721,6 +2721,40 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     %Post- procesing methods:
     methods 
         %%%%%%%%%%%%%%%%%% BEGIN  Post-Processing Methods %%%%%%%%%%%%%
+        %QBOOT RELATED (Multiple shell ODF estimation for probabilistic
+        %tractography:
+        function obj = proc_qboot(obj)
+            wasRun = false ;
+           
+            fprintf('\n%s\n', 'PERFORMING QBOOT:');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:}='#INIT proc_tqboot() exec_cmd:';
+            end
+            
+            [a b c ] = fileparts(obj.Params.Qboot.in.fn);
+            outpath=obj.getPath(a,obj.Params.Qboot.in.movefiles);
+            obj.Params.Qboot.out.dir = outpath ; 
+            
+            obj.Params.Qboot.out.merged_fn = [ obj.Params.Qboot.out.dir  'merged_th2samples.nii.gz'] ;
+            if exist(obj.Params.Qboot.out.merged_fn, 'file') == 0
+                exec_cmd{:,end+1} = ['qboot -k ' obj.Params.Tracula.in.fn ...
+                    ' -m ' obj.Params.CoRegMultiple.out.combined_mask ...
+                    ' -r ' obj.Params.CoRegMultiple.out.combined_bvecs ...
+                    ' -b ' obj.Params.CoRegMultiple.out.combined_bvals ...
+                    ' --logdir='   obj.Params.Qboot.out.dir  ...
+                    ' --model=3 ' ];
+                obj.RunBash(exec_cmd{:,end},44);
+                wasRun=true;
+            else
+                display('Qboot files already exist. Nothing to do');
+            end
+            
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.Tracula.out.merged_fn,'proc_qboot()', obj.Params.Qboot,wasRun,exec_cmd');
+                obj.resave();
+            end
+        end
+        
         %TRACULA related:
         function obj = proc_tracula(obj)
             % try
@@ -2750,10 +2784,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %symbolic link:
                     outpath=[replaced_outpath obj.sessionname filesep];
                 end
-                
-                
-                
-                
             end
             %Create the necessary dcmirc file:
             for tohide=1:1
@@ -2789,15 +2819,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
                     end
                     AA=1;
-                    if strcmp(obj.projectID,'ADRC')
-                        exec_cmd{:,end+1} = ['qboot -k ' obj.Params.Tracula.in.fn ' -m ' obj.Params.CoRegMultiple.out.combined_mask ' -r ' obj.Params.CoRegMultiple.out.combined_bvecs ' -b ' obj.Params.CoRegMultiple.out.combined_bvals ' --model=3 ' ];
-                        obj.RunBash(exec_cmd{:,end},44);
-                        wasRun=true;
-                    else
                         exec_cmd{:,end+1} = ['trac-all -prep -c ' obj.Params.Tracula.out.dcmirc ' -i ' obj.Params.Tracula.in.fn ];
                         obj.RunBash(exec_cmd{:,end},44);
                         wasRun=true;
-                    end
                 else
                     [~, bb, cc ] = fileparts(obj.Params.Tracula.out.prep_check);
                     fprintf(['trac-all -prep filecheck ' bb cc ' exists.\n']);
@@ -2805,7 +2829,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Step 2: Trac-all -prep
                 clear exec_cmd; exec_cmd{:}='#INIT proc_tracula()_step2_bedpostx exec_cmd:';
                 obj.Params.Tracula.out.bedp_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
-                    filesep 'dmri.bedpostX' filesep 'mean_fsumsamples.nii.gz' ];
+                    filesep 'dmri.bedpostX' filesep 'merged_th2samples.nii.gz' ];
                 if exist(obj.Params.Tracula.out.bedp_check, 'file') == 0
                     %Remove IsRunning.trac if exists
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
