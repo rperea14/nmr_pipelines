@@ -1267,6 +1267,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_t1_spm(obj)
             fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
             wasRun = false;
+            %Check if obj.fsdir has been initialized correctly:
+            if ~isfield(obj,'fsdir')
+                obj.fsdir = '';
+            end            
+            if isempty(obj.fsdir)
+               temp_fsdir=[obj.FS_location filesep obj.sessionname];
+               temp_fsdir=strrep(temp_fsdir,[filesep filesep],filesep); %Removes '//' --> <FOLDE>//<SUBFOLDER>
+               
+               %Check if the FreeSurfer Folder exists:
+               if exist([temp_fsdir filesep 'mri' ],'dir' ) == 7
+                   obj.fsdir = temp_fsdir;
+               else
+                   error(['The FreeSurfer directory: ' temp_fsdir ' does not exist. Please make sure you have run FreeSurfer ob this subject (' obj.sessionname ')']);
+               end
+            end
             
             %Check if .in and .out are fields. if not create them
             if isfield(obj.Params,'spmT1_Proc') == 0
@@ -2573,9 +2588,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             clear exec_cmd to_exec wasRun;
         end
-      
-        
-        
         
         %!!!
         %DEPRECATED methods: Methods that were not finished and unusable but the code could be recycle 
@@ -3333,7 +3345,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if nargin < 3
                     mask_SPACE=[fileparts(which('spm')) '/canonical/single_subj_T1.nii'];
                     warning('Assuming your mask is in MNI space...'); pause(1);
-                elseif strcmp(nii_SPACE,'MNI')
+                elseif strcmp(mask_SPACE,'MNI')
                     mask_SPACE=[fileparts(which('spm')) '/canonical/single_subj_T1.nii'];
                 else
                     mni_to_error=[fileparts(which('spm')) '/canonical/single_subj_T1.nii'];
@@ -3355,6 +3367,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %INIT VARIABLES
                 obj.Params.probtrackx.root = [obj.root 'post_PROBTRACKX' filesep];
                 obj.Params.probtrackx.b0 = obj.Params.CoRegMultiple.out.combined_b0;
+                obj.Params.probtrackx.b0_mask = obj.Params.CoRegMultiple.out.combined_mask;
                 obj.Params.probtrackx.probtracx2_args = ...
                 ' -l --onewaycondition -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
             
@@ -3428,15 +3441,15 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.probtrackx.(fname_bname).out.split_dir = cur_split_dir;
                 
                 %Reverse normalize the mask so its align with T1 or b0
-                obj.Params.probtrackx.(fname_bname).out.revN_fname= [ obj.Params.probtrackx.all_FROI.out.root 'revN_' fname_bname fname_ext];
+                obj.Params.probtrackx.(fname_bname).out.revN_fname= [ obj.Params.probtrackx.(fname_bname).out.root 'revN_' fname_bname fname_ext];
                 if exist(obj.Params.probtrackx.(fname_bname).out.revN_fname,'file') == 0
                     exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(mask_fname, ' ...
-                        ' obj.Params.spmT1_Proc.out.iregfile,obj.Params.probtrackx.b0, obj.Params.probtrackx.all_FROI.out.root, ''revN_'' );'] ;
+                        ' obj.Params.spmT1_Proc.out.iregfile,obj.Params.probtrackx.b0, obj.Params.probtrackx.(fname_bname).out.root, ''revN_'' );'] ;
                     eval(exec_cmd{end});
                     wasRun=true;
                 end
                 %QuickReslice:
-                obj.Params.probtrackx.(fname_bname).out.reslicedN= [ obj.Params.probtrackx.all_FROI.out.root 'resliced_revN_' fname_bname fname_ext];
+                obj.Params.probtrackx.(fname_bname).out.reslicedN= [ obj.Params.probtrackx.(fname_bname).out.root 'resliced_revN_' fname_bname fname_ext];
                 if exist(obj.Params.probtrackx.(fname_bname).out.reslicedN,'file') == 0
                     exec_cmd{:,end+1} = 'obj.proc_reslice(obj.Params.probtrackx.(fname_bname).out.revN_fname,obj.Params.probtrackx.b0,'''', ''resliced_'' );';
                     eval(exec_cmd{end});
@@ -3490,7 +3503,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 
                 %Is the txt file created?
-                obj.Params.probtrackx.(fname_bname).out.txt_masks = [ obj.Params.probtrackx.all_FROI.out.root 'seeds_' fname_bname '.txt'];
+                obj.Params.probtrackx.(fname_bname).out.txt_masks = [ obj.Params.probtrackx.(fname_bname).out.root 'seeds_' fname_bname '.txt'];
                 if exist(obj.Params.probtrackx.(fname_bname).out.txt_masks,'file')
                     system(['rm ' obj.Params.probtrackx.(fname_bname).out.txt_masks  ]);
                 end
@@ -3506,7 +3519,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf('..done \n');
                 
                 %Move probtracx2 directory if it exists:
-                obj.Params.probtrackx.(fname_bname).out.probtrackx2_dir = [ obj.Params.probtrackx.all_FROI.out.root 'pbtrackx2_out_' fname_bname ];
+                obj.Params.probtrackx.(fname_bname).out.probtrackx2_dir = [ obj.Params.probtrackx.(fname_bname).out.root 'pbtrackx2_out_' fname_bname ];
                 %unless it has already been moved:
                 if exist([obj.Params.probtrackx.(fname_bname).out.probtrackx2_dir '_bak_' date],'dir') ~= 0
                     error(['Cannot move ' obj.Params.probtrackx.(fname_bname).out.probtrackx2_dir ' to a backup directory. The date already exists! ']);
@@ -3524,8 +3537,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{:,end+1} = [cmd_probtrackx2  ' --network -x  ' ...
                     obj.Params.probtrackx.(fname_bname).out.txt_masks ' ' ...
                     obj.Params.probtrackx.probtracx2_args ' ' ...
-                    ' -s ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'merged' ...
-                    ' -m ' obj.Params.tracxBYmask.tracula.bedp_dir filesep 'nodif_brain_mask' ...
+                    ' -s ' obj.Params.probtrackx.bedp_dir filesep 'merged' ...
+                    ' -m ' obj.Params.probtrackx.b0_mask  ...
                     ' --dir=' obj.Params.probtrackx.(fname_bname).out.probtrackx2_dir ...
                     ];
                 
@@ -3550,10 +3563,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %batch in pbs).
             if wasRun
                 fprintf('\nRun the following script from command line: \n');
-                for jj=1:numel(obj.Params.probtrackx.(fname_bname).sh_cmd_torun)
-                    fprintf([obj.Params.probtrackx.(fname_bname).sh_cmd_torun '\n']);
-                end
-                obj.UpdateHist_v2(obj.Params.tracxBYmask.allmasks.(tmp_txtfname),['proc_probtrackx - ' fname_nbame ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun{end},wasRun,exec_cmd);
+                fprintf([obj.Params.probtrackx.(fname_bname).sh_cmd_torun '\n']);
+                
+                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),[' proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
                 fprintf('**ALTERNTATIVELY: create a protected method prot_run_TRACTx() <ontheworks> \n');
             end
             fprintf(['\n\nPROBTRACKX2 SH COMMAND CREATION COMPLETED \n\n']);
@@ -4075,7 +4087,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
         end
         
-        %proc_AFQ on the works (not finished/used yet. issues with AC-PC alignment)
+        %proc_AFQ on the works (not finished/used yet. issues with AC-PC alignment, check: https://github.com/vistalab/vistasoft/issues/246 )
         function obj = ontheworks_proc_AFQ(obj)
             % Adding paths for: https://github.com/vistalab/vistasoft
             wasRun=false;
@@ -4213,7 +4225,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %             %RIGHT SIDE:
             %
         end
-        
         %post-processing after TRACULA. Results not ideal at this point...
         function obj = obsolete_proc_tracx2thal11(obj)
             % Make sure you
@@ -4716,7 +4727,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %
             
         end
-        
         %Having problem with using ants for dwi2MNI....hence deprecated!
         function obj = obsolete_proc_ants_dwi2MNI(obj)
             wasRun=false;
@@ -4812,8 +4822,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             cd(PWD);
             
         end
-        
-        
         function obj = toremove_replaced_proc_tracxBYmask(obj,tmp_txtfname)
             wasRun=false;
             %INIT exec_cmd:

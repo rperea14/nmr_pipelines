@@ -1,4 +1,4 @@
-function object = replaceObjText(object,old,new)
+function object = replaceObjText_v2(object,old,new)
 
 [AllFields, FieldType] = getFieldList(object);
 

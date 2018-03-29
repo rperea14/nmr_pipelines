@@ -480,7 +480,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Droppping volumes in the DWIs (bvals):
                 obj.Params.DropVols.in.bvals{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.bvals');
                 obj.Params.DropVols.out.bvals{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.bvals');
-                if exist( obj.Params.DropVols.out.bvals{ii},'file')==0
+                if exist( obj.Params.DropVols.out.bvals{ii},'file')==0 
                     exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvals{ii} ' > ' obj.Params.DropVols.out.bvals{ii} ]);
                     obj.RunBash(exec_cmd{end});
@@ -488,7 +488,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Droppping volumes in the DWIs (bvecs):
                 obj.Params.DropVols.in.bvecs{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.voxel_space.bvecs');
                 obj.Params.DropVols.out.bvecs{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.voxel_space.bvecs');
-                if exist(obj.Params.DropVols.out.bvecs{ii},'file')==0
+                if exist(obj.Params.DropVols.out.bvecs{ii},'file')==0 
                     exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvecs{ii} ' > ' obj.Params.DropVols.out.bvecs{ii} ]);
                     obj.RunBash(exec_cmd{end});
@@ -508,7 +508,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.out.bvecs = obj.Params.DropVols.out.bvecs';
             end
             %%%%%%%%%%%%%%%%%%END OF OPTIONAL%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            if wasRun
+            if wasRun 
                 obj.UpdateHist_v2(obj.Params.DropVols,'proc_drop_vols()', obj.Params.DropVols.out.fn{ii},wasRun,exec_cmd');
                 obj.resave();
             end
@@ -1267,6 +1267,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_t1_spm(obj)
             fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
             wasRun = false;
+            %Check if obj.fsdir has been initialized correctly:
+            if ~isfield(obj,'fsdir')
+                obj.fsdir = '';
+            end            
+            if isempty(obj.fsdir)
+               temp_fsdir=[obj.FS_location filesep obj.sessionname];
+               temp_fsdir=strrep(temp_fsdir,[filesep filesep],filesep); %Removes '//' --> <FOLDE>//<SUBFOLDER>
+               
+               %Check if the FreeSurfer Folder exists:
+               if exist([temp_fsdir filesep 'mri' ],'dir' ) == 7
+                   obj.fsdir = temp_fsdir;
+               else
+                   error(['The FreeSurfer directory: ' temp_fsdir ' does not exist. Please make sure you have run FreeSurfer ob this subject (' obj.sessionname ')']);
+               end
+            end
             
             %Check if .in and .out are fields. if not create them
             if isfield(obj.Params,'spmT1_Proc') == 0
@@ -2573,9 +2588,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             clear exec_cmd to_exec wasRun;
         end
-      
-        
-        
         
         %!!!
         %DEPRECATED methods: Methods that were not finished and unusable but the code could be recycle 
@@ -3333,7 +3345,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if nargin < 3
                     mask_SPACE=[fileparts(which('spm')) '/canonical/single_subj_T1.nii'];
                     warning('Assuming your mask is in MNI space...'); pause(1);
-                elseif strcmp(nii_SPACE,'MNI')
+                elseif strcmp(mask_SPACE,'MNI')
                     mask_SPACE=[fileparts(which('spm')) '/canonical/single_subj_T1.nii'];
                 else
                     mni_to_error=[fileparts(which('spm')) '/canonical/single_subj_T1.nii'];
@@ -4075,7 +4087,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
         end
         
-        %proc_AFQ on the works (not finished/used yet. issues with AC-PC alignment)
+        %proc_AFQ on the works (not finished/used yet. issues with AC-PC alignment, check: https://github.com/vistalab/vistasoft/issues/246 )
         function obj = ontheworks_proc_AFQ(obj)
             % Adding paths for: https://github.com/vistalab/vistasoft
             wasRun=false;
@@ -4213,7 +4225,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %             %RIGHT SIDE:
             %
         end
-        
         %post-processing after TRACULA. Results not ideal at this point...
         function obj = obsolete_proc_tracx2thal11(obj)
             % Make sure you
@@ -4716,7 +4727,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %
             
         end
-        
         %Having problem with using ants for dwi2MNI....hence deprecated!
         function obj = obsolete_proc_ants_dwi2MNI(obj)
             wasRun=false;
@@ -4812,8 +4822,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             cd(PWD);
             
         end
-        
-        
         function obj = toremove_replaced_proc_tracxBYmask(obj,tmp_txtfname)
             wasRun=false;
             %INIT exec_cmd:
@@ -5597,7 +5605,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
-      %     display(exec_cmd)
+            
+            %     display(exec_cmd)
             %Code values:
             %   44  --> Show output
             %   144 --> Show output and exist_status is 1
