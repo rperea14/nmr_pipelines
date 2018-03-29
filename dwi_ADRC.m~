@@ -10,6 +10,7 @@ classdef dwi_ADRC < dwiMRI_Session
     properties
         %Check protected method initProperties()
         %root directoy where raw data lives:
+        redo_history = true;
         object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
         session_location='/cluster/bang/ADRC/Sessions/';
         dcm_location = '/cluster/bang/ADRC/DICOM_Archive/';
@@ -99,9 +100,8 @@ classdef dwi_ADRC < dwiMRI_Session
             %Start the CommonPreProc:
             obj.CommonPreProc();
             %Start the CommonPostProc (commenting it? Maybe, maybe not?):
-            obj.CommonPostProc();
             %fprintf(['\n>>*If first time running, please run obj.CommonPostProc() after this! \n<<\n'])
-            
+            obj.CommonPostProc();
         end
         
         function obj=setMyParams(obj)
@@ -114,7 +114,9 @@ classdef dwi_ADRC < dwiMRI_Session
         end
         
         function resave(obj)
-            save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+            if ~isfield(obj,'redo_history')
+                save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+            end
         end
         
         %COMMON METHODS THAT CALL post_XXX METHODS IN SUPERCLASS dwiMRI_Session.m:
@@ -342,7 +344,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
             
-            %obj.proc_qboot();
+            obj.proc_qboot();
             
             
             %TRACULA RELATED:
@@ -374,7 +376,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
-                obj.trkland_fx();
+                %obj.trkland_fx();
             end
             
             %FOR MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
@@ -588,6 +590,7 @@ classdef dwi_ADRC < dwiMRI_Session
             end
             obj.proc_t1_spm();
         end
+        
     end
     methods ( Access = protected )
         function obj = getDCM2nii(obj,torun)
