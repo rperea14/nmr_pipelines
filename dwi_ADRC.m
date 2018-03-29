@@ -99,9 +99,8 @@ classdef dwi_ADRC < dwiMRI_Session
             %Start the CommonPreProc:
             obj.CommonPreProc();
             %Start the CommonPostProc (commenting it? Maybe, maybe not?):
+            %fprintf(['\n>>*If first time running, please run obj.CommonPostProc() after this! \n<<\n'])
             obj.CommonPostProc();
-            fprintf(['\n>>*If first time running, please run obj.CommonPostProc() after this! \n<<\n'])
-            
         end
         
         function obj=setMyParams(obj)
@@ -579,6 +578,14 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%%%%%%%%%%%% IMPLEMENTATION STARTS HERE %%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%% END OF IMPLEMENTATION  %%%%%%%%%%%%%%%%%%%%%
             
+        end
+        
+        function obj = prep_spmT1_proc(obj)
+            obj.Params.spmT1_Proc.in.tpm = '/autofs/space/schopenhauer_002/users/spm12/tpm/TPM.nii';
+            if exist(obj.Params.spmT1_Proc.in.tpm,'file') == 0 
+                error(['Cannot find: ' obj.Params.spmT1_Proc.in.tpm  ' Please check, exiting...' ]);
+            end
+            obj.proc_t1_spm();
         end
     end
     methods ( Access = protected )
