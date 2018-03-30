@@ -2086,7 +2086,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             
             if wasRun==true
-                obj.UpdateHist_v2(obj.Params.CoRegMultiple,'proc_corg_multiple()', obj.Params.CoRegMultiple.out.combined_bet,wasRun,exec_cmd');
+                obj.UpdateHist_v2(obj.Params.CoRegMultiple,'proc_coreg_multiple()', obj.Params.CoRegMultiple.out.combined_bet,wasRun,exec_cmd');
                 obj.resave();                
                 %fprintf(' proc_coreg_multiple(obj) is complete\n');
             end
