@@ -2,7 +2,7 @@
 AA=dir('./1*');
 addpath('/cluster/brutha/MATLAB_Scripts/Utilities');
 %AA = AA(27:140)
-
+%%
 
 %*MAKE SURE YOU CHANGE YOUR dwiMRI_Session.m branch to redo_history!!
 %BEFORE CONTINUE
@@ -19,7 +19,7 @@ tic
 
 pths=MyPaths('hcp');
 
-for ii=84:numel(AA)
+for ii=137:numel(AA)
     
      SUBJID = AA(ii).name;
      
@@ -73,7 +73,7 @@ for ii=84:numel(AA)
       obj_ADRC{ii}.obj.redo_history = false ; 
       
       %Redoing obj_proctrkland_fx():
-      obj_ADRC{ii}.obj.trkland_fx();
+      %obj_ADRC{ii}.obj.trkland_fx();
       
       obj_ADRC{ii}.obj.resave();
       

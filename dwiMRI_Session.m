@@ -3578,7 +3578,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf('\nRun the following script from command line: \n');
                 fprintf([obj.Params.probtrackx.(fname_bname).sh_cmd_torun '\n']);
                 
-                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),[' proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
+                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),['proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
                 fprintf('**ALTERNTATIVELY: create a protected method prot_run_TRACTx() <ontheworks> \n');
             end
             fprintf(['\n\nPROBTRACKX2 SH COMMAND CREATION COMPLETED \n\n']);
@@ -6108,7 +6108,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 defs.out{1}.pull.mask=1;
                 defs.out{1}.pull.fwhm=[0 0 0];
                 defs.comp{2}.idbbvox.vox = abs(x(7:9));
-                defs.comp{2}.idbbvox.bb = world_bb(h);
+                defs.comp{2}.idbbvox.bb = world_bb_v2(h);
                 
                 spm_deformations(defs);
                 
