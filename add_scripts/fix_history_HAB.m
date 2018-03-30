@@ -1,7 +1,13 @@
 
-AA=dir('./1*');
+%AA=dir('./1*');
+fileID=fopen('Yes_DWIs_03302018.list');
+AA=textscan(fileID,'%s');
+SUBJID=AA{1};
+fclose('all');
+%%
+
+
 addpath('/cluster/brutha/MATLAB_Scripts/Utilities');
-%AA = AA(27:140)
 
 
 %*MAKE SURE YOU CHANGE YOUR dwiMRI_Session.m branch to redo_history!!
@@ -17,16 +23,16 @@ tic
 %BAD MISSING FS: 166 167 168 169 170 171 
 %for ii= [  166 167 168 169 170 171 ] 
 
-pths=MyPaths('hcp');
+pths=MyPaths('hab1');
 
-for ii=84:numel(AA)
+for ii=2:numel(AA{1})
     
-     SUBJID = AA(ii).name;
+     SUBJID = AA{1}{ii};
      
      fprintf(['\n\n\n\n\n\n\n\n IN ITERATION: ' num2str(ii) ' ID: ' SUBJID ]);
-     redo_obj_ADRC{ii} = load( [ pths.funcdir SUBJID '/DWIs/' SUBJID '.mat'] );
+     redo_obj_HAB{ii} = load( [ pths.funcdir SUBJID '/DWIs/' SUBJID '.mat'] );
      
-     old_history{ii} = redo_obj_ADRC{ii}.obj.history;
+     old_history{ii} = redo_obj_HAB{ii}.obj.history;
     % keep_trkland{ii}='';
      keep_qboot{ii} = '' ;
      keep_T1toDWI{ii} = '' ;
@@ -48,34 +54,30 @@ for ii=84:numel(AA)
              keep_t1_spm{ii}= old_history{ii}{pp};
           end
      end
-     system(['mv '  pths.funcdir SUBJID '/DWIs/' SUBJID '.mat  '  pths.funcdir SUBJID '/DWIs/' SUBJID  '_BAK_03292018.mat' ]);
+     system(['mv '  pths.funcdir SUBJID '/DWIs/' SUBJID '.mat  '  pths.funcdir SUBJID '/DWIs/' SUBJID  '_BAK_032018.mat' ]);
      
-      obj_ADRC{ii}.obj=dwi_ADRC(SUBJID);
+      obj_HAB{ii}.obj=dwi_HAB(SUBJID);
       
       %Re-reading all the trks in TRKLAND
       
       %Keeping these histories:
-      if ~isempty(keep_qboot{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_qboot{ii}; end
+      if ~isempty(keep_qboot{ii}) ; obj_HAB{ii}.obj.history{numel(obj_HAB{ii}.obj.history)+1} =  keep_qboot{ii}; end
       
-      %if ~isempty(keep_trkland{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_trkland{ii}; end
-      if ~isempty(keep_T1toDWI{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_T1toDWI{ii}; end
-      if ~isempty(keep_t1_spm{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_t1_spm{ii}; end
+      %if ~isempty(keep_trkland{ii}) ; obj_HAB{ii}.obj.history{numel(obj_HAB{ii}.obj.history)+1} =  keep_trkland{ii}; end
+      if ~isempty(keep_T1toDWI{ii}) ; obj_HAB{ii}.obj.history{numel(obj_HAB{ii}.obj.history)+1} =  keep_T1toDWI{ii}; end
+      if ~isempty(keep_t1_spm{ii}) ; obj_HAB{ii}.obj.history{numel(obj_HAB{ii}.obj.history)+1} =  keep_t1_spm{ii}; end
       
 %       %Check if proc_TRKLAND has been run, if not...false it redo_history
-%       if exist([ redo_obj_ADRC{ii}.obj.Trkland.root 'fx_tmp2b0.nii.gz'], 'file') == 0
-%           obj_ADRC{ii}.obj.redo_history = false;
-%           obj_ADRC{ii}.obj.trkland_fx();
+%       if exist([ redo_obj_HAB{ii}.obj.Trkland.root 'fx_tmp2b0.nii.gz'], 'file') == 0
+%           obj_HAB{ii}.obj.redo_history = false;
+%           obj_HAB{ii}.obj.trkland_fx();
 %       else
-%           obj_ADRC{ii}.obj.trkland_fx();
+%           obj_HAB{ii}.obj.trkland_fx();
 %       end
       
       
-      obj_ADRC{ii}.obj.redo_history = false ; 
-      
-      %Redoing obj_proctrkland_fx():
-      obj_ADRC{ii}.obj.trkland_fx();
-      
-      obj_ADRC{ii}.obj.resave();
+      obj_HAB{ii}.obj.redo_history = false ; 
+      obj_HAB{ii}.obj.resave();
       
       
 end

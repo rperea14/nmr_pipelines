@@ -1631,8 +1631,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.in.b0);';
                 eval(exec_cmd{end});
                 
-                exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
-                obj.Bash(exec_cmd{end});
+                %BELOW GZIP IS COMMENTED OUT AS *.nii will be used in the
+                %future. 
+                %exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
+                %obj.RunBash(exec_cmd{end});
                 wasRun=true;
             end  
             
@@ -2293,6 +2295,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_getskeltois(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_GETSKELTOIS():');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_GETSKELTOIS()';
+            end
             for kk=1:numel(obj.Params.Skeletonize.out.FA)
                 for jj=1:numel( obj.Params.Skeletonize.out.diffmetrics)
                     for ii=1:numel(obj.Params.Skel_TOI.in.masks)
@@ -2311,9 +2316,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             in_file=strrep(obj.Params.Skeletonize.out.FA{kk},'_FA.nii',[ '_' obj.Params.Skeletonize.out.diffmetrics{jj} '.nii' ] );
                             mask_file=[ obj.Params.Skel_TOI.in.location obj.Params.Skel_TOI.in.masks{ii}   '.nii.gz' ] ;
                             [~, to_exec ] = system('which fslstats');
-                            exec_cmd{kk,kk,ii}=[ strtrim(to_exec) ' ' in_file ' -k ' mask_file ' -M '  ];
+                            exec_cmd{:,end+1}=[ strtrim(to_exec) ' ' in_file ' -k ' mask_file ' -M '  ];
                             fprintf([ ' now in ' cur_name '\n'] );
-                            [~ , obj.Params.Skel_TOI.out.(cur_name) ] =  system(exec_cmd{kk,kk,ii});
+                            [~ , obj.Params.Skel_TOI.out.(cur_name) ] =  system(exec_cmd{end});
+                            
                             last_cur_name=cur_name;
                             wasRun=true;
                         end
@@ -2331,7 +2337,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             if obj.Params.Skel_TOI.history_saved == 0
                 obj.Params.Skel_TOI.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.Skel_TOI,'proc_getskeltois', '' , wasRun,exec_cmd); %no file is created in this step but update it iteratively
+                obj.UpdateHist_v2(obj.Params.Skel_TOI,'proc_getskeltois()', obj.Params.Skeletonize.out.FA{end} , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
             end
             clear exec_cmd to_exec wasRun;
         end
