@@ -1534,7 +1534,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.RunBash(exec_cmd{end},44); % '44' codes for seeing the output!
                 %THE PREVIOUS LINE OF CODE MAY NOT WORK DUE TO PERMISSION
                 %ERRORS READING /cluster/* folder. To see if this is not the
-                %error try a simple `ls` command (e.g.  ls /cluster/bang/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
+                %error try a simple `ls` command (e.g.  ls /cluster/cluster/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
                 obj.Params.FreeSurfer.out.timelapsed_mins=[ 'FreeSurfer took ' toc/60 ' minutes to complete'];
                 disp('Done with FreeSurfer');
                 wasRun=true;
@@ -2182,7 +2182,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     [~, nrow ]=system(['cat ' obj.Params.GQI.in.bvecs{ii} ' | wc -l | awk  '' {print $1} '' '  ] );
                     nrow=str2num(nrow);
                     if nrow == 3 ; %then its in column form, change it...
-                        exec_cmd{:,end+1}=[ '/cluster/bang/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
+                        exec_cmd{:,end+1}=[ '/cluster/cluster/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
                             ' > ' temp_bvecs{ii}];
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
@@ -2941,7 +2941,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %(Change this if /cluster/** is replaced)
                 if strcmp(obj.projectID,'HAB')
                     replaced_outpath = outpath ;
-                    outpath = [ '/cluster/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
+                    outpath = [ '/cluster/cluster/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
                     exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
                     obj.RunBash(exec_cmd{:,end});
                     if exist([replaced_outpath  obj.sessionname]) == 0 || istrue(obj.redo_history)
@@ -3310,9 +3310,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             if wasRun == true || obj.Trkland.fx.wasRun
                 if exist(obj.Trkland.fx.QCfile_lh,'file') == 2
-                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_lh', obj.Trkland.fx.QCfile_lh, wasRun,exec_cmd');
+                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_lh', obj.Trkland.fx.out.clineFAHighFA_rh, wasRun,exec_cmd');
                 elseif exist(obj.Trkland.fx.QCfile_rh,'file') == 2
-                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_rh', obj.Trkland.fx.QCfile_rh, wasRun,exec_cmd');
+                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_rh', obj.Trkland.fx.out.clineFAHighFA_lh, wasRun,exec_cmd');
                 elseif exist(obj.Trkland.fx.QCfile_bil,'file') == 2
                     obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_bil', obj.Trkland.fx.QCfile_bil, wasRun,exec_cmd');
                 else
@@ -4623,7 +4623,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %
             %                 %Check to see that all filepaths and image exist in in_txtfname
             %                 fileID=fopen(in_txtfname);
-            %                 %TODEBUG fileID=fopen('/cluster/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+            %                 %TODEBUG fileID=fopen('/cluster/cluster/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
             %                 tmp_txtscan=textscan(fileID,'%s');
             %                 list_MASKS=tmp_txtscan{1};
             %                 for ii=1:numel(list_MASKS)
@@ -4862,7 +4862,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Check to see that all filepaths/nii.gzs exist in the
                 %in_txtfname:
                 fileID=fopen(in_txtfname);
-                %TODEBUG fileID=fopen('/cluster/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+                %TODEBUG fileID=fopen('/cluster/cluster/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
                 tmp_txtscan=textscan(fileID,'%s');
                 list_MASKS=tmp_txtscan{1};
                 for ii=1:numel(list_MASKS)
@@ -5673,12 +5673,18 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         function obj = UpdateHist_v2(obj,Params,process_to_update,checkFile,wasRun,exec_cmd)
-            if isempty(exec_cmd)
-                info = regexprep(sprintf('%-35s%s', [process_to_update ':'], [checkFile]),'\n','');
+           
+            %Making sure the file exists:
+            if exist(checkFile,'file') == 0
+                warning([ checkFile ' doesnt exist. Nothing updated to history.' ] );
+                pause(2);
             else
-%                 if wasRun
-%                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], obj.UserTime),'\n','');
-%                 else
+                if isempty(exec_cmd)
+                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], [checkFile]),'\n','');
+                else
+                    %                 if wasRun
+                    %                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], obj.UserTime),'\n','');
+                    %                 else
                     %%% For Linux
                     %Gets you the username:
                     [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
@@ -5686,16 +5692,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
                     theTime = datestr(theTime(1:end-11));
                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], ['last run by ' theUser ' on ' theTime]),'\n','');
-%                 end
-            end
-            Params.lastRun = info;
-            Params.exec_cmd=exec_cmd;
-            [ind assume] = obj.CheckHist(Params,wasRun);
-            Params.assume = assume;
-            obj.history{ind,1} = Params;
-            
-            if obj.dosave
-                save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+                    %                 end
+                end
+                Params.lastRun = info;
+                Params.exec_cmd=exec_cmd;
+                [ind assume] = obj.CheckHist(Params,wasRun);
+                Params.assume = assume;
+                obj.history{ind,1} = Params;
+                
+                if obj.dosave
+                    save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+                end
             end
         end
         

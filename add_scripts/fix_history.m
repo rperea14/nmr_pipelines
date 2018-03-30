@@ -19,15 +19,14 @@ tic
 
 pths=MyPaths('hcp');
 
-for ii=1:numel(AA)
+for ii=7:numel(AA)
     
      SUBJID = AA(ii).name;
      
      fprintf(['\n\n\n\n\n\n\n\n IN ITERATION: ' num2str(ii) ' ID: ' SUBJID ]);
-     obj_ADRC{ii} = load( [ pths.funcdir SUBJID '/DWIs/' SUBJID '.mat'] );
-     AA=1;
+     redo_obj_ADRC{ii} = load( [ pths.funcdir SUBJID '/DWIs/' SUBJID '.mat'] );
      
-     old_history{ii} = obj_ADRC{ii}.obj.history;
+     old_history{ii} = redo_obj_ADRC{ii}.obj.history;
     % keep_trkland{ii}='';
      keep_qboot{ii} = '' ;
      keep_T1toDWI{ii} = '' ;
@@ -49,7 +48,6 @@ for ii=1:numel(AA)
              keep_t1_spm{ii}= old_history{ii}{pp};
           end
      end
-     AA=1;
      system(['mv '  pths.funcdir SUBJID '/DWIs/' SUBJID '.mat  '  pths.funcdir SUBJID '/DWIs/' SUBJID  '_BAK_03292018.mat' ]);
      
       obj_ADRC{ii}.obj=dwi_ADRC(SUBJID);
@@ -58,13 +56,28 @@ for ii=1:numel(AA)
       
       %Keeping these histories:
       if ~isempty(keep_qboot{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_qboot{ii}; end
-      obj_ADRC{ii}.obj.trkland_fx();
+      
       %if ~isempty(keep_trkland{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_trkland{ii}; end
       if ~isempty(keep_T1toDWI{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_T1toDWI{ii}; end
       if ~isempty(keep_t1_spm{ii}) ; obj_ADRC{ii}.obj.history{numel(obj_ADRC{ii}.obj.history)+1} =  keep_t1_spm{ii}; end
       
+%       %Check if proc_TRKLAND has been run, if not...false it redo_history
+%       if exist([ redo_obj_ADRC{ii}.obj.Trkland.root 'fx_tmp2b0.nii.gz'], 'file') == 0
+%           obj_ADRC{ii}.obj.redo_history = false;
+%           obj_ADRC{ii}.obj.trkland_fx();
+%       else
+%           obj_ADRC{ii}.obj.trkland_fx();
+%       end
+      
+      
       obj_ADRC{ii}.obj.redo_history = false ; 
+      
+      %Redoing obj_proctrkland_fx():
+      obj_ADRC{ii}.obj.trkland_fx();
+      
       obj_ADRC{ii}.obj.resave();
+      
+      
 end
 toc
 timo=toc;
