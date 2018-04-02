@@ -2947,7 +2947,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %(Change this if /cluster/** is replaced)
                 if strcmp(obj.projectID,'HAB')
                     replaced_outpath = outpath ;
-                    outpath = [ '/cluster/cluster/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
+                    outpath = [ '/cluster/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
                     exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
                     obj.RunBash(exec_cmd{:,end});
                     if exist([replaced_outpath  obj.sessionname]) == 0 || istrue(obj.redo_history)
