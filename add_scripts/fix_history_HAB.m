@@ -25,7 +25,7 @@ tic
 
 pths=MyPaths('hab1');
 
-for ii=57:numel(AA{1})
+for ii=608:numel(AA{1})
     
      SUBJID = AA{1}{ii};
      

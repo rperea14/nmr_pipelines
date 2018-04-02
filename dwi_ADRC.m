@@ -25,8 +25,9 @@ classdef dwi_ADRC < dwiMRI_Session
             '/usr/pubsw/common/matlab/8.5'];
         b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
         %TORM--> REPLACED BY PROPERTY ABOVE and UNUSED: init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %THIS IS ONLY USED IN proc_dcm2nii() METHOD!
         col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        redo_history = true; %Allows us to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
+        redo_history = false; %Allows us to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
     end
     
     methods
@@ -344,7 +345,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
             
-            %obj.proc_qboot();
+            obj.proc_qboot();
             
             
             %TRACULA RELATED:
@@ -376,7 +377,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
-                %obj.trkland_fx();
+                obj.trkland_fx();
             end
             
             %FOR MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
@@ -596,7 +597,6 @@ classdef dwi_ADRC < dwiMRI_Session
         function obj = getDCM2nii(obj,torun)
             %For proc_DCM2NII:
             obj.Params.DCM2NII.specific_vols=68;
-            
             obj.Params.DCM2NII.seq_names={ 'ep2d_diff_7p5k_set1E60' 'ep2d_diff_7p5k_set2E60' ...
                 'ep2d_diff_7p5k_set3E60' 'ep2d_diff_2p5k_set4E60' };
       
@@ -638,7 +638,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
             end
             obj.proc_dcm2nii();
-            
         end
     end
 end

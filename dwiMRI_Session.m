@@ -79,8 +79,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = setDefaultParams(obj)
-            %THIS METHODS IS OBSOLETE VASED ON THE DYNAMIC INITIALIZATION I
-            %GIVE TO MY METHODS TO INITIALIZE PARAMETERS
+            %THIS METHODS IS OBSOLETE BASED ON THE DYNAMIC INITIALIZATION I
+            %GIVEN TO MY METHODS TO INITIALIZE PARAMETERS
             for tohide=1:1
                 %             %TO DOs:
                 %             % 1. Initialization  of Parameters was stopped after
@@ -5618,7 +5618,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
-            if  ~istrue(obj.redo_history) %NOTHING WILL BE EXECUTED IF obj.redo_history exists --> MAKE SURE YOU REMOVE THIS BEFORE REPLACING HISTORY!
+            if  ~(obj.redo_history) %NOTHING WILL BE EXECUTED IF obj.redo_history exists --> MAKE SURE YOU REMOVE THIS BEFORE REPLACING HISTORY!
                 %     display(exec_cmd)
                 %Code values:
                 %   44  --> Show output
