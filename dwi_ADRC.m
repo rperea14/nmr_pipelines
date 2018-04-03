@@ -307,12 +307,16 @@ classdef dwi_ADRC < dwiMRI_Session
             %For GQI:
             obj.Params.GQI.in.movefiles = [ '..' filesep '07_Combined_Recon_gqi' ];
             obj.Params.GQI.in.fn = {obj.Params.CoRegMultiple.out.combined_fn};
-            obj.Params.GQI.in.prefix = 'GQI_DSISv053117' ; %Double check this so you prefix the version of DSISTUDIO!
             obj.Params.GQI.in.mask ={obj.Params.CoRegMultiple.out.combined_mask};
             obj.Params.GQI.in.bvecs = {obj.Params.CoRegMultiple.out.combined_bvecs};
             obj.Params.GQI.in.bvals = {obj.Params.CoRegMultiple.out.combined_bvals};
             
+            obj.Params.GQI.in.prefix = 'GQI_DSISv053117' ; %Double check this so you prefix the version of DSISTUDIO!
             obj.Params.GQI.out.export = 'gfa,nqa0,nqa1';
+            
+            obj.Params.GQI.in.method = '4';    %for gqi model
+            obj.Params.GQI.in.num_fiber = '3'; %modeling 3 fiber population
+            obj.Params.GQI.in.param0 = '1.25'; %default parameter for gqi
             
             obj.proc_gqi();
             
@@ -343,15 +347,6 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.proc_FS2dwi();
         end
         function obj = CommonPostProc(obj)
-            %Multi-shell bedpostX
-            obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
-            obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
-            obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
-            obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
-            
-            obj.proc_qboot();
-            
-            
             %TRACULA RELATED:
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -364,6 +359,19 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 obj.proc_tracula();
             end
+            
+            
+            %Multi-shell bedpostX QBOOT
+            %At this time and for this project this will be avoided since Qboot ideally works
+            %with three b-values instead of only two.
+            %For more information, check:
+            %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap 
+%             obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
+%             obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
+%             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
+%             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
+%             
+            %obj.proc_qboot();
             
             %TRKLAND RELATED - FX:
             for tohide=1:1

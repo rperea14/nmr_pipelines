@@ -1416,14 +1416,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.spmT1_Proc.out.regfile = [a filesep 'y_' b c];
             obj.Params.spmT1_Proc.out.iregfile = [a filesep 'iy_' b c];
             if wasRun == true
-                obj.UpdateHist_v2(obj.Params.spmT1_Proc,'proc_t1_spm()',[a filesep 'y_' b c],wasRun,'check proc_t1_spm() method for more info.');
+                %If exec_cmd has only one line, it won't wrtie to
+                %obj.history so make sure you add a two liner exec_cmd on
+                %the fly if you want output in obj.histoy as below:
+                obj.UpdateHist_v2(obj.Params.spmT1_Proc,'proc_t1_spm()',[a filesep 'y_' b c],wasRun,{'To check:' ; 'check proc_t1_spm() method for more info.'});
                 obj.resave();
             end
             fprintf('\n');
             
         end
        
-        
         function obj = proc_getFreeSurfer(obj)
             wasRun=false;
             if ~exist('exec_cmd','var')
@@ -1770,6 +1772,71 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 fprintf('aparc+aseg2009 extraction complete. \n')
             end
+            
+            
+            %(Creating using some scripts arguments for Viviana Siless TractClustering method)
+            %WM_APARCASEGa2009 EXTRACTION:
+            
+            %mri_aparc2aseg --s 170810_8CSAD00153 --labelwm --hypo-as-wm --rip-unknown --labelwm --hypo-as-wm --rip-unknown --o wm2009parc_noctx.nii.gz
+            %Creating newer parcellation wmparc2009
+            obj.Params.FS2dwi.in.wm_aparcaseg2009 = strrep(obj.Params.FS2dwi.in.aparcaseg,'aparc+aseg.mgz','wmparc2009.nii.gz');
+            if exist(obj.Params.FS2dwi.in.wm_aparcaseg2009 ,'file') == 0 || istrue(obj.redo_history)
+                [~, to_exec ] = system('which mri_aparc2aseg');
+                disp('proc_FS2dwi: Running mti_aparc2aseg for creating wmparc2009.nii.gz...')
+                exec_cmd{:,end+1}=[ export_shell ' ' strtrim(to_exec) ' --s ' obj.sessionname ...
+                    ' --labelwm --hypo-as-wm --rip-unknown --labelwm --hypo-as-wm --rip-unknown ' ...
+                    ' --o '  obj.Params.FS2dwi.in.wm_aparcaseg2009 ...
+                    ' --ctxseg aparc.a2009s+aseg.mgz ' ];
+                obj.RunBash(exec_cmd{end},44); % '44' codes for seeing the output!
+                wasRun=true;
+                disp('..done');
+            end
+            %Moving newer parcellation into dwi space:
+            obj.Params.FS2dwi.out.wm_aparcaseg2009 = strrep(obj.Params.FS2dwi.out.fn_aparc,'aparc+aseg.nii.gz','wmparc2009.nii.gz');
+            for tohide=1:1
+                if exist( obj.Params.FS2dwi.in.wm_aparcaseg2009,'file')==2
+                    %Aparc.a2009+aseg to dwi:
+                    [~, to_exec ] = system('which mri_vol2vol');
+                    if exist(obj.Params.FS2dwi.out.wm_aparcaseg2009 ,'file') == 0 || istrue(obj.redo_history)
+                        %bbreg b0 to FS_T1:
+                        disp('proc_FS2dwi: Running bbreg in wmparc2009.nii.gz...')
+                        exec_cmd{:,end+1}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
+                            ' --targ ' obj.Params.FS2dwi.in.wm_aparcaseg2009 ...
+                            ' --o '   obj.Params.FS2dwi.out.wm_aparcaseg2009 ...
+                            ' --inv --nearest --reg ' obj.Params.FS2dwi.out.xfm_dwi2FS  ];
+                        obj.RunBash(exec_cmd{end},44); % '44' codes for seeing the output!
+                        wasRun=true;
+                        disp('..done');
+                    end
+                    %EXTRACTING ROIS NOT IMPLEMENTED AT THIS MOMEMT
+%                     %(04/03/2018):
+%                     %Extracting all ROIs for aparc2009:
+%                     [num_aparc2009 name_aparc2009 ] =textread(obj.Params.FS2dwi.in.tmpfile_aparcaseg2009,'%s %s');
+%                     clear tmp_curname;
+%                     %Looping on every image we included in temp. file:
+                    for ff=1:numel(num_aparc2009)
+                        %FOR LOOPING NOT IMPLEMENTED AT THIS MOMEMT
+                        %(04/03/2018)
+%                         tmp_curname{ff} = [ outpath  'aparc2009_aseg' filesep  'dwi_' name_aparc2009{ff}  '.nii.gz' ];
+%                         [~, to_exec ] = system('which fslmaths');
+%                         if exist(strtrim(tmp_curname{ff}), 'file') == 0 || istrue(obj.redo_history)
+%                             fprintf(['Displaying now: ' tmp_curname{ff} '...' ] )
+%                             exec_cmd{:,end+1} = [ 'fslmaths  ' obj.Params.FS2dwi.out.fn_aparc ...
+%                                 ' -uthr ' num_aparc2009{ff} ' -thr ' num_aparc2009{ff} ...
+%                                 ' -div '  num_aparc2009{ff} ' ' tmp_curname{ff} ] ;
+%                             obj.RunBash(exec_cmd{end});
+%                             fprintf('done \n');
+%                             wasRun=true;
+%                         end
+                    end
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                else
+                    error([ 'in proc_FS2dwi(obj): FS wmaparc2009 (supposely) located in: ' obj.Params.FS2dwi.in.wm_aparcaseg2009 ' does not exist'])
+                end
+                fprintf('wmparc2009 extraction complete. \n')
+            end
+            
+            
             %HIPPOFIELD_LEFT EXTRACTION:
             for tohide=1:1
                 if exist( obj.Params.FS2dwi.in.hippofield_left ,'file') == 2
@@ -1976,9 +2043,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             end
                             %Now apply rotation values to the newer bvecs:
                             fprintf([' applying rotation only .mat files to bvecs..(iter:' num2str(ii) ') ']);
-                            if istrue(obj.redo_history)
+                            %if istrue(obj.redo_history)
                                 TEMP_BVEC{ii} = load(out_tmp_bvecs{ii});
-                            end
+                            %end
                             %remove cause it will be replaced:
                             if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 2
                                 system(['rm ' obj.Params.CoRegMultiple.out.bvecs{ii} ]);
@@ -2022,7 +2089,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('\nMerging niis...')
                     obj.RunBash(exec_cmd{end});
                     wasRun=true;
-                    fprintf('...done\n')
+                    fprintf('...done\n');
                 end
                 
                 %Combining bvals:
@@ -2082,11 +2149,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.RunBash(exec_cmd{end});
                 wasRun=true;
                 fprintf('..done \n')
-                if exist(obj.Params.CoRegMultiple.out.combined_bet,'file') == 0
+            end
+            
+            %Renaming the mask created in the previous step
+            if exist([obj.Params.CoRegMultiple.out.combined_bet '_mask.nii.gz']) ~= 0
+                if exist(obj.Params.CoRegMultiple.out.combined_mask,'file') == 0
                     movefile([obj.Params.CoRegMultiple.out.combined_bet '_mask.nii.gz'],  obj.Params.CoRegMultiple.out.combined_mask);
                 end
             end
-            
             if wasRun==true
                 obj.UpdateHist_v2(obj.Params.CoRegMultiple,'proc_coreg_multiple()', obj.Params.CoRegMultiple.out.combined_bet,wasRun,exec_cmd');
                 obj.resave();                
@@ -2129,7 +2199,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         ' -r ' obj.Params.Dtifit.in.bvecs{ii} ...
                         ' -b ' obj.Params.Dtifit.in.bvals{ii} ...
                         ' --wls --sse' ]; %weighted least squared for improving inadequate noisy data
-                    obj.RunBash(exec_cmd{end});
+                    obj.RunBash(exec_cmd{end},44);
                     fprintf('...done');
                     
                     fprintf('\nCopying L1 to AxD...');
@@ -2604,7 +2674,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %!!!
         %DEPRECATED methods: Methods that were not finished and unusable but the code could be recycle 
-        function obj = proc_FROIS2dwi(obj)
+        function obj = deprecated_proc_FROIS2dwi(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_FROIS2DWI():');
             [a, ~, ~ ] = fileparts(obj.Params.FROIS2dwi.in.fn);
@@ -3388,12 +3458,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if ~exist(obj.Params.probtrackx.root,'dir')
                     mkdir(obj.Params.probtrackx.root);
                 end
-                
-                if strcmp(obj.projectID,'ADRC')
-                    obj.Params.probtrackx.bedp_dir = obj.Params.Qboot.out.dir;
-                else
-                    obj.Params.probtrackx.bedp_dir = obj.Params.tracxBYmask.tracula.bedp_dir;
-                end
+
+                [~, obj.Params.probtrackx.bedp_dir, ~ ]  = fileparts(obj.Params.Tracula.out.bedp_check);
+%                 if strcmp(obj.projectID,'ADRC')
+%                     %obj.Params.probtrackx.bedp_dir = obj.Params.Qboot.out.dir;
+%                     obj.Params.probtrackx.bedp_dir = obj.Params.tracxBYmask.tracula.bedp_dir;
+%                 else
+%                     obj.Params.probtrackx.bedp_dir = obj.Params.tracxBYmask.tracula.bedp_dir;
+%                 end
                 obj.Params.probtrackx.dwi_fn  = obj.Params.CoRegMultiple.out.combined_fn;
                 
                 %Creating working directory for specific mask:
@@ -3983,21 +4055,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for tohide=1:1
                 if ~exist(obj.Params.WMLs2DWI.in.b0,'file')
                     warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.b0. Returning now...')
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No b0 FOUND!' , wasRun,'');
+                
                 end
                 
                 if ~exist(obj.Params.WMLs2DWI.in.FLAIR,'file')
                     warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.FLAIR. Returning now...')
                     obj.Params.WMLs2DWI.NoFLAIR='No FLAIR found';
                     obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No FLAIR FOUND!' , wasRun,'');
+                
                     return
                 end
                 
                 if ~exist(obj.Params.WMLs2DWI.in.WMLprobmap,'file')
                     warning('proc_WMLs2DWI(): cannot find obj.Params.WMLs2DWI.in.WMLprobmap. Exiting...')
                     obj.Params.WMLs2DWI.NoWMLprob='No WMLprobmap found';
-                    obj.UpdateHist_v2(obj.Params.WMLs2DWI,'proc_WMLs2DWI', 'No WMLprobmap!' , wasRun,'');
+                
                     return
                 end
             end
@@ -5681,37 +5753,69 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         function obj = UpdateHist_v2(obj,Params,process_to_update,checkFile,wasRun,exec_cmd)
            
+           %Make sure we do not overwrite (in history) something that has been already recorded:
+           in_history=false;
+           sth_toupdate=true;
+           for gg=1:numel(obj.history)
+               if strcmp(obj.history{gg}.lastRun(1:size(process_to_update,2)),process_to_update)
+                   in_history=true;
+                   in_history_idx=gg;
+               end
+           end
             %Making sure the file exists:
             if exist(checkFile,'file') == 0
                 warning([ checkFile ' doesnt exist. Nothing updated to history.' ] );
+                sth_toupdate=false;
                 pause(2);
             else
-                if isempty(exec_cmd)
-                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], [checkFile]),'\n','');
+                
+                %                 if wasRun
+                %                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], obj.UserTime),'\n','');
+                %                 else
+                %%% For Linux
+                %Gets you the username:
+                [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
+                %Gets you the time:
+                [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
+                theTime = datestr(theTime(1:end-11));
+                if in_history==true
+                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], ['(re-ran) by ' theUser ' on ' theTime]),'\n','');
                 else
-                    %                 if wasRun
-                    %                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], obj.UserTime),'\n','');
-                    %                 else
-                    %%% For Linux
-                    %Gets you the username:
-                    [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
-                    %Gets you the time:
-                    [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
-                    theTime = datestr(theTime(1:end-11));
                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], ['last run by ' theUser ' on ' theTime]),'\n','');
-                    %                 end
                 end
+            end
+            
+            
+            %Is there any relevant exec_cmd that need to be update?
+            if isempty(exec_cmd)
+                sth_toupdate=false;
+            end
+            if size(exec_cmd,1)
+                sth_toupdate=false;
+            end
+            
+            Params.assume=true; %At this point no real meaninful use for this variable. 
+            if sth_toupdate==true
                 Params.lastRun = info;
                 Params.exec_cmd=exec_cmd;
-                [ind assume] = obj.CheckHist(Params,wasRun);
-                Params.assume = assume;
-                obj.history{ind,1} = Params;
-                
-                if obj.dosave
-                    save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+                if in_history == true
+                    temp_iter=obj.history{in_history_idx};
+                    if ~isfield(Params,'iternum')
+                        Params.iternum=2; %denoting second time this script will be modified
+                    else
+                        Params.iternum=Params.iternum+1;
+                    end
+                    Params.previousParams = temp_iter;
+                    obj.history{in_history_idx,1} = Params;                    
+                else
+                    %[ind assume] = obj.CheckHist(Params,wasRun);
+                    ind=numel(obj.history)+1;
+                    display(['Recording in history: ' info ]);
+                    obj.history{ind,1} = Params;
                 end
             end
         end
+    
         
         %SPM COREG METHODS:
         function obj = proc_reslice(obj,mov,ref,list_applyxforms, prefix)

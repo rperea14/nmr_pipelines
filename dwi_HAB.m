@@ -239,11 +239,17 @@ classdef dwi_HAB < dwiMRI_Session
             %For GQI:
             obj.Params.GQI.in.movefiles = [ '..' filesep '05_Recon_gqi' ];
             obj.Params.GQI.in.fn = obj.Params. Eddy.out.fn;
+            obj.Params.GQI.in.mask = obj.Params.MaskAfterEddy.out.finalmask;
             obj.Params.GQI.in.bvecs = obj.Params.Eddy.out.bvecs;
             obj.Params.GQI.in.bvals = obj.Params.Eddy.in.bvals;
-            obj.Params.GQI.in.mask = obj.Params.MaskAfterEddy.out.finalmask;
+            
             obj.Params.GQI.in.prefix = obj.dsistudio_version ; %Double check this so you prefix the version of DSISTUDIO!
             obj.Params.GQI.out.export = 'gfa,nqa0,nqa1';
+            
+            obj.Params.GQI.in.method = '4';    %for gqi model
+            obj.Params.GQI.in.num_fiber = '3'; %modeling 3 fiber population
+            obj.Params.GQI.in.param0 = '1.25'; %default parameter for gqi
+            
             
             obj.proc_gqi();
       
