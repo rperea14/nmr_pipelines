@@ -79,8 +79,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = setDefaultParams(obj)
-            %THIS METHODS IS OBSOLETE VASED ON THE DYNAMIC INITIALIZATION I
-            %GIVE TO MY METHODS TO INITIALIZE PARAMETERS
+            %THIS METHODS IS OBSOLETE BASED ON THE DYNAMIC INITIALIZATION I
+            %GIVEN TO MY METHODS TO INITIALIZE PARAMETERS
             for tohide=1:1
                 %             %TO DOs:
                 %             % 1. Initialization  of Parameters was stopped after
@@ -1631,8 +1631,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.in.b0);';
                 eval(exec_cmd{end});
                 
-                exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
-                obj.Bash(exec_cmd{end});
+                %BELOW GZIP IS COMMENTED OUT AS *.nii will be used in the
+                %future. 
+                %exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
+                %obj.RunBash(exec_cmd{end});
                 wasRun=true;
             end  
             
@@ -2293,6 +2295,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_getskeltois(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_GETSKELTOIS():');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_GETSKELTOIS()';
+            end
             for kk=1:numel(obj.Params.Skeletonize.out.FA)
                 for jj=1:numel( obj.Params.Skeletonize.out.diffmetrics)
                     for ii=1:numel(obj.Params.Skel_TOI.in.masks)
@@ -2311,9 +2316,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             in_file=strrep(obj.Params.Skeletonize.out.FA{kk},'_FA.nii',[ '_' obj.Params.Skeletonize.out.diffmetrics{jj} '.nii' ] );
                             mask_file=[ obj.Params.Skel_TOI.in.location obj.Params.Skel_TOI.in.masks{ii}   '.nii.gz' ] ;
                             [~, to_exec ] = system('which fslstats');
-                            exec_cmd{kk,kk,ii}=[ strtrim(to_exec) ' ' in_file ' -k ' mask_file ' -M '  ];
+                            exec_cmd{:,end+1}=[ strtrim(to_exec) ' ' in_file ' -k ' mask_file ' -M '  ];
                             fprintf([ ' now in ' cur_name '\n'] );
-                            [~ , obj.Params.Skel_TOI.out.(cur_name) ] =  system(exec_cmd{kk,kk,ii});
+                            [~ , obj.Params.Skel_TOI.out.(cur_name) ] =  system(exec_cmd{end});
+                            
                             last_cur_name=cur_name;
                             wasRun=true;
                         end
@@ -2331,7 +2337,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             if obj.Params.Skel_TOI.history_saved == 0
                 obj.Params.Skel_TOI.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.Skel_TOI,'proc_getskeltois', '' , wasRun,exec_cmd); %no file is created in this step but update it iteratively
+                obj.UpdateHist_v2(obj.Params.Skel_TOI,'proc_getskeltois()', obj.Params.Skeletonize.out.FA{end} , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
             end
             clear exec_cmd to_exec wasRun;
         end
@@ -2941,7 +2947,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %(Change this if /cluster/** is replaced)
                 if strcmp(obj.projectID,'HAB')
                     replaced_outpath = outpath ;
-                    outpath = [ '/cluster/cluster/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
+                    outpath = [ '/cluster/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
                     exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
                     obj.RunBash(exec_cmd{:,end});
                     if exist([replaced_outpath  obj.sessionname]) == 0 || istrue(obj.redo_history)
@@ -3334,7 +3340,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %normal functioning of the data:
         function obj = trkland_adddata(obj,TOI,HEMI,out_fname)
             obj.getdataTRKLAND(TOI,HEMI,out_fname);
-            obj.resave(); 
+            %obj.resave(); 
         end
         
         
@@ -3572,7 +3578,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf('\nRun the following script from command line: \n');
                 fprintf([obj.Params.probtrackx.(fname_bname).sh_cmd_torun '\n']);
                 
-                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),[' proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
+                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),['proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
                 fprintf('**ALTERNTATIVELY: create a protected method prot_run_TRACTx() <ontheworks> \n');
             end
             fprintf(['\n\nPROBTRACKX2 SH COMMAND CREATION COMPLETED \n\n']);
@@ -5428,7 +5434,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = applyTRKLAND_nonFA(obj,diffM, TOI,HEMI)
-            if strcmp(diffM,'MD') || strcmp(diffM,'AxD') || strcmp(diffM,'RD')
+            if strcmp(diffM,'MD') || strcmp(diffM,'RD')
                 TRK_NAME = ['nonFA_clineLow' diffM '_' HEMI ];
                 lowFLAG=true; %Flagging for the naming convention...
             else
@@ -5493,7 +5499,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %occurs between local function and updated function in
                     %Matlab2017a ]
                     splits=strsplit(data_trks{ii},'_');
-                    %First, do not extract all values for nonFA out files:
+                    %SPLITS will help us check only those TRKS that have
+                    %the same HEMI variable (eg. 'lh' or 'rh')
                     for jj=1:numel(splits)
                         if strcmp(splits(jj),HEMI)
                             if ~strcmp(data_trks{ii},'QC') %NOT SURE WHY THIS QC variable exists...easy fix for now.
@@ -5612,7 +5619,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
-            if  ~istrue(obj.redo_history) %NOTHING WILL BE EXECUTED IF obj.redo_history exists --> MAKE SURE YOU REMOVE THIS BEFORE REPLACING HISTORY!
+            if  ~(obj.redo_history) %NOTHING WILL BE EXECUTED IF obj.redo_history exists --> MAKE SURE YOU REMOVE THIS BEFORE REPLACING HISTORY!
                 %     display(exec_cmd)
                 %Code values:
                 %   44  --> Show output
@@ -5676,7 +5683,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
            
             %Making sure the file exists:
             if exist(checkFile,'file') == 0
-                warning([ checkfile
+                warning([ checkFile ' doesnt exist. Nothing updated to history.' ] );
+                pause(2);
             else
                 if isempty(exec_cmd)
                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], [checkFile]),'\n','');
@@ -6101,7 +6109,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 defs.out{1}.pull.mask=1;
                 defs.out{1}.pull.fwhm=[0 0 0];
                 defs.comp{2}.idbbvox.vox = abs(x(7:9));
-                defs.comp{2}.idbbvox.bb = world_bb(h);
+                defs.comp{2}.idbbvox.bb = world_bb_v2(h);
                 
                 spm_deformations(defs);
                 

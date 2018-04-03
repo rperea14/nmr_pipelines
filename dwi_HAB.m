@@ -435,7 +435,7 @@ classdef dwi_HAB < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to average value on previous studies in connectome!
-                %obj.trkland_fx(); 
+                obj.trkland_fx(); 
                
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -488,7 +488,7 @@ classdef dwi_HAB < dwiMRI_Session
             
         end
         function resave(obj)
-            save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+            save(strrep([obj.objectHome filesep obj.sessionname '.mat'], [ filesep filesep ], filesep ),'obj');
         end
     end
     

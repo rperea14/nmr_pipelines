@@ -3340,7 +3340,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %normal functioning of the data:
         function obj = trkland_adddata(obj,TOI,HEMI,out_fname)
             obj.getdataTRKLAND(TOI,HEMI,out_fname);
-            obj.resave(); 
+            %obj.resave(); 
         end
         
         
@@ -5434,7 +5434,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = applyTRKLAND_nonFA(obj,diffM, TOI,HEMI)
-            if strcmp(diffM,'MD') || strcmp(diffM,'AxD') || strcmp(diffM,'RD')
+            if strcmp(diffM,'MD') || strcmp(diffM,'RD')
                 TRK_NAME = ['nonFA_clineLow' diffM '_' HEMI ];
                 lowFLAG=true; %Flagging for the naming convention...
             else
@@ -5499,7 +5499,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %occurs between local function and updated function in
                     %Matlab2017a ]
                     splits=strsplit(data_trks{ii},'_');
-                    %First, do not extract all values for nonFA out files:
+                    %SPLITS will help us check only those TRKS that have
+                    %the same HEMI variable (eg. 'lh' or 'rh')
                     for jj=1:numel(splits)
                         if strcmp(splits(jj),HEMI)
                             if ~strcmp(data_trks{ii},'QC') %NOT SURE WHY THIS QC variable exists...easy fix for now.
