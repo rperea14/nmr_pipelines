@@ -1,8 +1,8 @@
 classdef dwi_ADRC < dwiMRI_Session
     %%  This class is a subclass of its parent class dwi_MRI_Session.m
     %%  (where it will inherent other methods).
-    %%  Created by:
-    %%              Rodrigo D. Perea grandrigo@gmail.com
+    %%  Created by: RodrigoPereaCamargo ~~> rperea14@live.com
+    %%  Inheritance credits to AaronSchultz
     %%
 
     
@@ -27,7 +27,7 @@ classdef dwi_ADRC < dwiMRI_Session
         %TORM--> REPLACED BY PROPERTY ABOVE and UNUSED: init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
         init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %THIS IS ONLY USED IN proc_dcm2nii() METHOD!
         col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        redo_history = false; %Allows us to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
+        redo_history = false; %Allows to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
     end
     
     methods
@@ -59,7 +59,7 @@ classdef dwi_ADRC < dwiMRI_Session
             if exist(obj.root,'dir')==0
                 obj.make_root();
             end
-            obj.objectHome = obj.root ;
+            obj.objectHome = obj.root ; %for 
             %!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             %!!!!!!!
             
@@ -75,6 +75,8 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %CHECK CHANGES MADE FROM /eris to /cluster
+            %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
+            %OBJECT
             if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
                 display('Changing eris to cluster folder...');
                 %Then apply the mod to cluster...
@@ -107,6 +109,8 @@ classdef dwi_ADRC < dwiMRI_Session
         
         function obj=setMyParams(obj)
             %%%%%%%%%%%%
+            % ??? ??? rdp20 ~~> Not applicable to the dwiMRI_ process as of
+            % 04/2/2018
             %Global parameters:
             %             obj.vox = [1.8 1.8 1.8];
             %             obj.setDefaultParams; %this will call the method in the superclass dwiMRI_Session.m
