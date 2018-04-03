@@ -79,8 +79,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = setDefaultParams(obj)
-            %THIS METHODS IS OBSOLETE VASED ON THE DYNAMIC INITIALIZATION I
-            %GIVE TO MY METHODS TO INITIALIZE PARAMETERS
+            %THIS METHODS IS OBSOLETE BASED ON THE DYNAMIC INITIALIZATION I
+            %GIVEN TO MY METHODS TO INITIALIZE PARAMETERS
             for tohide=1:1
                 %             %TO DOs:
                 %             % 1. Initialization  of Parameters was stopped after
@@ -464,7 +464,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DropVols.out.fn{ii} = [ outpath obj.Params.DropVols.in.prefix  b c ];
                 
                 %Droppping volumes in the DWIs (niftii):
-                if exist( obj.Params.DropVols.out.fn{ii},'file')==0
+                if exist( obj.Params.DropVols.out.fn{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf(['\n Dropping volumes  (fslroi <input> <output> ' ...
                         obj.Params.DropVols.in.tmin ' ' obj.Params.DropVols.in.tsize  ') ...' ...
                         'Iteration: ' num2str(ii) ]);
@@ -480,7 +480,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Droppping volumes in the DWIs (bvals):
                 obj.Params.DropVols.in.bvals{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.bvals');
                 obj.Params.DropVols.out.bvals{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.bvals');
-                if exist( obj.Params.DropVols.out.bvals{ii},'file')==0 
+                if exist( obj.Params.DropVols.out.bvals{ii},'file')==0  || istrue(obj.redo_history)
                     exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvals{ii} ' > ' obj.Params.DropVols.out.bvals{ii} ]);
                     obj.RunBash(exec_cmd{end});
@@ -488,7 +488,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Droppping volumes in the DWIs (bvecs):
                 obj.Params.DropVols.in.bvecs{ii}=strrep(obj.Params.DropVols.in.fn{ii},'.nii.gz','.voxel_space.bvecs');
                 obj.Params.DropVols.out.bvecs{ii}=strrep(obj.Params.DropVols.out.fn{ii},'.nii.gz','.voxel_space.bvecs');
-                if exist(obj.Params.DropVols.out.bvecs{ii},'file')==0 
+                if exist(obj.Params.DropVols.out.bvecs{ii},'file')==0  || istrue(obj.redo_history)
                     exec_cmd{:,end+1}=(['sed 1,' obj.Params.DropVols.in.tmin 'd ' ...
                         obj.Params.DropVols.in.bvecs{ii} ' > ' obj.Params.DropVols.out.bvecs{ii} ]);
                     obj.RunBash(exec_cmd{end});
@@ -530,7 +530,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %first extract the first b0s of the first alphabetical sequence (e.g. set4 in Connectome):
             obj.Params.GradNonlinCorrect.in.b0{1}=[outpath 'firstb0_' b c ];
-            if exist(obj.Params.GradNonlinCorrect.in.b0{1},'file')==0
+            if exist(obj.Params.GradNonlinCorrect.in.b0{1},'file')==0 || istrue(obj.redo_history)
                 fprintf(['\nExtracting the first b0 of: ' obj.Params.GradNonlinCorrect.in.b0{1} ]);
                 exec_cmd{:,end+1}=['fslroi ' in_fn{1} ' ' obj.Params.GradNonlinCorrect.in.b0{1} ...
                     ' ' num2str(obj.Params.GradNonlinCorrect.in.fslroi) ];
@@ -548,7 +548,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%% Compute the grdient nonlinearity correction or check if
             %%% file XXX_grad_rel.nii.gz exists. 
             obj.Params.GradNonlinCorrect.out.warpfile{1} = strrep(first_b0_infile,'.nii','_deform_grad_rel.nii');
-            if exist(obj.Params.GradNonlinCorrect.out.warpfile{1},'file')==0
+            if exist(obj.Params.GradNonlinCorrect.out.warpfile{1},'file')==0 || istrue(obj.redo_history)
                 exec_cmd{:,end+1}=['sh ' obj.sh_gradfile ' '  first_b0_infile ' ' first_b0_outfile ' ' gradfile ' '];
                 obj.RunBash(exec_cmd{end},44);
                 wasRun = true;
@@ -559,7 +559,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             %%Apply the correction to the first_b0 or check for gnc_XXX
             %%file
-            if exist(first_b0_outfile,'file')==0
+            if exist(first_b0_outfile,'file')==0 || istrue(obj.redo_history)
                 exec_cmd{:,end+1}=['applywarp -i ' first_b0_infile ' -r ' first_b0_infile ...
                     ' -o ' first_b0_outfile ' -w ' obj.Params.GradNonlinCorrect.out.warpfile{1} ...
                     ' --interp=spline' ];
@@ -577,7 +577,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(in_fn)
                 [a b c ] = fileparts(in_fn{ii});
                 obj.Params.GradNonlinCorrect.out.fn{ii}=[ outpath 'gnc_' b c ];
-                if exist(obj.Params.GradNonlinCorrect.out.fn{ii},'file')==0
+                if exist(obj.Params.GradNonlinCorrect.out.fn{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf('\nGNC: Applying warp field to all the other images:\n');
                     fprintf(['~~~~> ' obj.Params.GradNonlinCorrect.out.fn{ii} '.']);
                     exec_cmd{:,end+1} = ['applywarp -i ' obj.Params.GradNonlinCorrect.in.fn{ii} ' -r ' first_b0_infile ...
@@ -620,7 +620,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
 
             %Check if the FreeSurfer location exists (due to bbreg dependency):
-            if exist(obj.Params.B0MoCo.FS,'dir') ~=0 %if so continue, else break!
+            if exist(obj.Params.B0MoCo.FS,'dir') ~=0  || istrue(obj.redo_history) %if so continue, else break!
                 for jj=1:numel(obj.Params.B0MoCo.in.fn)
                     clear cur_fn;
                     %INIT VARIABLES:
@@ -639,7 +639,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     obj.Params.B0MoCo.out.bvals{jj}= [ outpath  obj.Params.B0MoCo.in.prefix strrep(b,'.nii','.bvals') ];
                     
                     %%%%%%%%ENTRERING CODE IF OUTPUT DOESNT EXIST%%%%%%%%%%
-                    if exist(obj.Params.B0MoCo.out.fn{jj}, 'file') == 0
+                    if exist(obj.Params.B0MoCo.out.fn{jj}, 'file') == 0 || istrue(obj.redo_history)
                         %%%%%%%%STEP 1: SPLIT EACH DWI INTO MULTIPLE 3D VOLUMES
                         fprintf('\n\tSTEP1:SPLIT EACH DWI INTO MULTIPLE 3D VOLUMES...'); 
                         for tohide=1:1
@@ -647,7 +647,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             clear tmp_fslsplit;
                             tmp_fslsplit=[ outpath 'tmp' filesep ...
                                 'tmp_' strrep(b,'.nii','') filesep ];
-                            if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0
+                            if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0  || istrue(obj.redo_history)
                                 exec_cmd{end+1,:} = (['mkdir -p ' tmp_fslsplit ] );
                                 obj.RunBash(exec_cmd{end});
                                 exec_cmd{end+1,:}=(['fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
@@ -704,7 +704,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %eye.mat matrix for reference on the refb0 for rotation
                                     %matrices that will be used for rot. bvecs
                                     outmat_dwi2earlierb0{1}=outmat_dwi2refb0{ii};
-                                    if exist(outmat_dwi2refb0{ii}, 'file' ) == 0
+                                    if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=(['echo -e "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
                                             outmat_dwi2refb0{ii} ]);
                                         obj.RunBash(exec_cmd{end});
@@ -716,7 +716,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %its consecuent one. 
                                     outmat_dwi2earlierb0{ii} =  [ tmp_fslsplit 'dwi_' bn_curdwi{ii} '_2_' ...
                                         b0_padded_name{b0idx} '.mat' ];
-                                    if exist(outmat_dwi2refb0{ii}, 'file' ) == 0
+                                    if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || istrue(obj.redo_history)
                                         %Transform to ref b0 --> 
                                         exec_cmd{end+1,:}=[ 'flirt -in ' cur_in_dwi{ii} ' -ref ' refB0_fname   '  -omat ' outmat_dwi2refb0{ii} ];
                                         fprintf(['\n (FSL)Flirting and creating matfile b0 ' bn_curdwi{ii} ' to refb0: ' bn_refB0 ]);
@@ -757,13 +757,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %Applying apply_warp and convert_xfm
                             if ii==refB0 %b0 ref index in MATLAB notation (e.g. index 0000.nii.gz is refB0=1)
                                 %Copy refb0:
-                                if exist(final_nii_dwi2B0{ii} ,'file') == 0
+                                if exist(final_nii_dwi2B0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                     exec_cmd{end+1,:}=[ 'cp -r ' cur_in_dwi{ii} ' ' final_nii_dwi2B0{ii}  ];
                                     obj.RunBash(exec_cmd{end});
                                     wasRun=true;
                                 end
                                 %Copy eye.mat matrix
-                                if exist(final_mat_dwi2B0{ii} ,'file') == 0
+                                if exist(final_mat_dwi2B0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                     exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{ii} ' ' final_mat_dwi2B0{ii}  ]; %only for consistency
                                     obj.RunBash(exec_cmd{end});
                                     wasRun=true;
@@ -776,7 +776,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 for bb=1:numel(b0idx_MATLABnot) ; if b0idx_MATLABnot{bb} == ii ; is2B0=true; break ; end ; end
                                 if is2B0==true
                                     %Copy only the flirt matrix
-                                    if exist(final_mat_dwi2B0{ii} ,'file') == 0
+                                    if exist(final_mat_dwi2B0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{bb} ' ' final_mat_dwi2B0{ii}  ];
                                         obj.RunBash(exec_cmd{end});
                                         wasRun=true;
@@ -787,7 +787,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     if ii > b0idx_MATLABnot{end}
                                         %Omat will be the same as the last
                                         %indexed
-                                        if exist(final_mat_dwi2B0{ii} ,'file') == 0
+                                        if exist(final_mat_dwi2B0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                             exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{end} ' ' final_mat_dwi2B0{ii}  ];
                                             obj.RunBash(exec_cmd{end});
                                             wasRun=true;
@@ -800,7 +800,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                         
                                         %Apply convert_xfm usinf the AtoC
                                         %notation in FSL convert_xfm
-                                        if exist(final_mat_dwi2B0{ii} ,'file') == 0
+                                        if exist(final_mat_dwi2B0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                             % Given C=refB0, A=lateB0 and B=early b0 --> convert_xfm  -omat <outmat_AtoC> -concat <mat_BtoC> <mat_AtoB>
                                             exec_cmd{end+1,:}=[ 'convert_xfm -omat ' final_mat_dwi2B0{ii} ' -concat ' B0torefB0 ' ' B0_btw   ];
                                             obj.RunBash(exec_cmd{end});
@@ -809,7 +809,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     end
                                 end
                                 %Apply flirt with the created final_mat_dwi2B0{ii}
-                                if exist(final_nii_dwi2B0{ii} ,'file') == 0
+                                if exist(final_nii_dwi2B0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                     exec_cmd{end+1,:}=[ 'flirt -in ' cur_in_dwi{ii} ...
                                         ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp nearestneighbour'  ];
                                     obj.RunBash(exec_cmd{end});
@@ -825,7 +825,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         for tohide=1:1
                             %BVECS:
                             %Applying rotate_bvecs.sh...
-                            if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0
+                            if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || istrue(obj.redo_history)
                                 fprintf('Applying rotation only .mat files to bvecs..');
                                 TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
                                 for pp=1:size(TEMP_BVEC,1)
@@ -841,7 +841,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %BVALS:
                             %Copy bval_in to bvals_out (just a simple copy as
                             %its not affected):
-                            if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0
+                            if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0 || istrue(obj.redo_history)
                                 exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
                                 obj.RunBash(exec_cmd{end});
                                 wasRun=true;
@@ -852,7 +852,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         
                         %%%%%%%%STEP6: MERGING MOTION CORRECTED DWI
                         fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
-                            if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0
+                            if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0 || istrue(obj.redo_history)
                                 clear all_niis
                                 for bb=1:numel(final_nii_dwi2B0)
                                     if bb==1
@@ -907,7 +907,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Bet2.out.mask{ii} = strrep(obj.Params.Bet2.out.skull{ii},'.nii.gz','_mask.nii.gz');
                 %EXEC command to store:
                 [~, to_exec] =system(['which bet2']);
-                if exist( obj.Params.Bet2.out.mask{ii},'file')==0
+                if exist( obj.Params.Bet2.out.mask{ii},'file')==0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1} = [  strtrim(to_exec) ' ' obj.Params.Bet2.in.fn{ii} ' ' obj.Params.Bet2.out.skull{ii}  ' -m -f ' num2str(obj.Params.Bet2.in.fracthrsh) ];
                     fprintf(['\nExtracting the skull using bet2 for : ' obj.Params.Bet2.in.fn{ii} ]);
                     obj.RunBash(exec_cmd{end});
@@ -947,7 +947,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 clear outfile
                 %(dependency) Attempting to create acqp file:
                 obj.Params.Eddy.out.fn_acqp{ii}= [ outpath 'acqp.txt' ] ;
-                if exist(obj.Params.Eddy.out.fn_acqp{ii},'file')==0
+                if exist(obj.Params.Eddy.out.fn_acqp{ii},'file')==0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1}=['echo " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_acqp{ii}  ]);
                     obj.RunBash(exec_cmd{end});
@@ -956,7 +956,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 %(dependency) Attempting to create index file:
                 obj.Params.Eddy.out.fn_index{ii}= [ outpath 'index.txt' ] ;
-                if exist(obj.Params.Eddy.out.fn_index{ii},'file')==0
+                if exist(obj.Params.Eddy.out.fn_index{ii},'file')==0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1}=['echo "' num2str(obj.Params.Eddy.in.index) '" >> ' obj.Params.Eddy.out.fn_index{ii}  ];
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_index{ii}  ]);
                     obj.RunBash(exec_cmd{end});
@@ -967,7 +967,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Eddy.out.fn{ii} = [ outpath obj.Params.Eddy.in.prefix  b c ];
                 obj.Params.Eddy.out.bvecs{ii} = [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','.eddy_rotated_bvecs') ];
                 %EXEC command to store:
-                if exist(obj.Params.Eddy.out.fn{ii},'file')==0
+                if exist(obj.Params.Eddy.out.fn{ii},'file')==0 || istrue(obj.redo_history)
                     try
                         [~, to_exec] =system(['which eddy_openmp']);
                         exec_cmd{:,end+1}=[  strtrim(to_exec) ' --imain=' obj.Params.Eddy.in.fn{ii} ...
@@ -1016,7 +1016,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/eddy/UsersGuide )
                 obj.Params.EddyMotion.in.fn_motion{ii} = ...
                     strrep(obj.Params.EddyMotion.in.fn_eddy{ii},'.nii.gz','.eddy_restricted_movement_rms');
-                if exist(obj.Params.EddyMotion.in.fn_motion{ii} )
+                if exist(obj.Params.EddyMotion.in.fn_motion{ii} ) || istrue(obj.redo_history)
                     if iscell(obj.Params.EddyMotion.in.fn_motion{ii})
                         cur_fn=cell2char(obj.Params.EddyMotion.in.fn_motion{ii});
                     else
@@ -1036,7 +1036,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     ' printf "' ] );
                 cmd_2= ('%f %f \n", sum[i]/NR, sqrt((sumsq[i]-sum[i]^2/NR)/NR)} ' ) ;
                 cmd_3= sprintf(['\n }'' ' obj.Params.EddyMotion.in.fn_motion{ii}  ' > ' obj.Params.EddyMotion.out.fn_motion{ii} ]);
-                if exist(obj.Params.EddyMotion.out.fn_motion{ii},'file')==0
+                if exist(obj.Params.EddyMotion.out.fn_motion{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf(['\nGetting motion parameters from: ' obj.Params.EddyMotion.in.fn_motion{ii} ]);
                     %Break the command so I can denote the newline (\n
                     %character):
@@ -1151,7 +1151,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.B0mean.out.fn{ii}= [ outpath 'b0mean_' b c ] ;
                 try
                     %Attempting to create B0means:
-                    if exist( obj.Params.B0mean.out.allb0s{ii},'file')==0
+                    if exist( obj.Params.B0mean.out.allb0s{ii},'file')==0 || istrue(obj.redo_history)
                         [~, to_exec] =system(['which fslroi']);
                         exec_cmd{:,end+1}=[  strtrim(to_exec) ' ' cur_fn ' ' obj.Params.B0mean.out.allb0s{ii} ' 0 ' ...
                             num2str(obj.Params.B0mean.in.b0_nvols)  ];
@@ -1160,7 +1160,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         fprintf('...done');
                         wasRun=true;
                     end
-                    if exist( obj.Params.B0mean.out.fn{ii},'file')==0
+                    if exist( obj.Params.B0mean.out.fn{ii},'file')==0 || istrue(obj.redo_history)
                         [~, to_exec] =system(['which fslmaths']);
                         exec_cmd{:,end+1}=[  strtrim(to_exec) ' ' obj.Params.B0mean.out.allb0s{ii} ...
                             ' -Tmean ' obj.Params.B0mean.out.fn{ii}];
@@ -1215,7 +1215,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %(compatible with dwi_ADRC.m)
                     obj.Params.MaskAfterEddy.in.b0{ii} = [ outpath 'b0_' b c ] ;
                     [~, to_exec ] = system('which fslroi');
-                    if exist(obj.Params.MaskAfterEddy.in.b0{ii},'file') == 0
+                    if exist(obj.Params.MaskAfterEddy.in.b0{ii},'file') == 0 || istrue(obj.redo_history)
                         fprintf(['\n proc_mask_after_eddy: Extracting the first b0 for iteration: ' num2str(ii) ]);
                         exec_cmd{:,end+1} = ([ strtrim(to_exec) ' ' obj.Params.MaskAfterEddy.in.fn{ii} ...
                             ' '  obj.Params.MaskAfterEddy.in.b0{ii} ' 0 1 ' ]);
@@ -1229,7 +1229,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.MaskAfterEddy.out.finalmask{ii} = strrep(obj.Params.MaskAfterEddy.out.brainonly{ii},'brainonly_','finalmask_');
                 
                 
-                if exist( obj.Params.MaskAfterEddy.out.finalmask{ii},'file')==0
+                if exist( obj.Params.MaskAfterEddy.out.finalmask{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf(['\nExtracting the brain only using bet2 for : ' obj.Params.MaskAfterEddy.in.b0{ii} ]);
                     %execs:
                     %execs...
@@ -1276,7 +1276,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                temp_fsdir=strrep(temp_fsdir,[filesep filesep],filesep); %Removes '//' --> <FOLDE>//<SUBFOLDER>
                
                %Check if the FreeSurfer Folder exists:
-               if exist([temp_fsdir filesep 'mri' ],'dir' ) == 7
+               if exist([temp_fsdir filesep 'mri' ],'dir' ) == 7 
                    obj.fsdir = temp_fsdir;
                else
                    error(['The FreeSurfer directory: ' temp_fsdir ' does not exist. Please make sure you have run FreeSurfer ob this subject (' obj.sessionname ')']);
@@ -1298,7 +1298,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%
             
             if isempty(obj.Params.spmT1_Proc.in.outdir) || isempty(obj.Params.spmT1_Proc.in.t1)
-                if exist([obj.fsdir filesep 'mri' filesep 'spm12' filesep ],'dir')==0
+                if exist([obj.fsdir filesep 'mri' filesep 'spm12' filesep ],'dir')==0 
                     mkdir([obj.fsdir filesep 'mri' filesep 'spm12' filesep ])
                 end
                 if exist([obj.fsdir filesep obj.fsubj '/mri/spm12/orig.nii'],'file')==0
@@ -1450,14 +1450,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %obj.Params.FreeSurfer.in.T1_warpfile  = strtrim([obj.Params.FreeSurfer.in.T1_dir filesep  T1_fname '_deform_grad_rel.nii']);
                 
                 %Getting the warp fields....
-                if exist( obj.Params.FreeSurfer.in.T1_warpfile, 'file' ) == 0
+                if exist( obj.Params.FreeSurfer.in.T1_warpfile, 'file' ) == 0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1}=['sh ' obj.sh_gradfile ' ' strtrim(obj.Params.FreeSurfer.in.T1raw) ' ' obj.Params.FreeSurfer.in.T1_grad_non ' ' obj.gradfile ' '];
                     obj.RunBash(exec_cmd{end},44);
                     %Re-evaluate warfile assignation...
                     [~, warpfile_tmp] =system(['ls  ' obj.Params.FreeSurfer.in.T1_dir filesep   '*_deform_grad_rel.nii' ])
                     obj.Params.FreeSurfer.in.T1_warpfile = strtrim(warpfile_tmp);
                 end
-                if exist(obj.Params.FreeSurfer.in.T1_grad_non , 'file' ) == 0
+                if exist(obj.Params.FreeSurfer.in.T1_grad_non , 'file' ) == 0 || istrue(obj.redo_history)
                     %Applywing the warp fields...
                     [~ , to_exec ] = system('which applywarp');
                     to_exec=strtrim(to_exec);
@@ -1480,7 +1480,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if obj.Params.FreeSurfer.in.T2exist==true
                 if strcmp(obj.projectID,'ADRC')
                     obj.Params.FreeSurfer.in.T2_grad_non = [obj.Params.FreeSurfer.in.T2_dir filesep 'gnc_T2.nii' ];
-                    if exist(obj.Params.FreeSurfer.in.T2_grad_non , 'file' ) == 0
+                    if exist(obj.Params.FreeSurfer.in.T2_grad_non , 'file' ) == 0 || istrue(obj.redo_history)
                         %Applying the warip fields from the T1 (yielding similar results).
                         [~ , to_exec ] = system('which applywarp'); to_exec=strtrim(to_exec);
                         exec_cmd{:,end+1}=[strtrim(to_exec) ' -i ' obj.Params.FreeSurfer.in.T2raw ' -r ' obj.Params.FreeSurfer.in.T2raw ...
@@ -1511,7 +1511,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     ' setenv SUBJECTS_DIR ' obj.Params.FreeSurfer.dir ' ; '];
             end
             %APPLYING THE ACTUAL RECON-ALL:
-            if exist(obj.Params.FreeSurfer.out.aparcaseg, 'file') == 0
+            if exist(obj.Params.FreeSurfer.out.aparcaseg, 'file') == 0 || istrue(obj.redo_history)
                 %CHECKING RECON-ALL AND WHETHER A T2 IMAGE IS USED
                 [~ , exec_FS ] = system('which recon-all ' );
                 if obj.Params.FreeSurfer.in.T2exist==true
@@ -1534,7 +1534,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.RunBash(exec_cmd{end},44); % '44' codes for seeing the output!
                 %THE PREVIOUS LINE OF CODE MAY NOT WORK DUE TO PERMISSION
                 %ERRORS READING /cluster/* folder. To see if this is not the
-                %error try a simple `ls` command (e.g.  ls /cluster/bang/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
+                %error try a simple `ls` command (e.g.  ls /cluster/cluster/HAB_Project1/FreeSurferv6.0/100902_4TT01167/mri %)
                 obj.Params.FreeSurfer.out.timelapsed_mins=[ 'FreeSurfer took ' toc/60 ' minutes to complete'];
                 disp('Done with FreeSurfer');
                 wasRun=true;
@@ -1631,8 +1631,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{:,end+1} = 'obj.proc_apply_coreg2dwib0(obj.Params.T1toDWI.out.origT1,1,obj.Params.T1toDWI.in.b0);';
                 eval(exec_cmd{end});
                 
-                exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
-                obj.Bash(exec_cmd{end});
+                %BELOW GZIP IS COMMENTED OUT AS *.nii will be used in the
+                %future. 
+                %exec_cmd{:,end+1} = ['gzip '  obj.Params.T1toDWI.out.dir  '*.nii '] ;
+                %obj.RunBash(exec_cmd{end});
                 wasRun=true;
             end  
             
@@ -1679,7 +1681,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %APARCASEG EXTRACTION:
             for tohide=1:1
                 if exist(obj.Params.FS2dwi.in.aparcaseg, 'file') == 2
-                   if exist(obj.Params.FS2dwi.out.xfm_dwi2FS,'file') == 0
+                   if exist(obj.Params.FS2dwi.out.xfm_dwi2FS,'file') == 0 || istrue(obj.redo_history)
                         %bbreg b0 to FS_T1:
                         disp('proc_FS2dwi: Running bbreg dwi2FS_T1...')
                         %BBreg dwi (b0) to FS:
@@ -1693,7 +1695,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         wasRun=true;
                    end
                    %Check if aparc_aseg exists:
-                   if exist(obj.Params.FS2dwi.out.fn_aparc,'file') == 0
+                   if exist(obj.Params.FS2dwi.out.fn_aparc,'file') == 0  || istrue(obj.redo_history)
                         disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
                         %Aparc+aseg to dwi using bbregister:
                         [~, to_exec ] = system('which mri_vol2vol');
@@ -1712,7 +1714,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     for ff=1:numel(num_aparc)
                         tmp_curname{ff} = [ outpath  'aparc_aseg' filesep 'dwi_' name_aparc{ff} '.nii.gz'];
                         [~, to_exec ] = system('which fslmaths');
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0  || istrue(obj.redo_history)
                             fprintf(['Displaying now: ' tmp_curname{ff} '...' ] )
                             exec_cmd{:,end+1} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.fn_aparc ...
                                 ' -uthr ' num_aparc{ff} ' -thr ' num_aparc{ff} ...
@@ -1734,7 +1736,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist(obj.Params.FS2dwi.in.aparcaseg2009,'file')==2
                     %Aparc.a2009+aseg to dwi:
                     [~, to_exec ] = system('which mri_vol2vol');
-                    if exist(obj.Params.FS2dwi.out.fn_aparc2009,'file') == 0
+                    if exist(obj.Params.FS2dwi.out.fn_aparc2009,'file') == 0 || istrue(obj.redo_history)
                         %bbreg b0 to FS_T1:
                         disp('proc_FS2dwi: Running bbreg in aparc2009+aseg.mgz...')
                         exec_cmd{:,end+1}=[ export_shell ' ' strtrim(to_exec) ' --mov ' obj.Params.FS2dwi.in.b0{1} ...
@@ -1752,7 +1754,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     for ff=1:numel(num_aparc2009)
                         tmp_curname{ff} = [ outpath  'aparc2009_aseg' filesep  'dwi_' name_aparc2009{ff}  '.nii.gz' ];
                         [~, to_exec ] = system('which fslmaths');
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0 || istrue(obj.redo_history)
                             fprintf(['Displaying now: ' tmp_curname{ff} '...' ] )
                             exec_cmd{:,end+1} = [ 'fslmaths  ' obj.Params.FS2dwi.out.fn_aparc ...
                                 ' -uthr ' num_aparc2009{ff} ' -thr ' num_aparc2009{ff} ...
@@ -1771,7 +1773,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %HIPPOFIELD_LEFT EXTRACTION:
             for tohide=1:1
                 if exist( obj.Params.FS2dwi.in.hippofield_left ,'file') == 2
-                    if exist(obj.Params.FS2dwi.out.hippofield_left,'file') == 0
+                    if exist(obj.Params.FS2dwi.out.hippofield_left,'file') == 0 || istrue(obj.redo_history)
                         %bbreg b0 to FS_T1:
                         disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...');
                         [~, to_exec ] = system('which mri_vol2vol');
@@ -1791,7 +1793,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         tmp_curname{ff} = [ outpath  'hippos' filesep 'dwi_lh_' name_hippo_lh{ff} '.nii.gz' ];
                         [~, to_exec ] = system('which fslmaths');
                         
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0 || istrue(obj.redo_history)
                             fprintf(['Displaying now: ' tmp_curname{ff} '...' ] )
                             exec_cmd{:,end+1} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_left ...
                                 ' -uthr ' num_hippo_lh{ff} ' -thr ' num_hippo_lh{ff} ...
@@ -1818,7 +1820,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %HIPPOFIELD_RIGHT EXTRACTION:
             for tohide=1:1
                 if exist( obj.Params.FS2dwi.in.hippofield_right ,'file') == 2
-                    if exist(obj.Params.FS2dwi.out.hippofield_right,'file') == 0
+                    if exist(obj.Params.FS2dwi.out.hippofield_right,'file') == 0 || istrue(obj.redo_history)
                         %bbreg b0 to FS_T1:
                         disp('proc_FS2dwi: Running bbreg in aparc+aseg.mgz...')
                         [~, to_exec ] = system('which mri_vol2vol');
@@ -1837,7 +1839,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     for ff=1:numel(num_hippo_rh)
                         tmp_curname{ff} = [outpath  'hippos' filesep 'dwi_rh_' name_hippo_rh{ff} '.nii.gz' ];
                         [~, to_exec ] = system('which fslmaths');
-                        if exist(strtrim(tmp_curname{ff}), 'file') == 0
+                        if exist(strtrim(tmp_curname{ff}), 'file') == 0 || istrue(obj.redo_history)
                             fprintf(['Displaying now: ' tmp_curname{ff} '...' ] )
                             exec_cmd{:,end+1} = [ strtrim(to_exec) ' ' obj.Params.FS2dwi.out.hippofield_right ...
                             ' -uthr ' num_hippo_rh{ff} ' -thr ' num_hippo_rh{ff} ...
@@ -1890,21 +1892,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     obj.Params.CoRegMultiple.in.ref_prefix = cell2char(strrep(tmp_b_split(end),'.nii',''));
                     obj.Params.CoRegMultiple.in.ref_file = obj.Params.CoRegMultiple.in.b0{ii};
                     %Copy the files in this for loop (since nothing will be done to ref)
-                    if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0
+                    if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0 || istrue(obj.redo_history)
                         %*.nii.gz:
                         exec_cmd{:,end+1}=(['cp ' obj.Params.CoRegMultiple.in.fn{ii} ...
                             ' ' obj.Params.CoRegMultiple.out.fn{ii}  ]);
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
                     end
-                    if exist(obj.Params.CoRegMultiple.out.bvals{ii},'file') == 0
+                    if exist(obj.Params.CoRegMultiple.out.bvals{ii},'file') == 0 || istrue(obj.redo_history)
                         %*.bvals:
                         exec_cmd{:,end+1}=(['cp ' obj.Params.CoRegMultiple.in.bvals{ii} ...
                             ' ' obj.Params.CoRegMultiple.out.bvals{ii}  ]);
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
                     end
-                    if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 0
+                    if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 0 || istrue(obj.redo_history)
                         %*.bvecs:
                         exec_cmd{:,end+1}=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
                             ' > ' obj.Params.CoRegMultiple.out.bvecs{ii}  ]);
@@ -1925,7 +1927,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 if ii ~=  obj.Params.CoRegMultiple.in.ref_iteration
                     %Dealing with *.nii.gz:
-                    if exist(obj.Params.CoRegMultiple.out.matfile{ii},'file') == 0
+                    if exist(obj.Params.CoRegMultiple.out.matfile{ii},'file') == 0 || istrue(obj.redo_history)
                         %Creating matfiles:
                         exec_cmd{:,end+1}=['flirt -in ' obj.Params.CoRegMultiple.in.b0{ii} ...
                             ' -ref ' obj.Params.CoRegMultiple.in.ref_file ...
@@ -1936,7 +1938,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         wasRun=true;
                         fprintf('...done\n');
                     end
-                    if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0
+                    if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0 || istrue(obj.redo_history)
                         %Applying the matfile from b0s:
                         exec_cmd{:,end+1}=(['applywarp -i ' obj.Params.CoRegMultiple.in.fn{ii} ' -r ' obj.Params.CoRegMultiple.in.ref_file ...
                             ' -o ' obj.Params.CoRegMultiple.out.fn{ii} ...
@@ -1949,21 +1951,24 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     
                     %Dealing with *.bvecs:
                     for tohide=1:1
-                        if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 0
+                        if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 0 || istrue(obj.redo_history)
                             %*.bvecs:
                             %% from rows 3-by-XX to cols XX-by-3:
                             out_tmp_bvecs{ii}= [outpath 'tmp_bvecs_iter' num2str(ii) ] ;
-                            if exist(out_tmp_bvecs{ii},'file') == 0
+                            if exist(out_tmp_bvecs{ii},'file') == 0 || istrue(obj.redo_history)
                                 exec_cmd{:,end+1}=(['sh ' obj.col2rows_sh ' ' obj.Params.CoRegMultiple.in.bvecs{ii} ...
                                     ' > ' out_tmp_bvecs{ii}  ]);
                                 obj.RunBash(exec_cmd{end});
+                                if  istrue(obj.redo_history)
+                                    system(exec_cmd{end});
+                                end
                                 wasRun=true;
                             end
                             %Extracting the rotation matrix only using
                             %avscale (this will be used for modifying
                             %the bvecs output)
                             tmp_rot_avscale{ii}= [outpath 'tmp_rotonly_iter' num2str(ii) ] ;
-                            if exist(tmp_rot_avscale{ii}, 'file' ) == 0
+                            if exist(tmp_rot_avscale{ii}, 'file' ) == 0 || istrue(obj.redo_history)
                                 exec_cmd{:,end+1}=(['avscale ' obj.Params.CoRegMultiple.out.matfile{ii} ...
                                     ' | head -5 | tail -4 > ' tmp_rot_avscale{ii} ]);
                                 obj.RunBash(exec_cmd{end});
@@ -1971,7 +1976,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             end
                             %Now apply rotation values to the newer bvecs:
                             fprintf([' applying rotation only .mat files to bvecs..(iter:' num2str(ii) ') ']);
-                            TEMP_BVEC{ii} = load(out_tmp_bvecs{ii});
+                            if istrue(obj.redo_history)
+                                TEMP_BVEC{ii} = load(out_tmp_bvecs{ii});
+                            end
                             %remove cause it will be replaced:
                             if exist(obj.Params.CoRegMultiple.out.bvecs{ii},'file') == 2
                                 system(['rm ' obj.Params.CoRegMultiple.out.bvecs{ii} ]);
@@ -1990,7 +1997,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         end
                     end
                     %Copying bvals:
-                    if exist(obj.Params.CoRegMultiple.out.bvals{ii},'file') == 0
+                    if exist(obj.Params.CoRegMultiple.out.bvals{ii},'file') == 0 || istrue(obj.redo_history)
                         %*.bvals:
                         exec_cmd{:,end+1}=(['cp ' obj.Params.CoRegMultiple.in.bvals{ii} ...
                             ' ' obj.Params.CoRegMultiple.out.bvals{ii}  ]);
@@ -2002,7 +2009,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Creating the combined niftiis:
             for tohide=1:1
                 obj.Params.CoRegMultiple.out.combined_fn = [outpath 'combined_preproc_' num2str(numel(obj.Params.CoRegMultiple.out.fn)) 'sets' '.nii.gz' ] ;
-                if exist( obj.Params.CoRegMultiple.out.combined_fn , 'file') == 0
+                if exist( obj.Params.CoRegMultiple.out.combined_fn , 'file') == 0 || istrue(obj.redo_history)
                     tmp_nii_cmd = [] ;
                     for ii=1:numel(obj.Params.CoRegMultiple.out.fn)
                         if ii ~=  obj.Params.CoRegMultiple.in.ref_iteration
@@ -2020,7 +2027,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Combining bvals:
                 obj.Params.CoRegMultiple.out.combined_bvals =  [outpath 'combined_preproc_' num2str(numel(obj.Params.CoRegMultiple.out.bvals)) 'sets' '.bvals' ] ;
-                if exist( obj.Params.CoRegMultiple.out.combined_bvals , 'file') == 0
+                if exist( obj.Params.CoRegMultiple.out.combined_bvals , 'file') == 0 || istrue(obj.redo_history)
                     tmp_bvals_cmd = [] ;
                     for ii=1:numel(obj.Params.CoRegMultiple.out.bvals)
                         if ii ~=  obj.Params.CoRegMultiple.in.ref_iteration
@@ -2037,7 +2044,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Combining bvecs:
                 obj.Params.CoRegMultiple.out.combined_bvecs =  [outpath 'combined_preproc_' num2str(numel(obj.Params.CoRegMultiple.out.bvecs)) 'sets' '.bvecs' ] ;
-                if exist(obj.Params.CoRegMultiple.out.combined_bvecs , 'file') == 0
+                if exist(obj.Params.CoRegMultiple.out.combined_bvecs , 'file') == 0 || istrue(obj.redo_history)
                     tmp_bvecs_cmd = [] ;
                     for ii=1:numel(obj.Params.CoRegMultiple.out.bvecs)
                         if ii ~=  obj.Params.CoRegMultiple.in.ref_iteration
@@ -2059,7 +2066,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             obj.Params.CoRegMultiple.out.combined_mask = [outpath 'combined_preproc_bet_mask.nii.gz'] ;
             %b0:
-            if exist(obj.Params.CoRegMultiple.out.combined_b0,'file') == 0
+            if exist(obj.Params.CoRegMultiple.out.combined_b0,'file') == 0 || istrue(obj.redo_history)
                 exec_cmd{:,end+1} = [ 'cp '  obj.Params.CoRegMultiple.in.b0{obj.Params.CoRegMultiple.in.ref_iteration} ...
                     ' ' obj.Params.CoRegMultiple.out.combined_b0 ];
                 fprintf('\n Copying b0 combined...')
@@ -2068,18 +2075,20 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf('..done \n')
             end
             %bet and mask:
-            if exist(obj.Params.CoRegMultiple.out.combined_bet,'file') == 0
+            if exist(obj.Params.CoRegMultiple.out.combined_bet,'file') == 0 || istrue(obj.redo_history)
                 exec_cmd{:,end+1} = [ 'bet2 ' obj.Params.CoRegMultiple.out.combined_b0 ...
                     ' ' obj.Params.CoRegMultiple.out.combined_bet  ' -f 0.3 -m ' ];
                 fprintf('\n Bet masking combined...')
                 obj.RunBash(exec_cmd{end});
                 wasRun=true;
                 fprintf('..done \n')
-                movefile([obj.Params.CoRegMultiple.out.combined_bet '_mask.nii.gz'],  obj.Params.CoRegMultiple.out.combined_mask);
+                if exist(obj.Params.CoRegMultiple.out.combined_bet,'file') == 0
+                    movefile([obj.Params.CoRegMultiple.out.combined_bet '_mask.nii.gz'],  obj.Params.CoRegMultiple.out.combined_mask);
+                end
             end
             
             if wasRun==true
-                obj.UpdateHist_v2(obj.Params.CoRegMultiple,'proc_corg_multiple()', obj.Params.CoRegMultiple.out.combined_bet,wasRun,exec_cmd');
+                obj.UpdateHist_v2(obj.Params.CoRegMultiple,'proc_coreg_multiple()', obj.Params.CoRegMultiple.out.combined_bet,wasRun,exec_cmd');
                 obj.resave();                
                 %fprintf(' proc_coreg_multiple(obj) is complete\n');
             end
@@ -2111,7 +2120,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 
                 %Attempting to dtifit:
-                if exist( obj.Params.Dtifit.out.FA{ii},'file')==0
+                if exist( obj.Params.Dtifit.out.FA{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf('Dtifit reconstruction...');
                     [~, to_exec ] = system('which dtifit');
                     exec_cmd{:,end+1}=[  strtrim(to_exec)  ' -k ' obj.Params.Dtifit.in.fn{ii} ...
@@ -2135,7 +2144,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Outputting RD:
                 obj.Params.Dtifit.out.RD{ii} = strrep(obj.Params.Dtifit.out.FA{ii},'FA','RD');
-                if exist(obj.Params.Dtifit.out.RD{ii},'file')==0
+                if exist(obj.Params.Dtifit.out.RD{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf('\nCreating RD dtifit...');
                     exec_cmd{:,end+1}=[ ' fslmaths ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L2') ...
                         ' -add ' strrep(obj.Params.Dtifit.out.FA{ii},'FA','L3') ...
@@ -2171,11 +2180,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.GQI.out.btable{ii}= [ outpath  obj.Params.GQI.in.prefix '_btable.txt' ] ;
                 %Attempting to create b_table:
                 temp_bvecs{ii}=[ outpath 'temp.txt' ];
-                if exist(obj.Params.GQI.out.btable{ii},'file')==0
+                if exist(obj.Params.GQI.out.btable{ii},'file')==0 || istrue(obj.redo_history)
                     [~, nrow ]=system(['cat ' obj.Params.GQI.in.bvecs{ii} ' | wc -l | awk  '' {print $1} '' '  ] );
                     nrow=str2num(nrow);
                     if nrow == 3 ; %then its in column form, change it...
-                        exec_cmd{:,end+1}=[ '/cluster/bang/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
+                        exec_cmd{:,end+1}=[ '/cluster/cluster/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
                             ' > ' temp_bvecs{ii}];
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
@@ -2197,7 +2206,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Attempting to create the src.fz file:
                 obj.Params.GQI.out.src_fn{ii} = [ outpath obj.Params.GQI.in.prefix '.src.gz' ];
                 [~, to_exec ] = system('which dsi_studio_run');
-                if exist(obj.Params.GQI.out.src_fn{ii},'file')==0
+                if exist(obj.Params.GQI.out.src_fn{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf('Source gz file reconstruction...');
                     exec_cmd{:,end+1}=[ strtrim(to_exec) ' --action=src ' ...
                         ' --source=' obj.Params.GQI.in.fn{ii} ...
@@ -2249,7 +2258,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %EXTRACTING DIFFUSIVITY METRICS:
                 obj.Params.GQI.out.fibs_GFA{ii} = [ strtrim(obj.Params.GQI.out.fibs_fn{ii}) '.gfa.nii.gz' ];
                 %Now exporting some values (GFA,...):
-                if exist(obj.Params.GQI.out.fibs_GFA{ii},'file') == 0
+                if exist(obj.Params.GQI.out.fibs_GFA{ii},'file') == 0 || istrue(obj.redo_history)
                     [~, to_exec ] = system('which dsi_studio_run');
                     exec_cmd{:,end+1}=([ strtrim(to_exec) ' --action=exp ' ...
                         ' --source=' strtrim(obj.Params.GQI.out.fibs_fn{ii}) ...
@@ -2286,6 +2295,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function obj = proc_getskeltois(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_GETSKELTOIS():');
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_GETSKELTOIS()';
+            end
             for kk=1:numel(obj.Params.Skeletonize.out.FA)
                 for jj=1:numel( obj.Params.Skeletonize.out.diffmetrics)
                     for ii=1:numel(obj.Params.Skel_TOI.in.masks)
@@ -2304,9 +2316,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             in_file=strrep(obj.Params.Skeletonize.out.FA{kk},'_FA.nii',[ '_' obj.Params.Skeletonize.out.diffmetrics{jj} '.nii' ] );
                             mask_file=[ obj.Params.Skel_TOI.in.location obj.Params.Skel_TOI.in.masks{ii}   '.nii.gz' ] ;
                             [~, to_exec ] = system('which fslstats');
-                            exec_cmd{kk,kk,ii}=[ strtrim(to_exec) ' ' in_file ' -k ' mask_file ' -M '  ];
+                            exec_cmd{:,end+1}=[ strtrim(to_exec) ' ' in_file ' -k ' mask_file ' -M '  ];
                             fprintf([ ' now in ' cur_name '\n'] );
-                            [~ , obj.Params.Skel_TOI.out.(cur_name) ] =  system(exec_cmd{kk,kk,ii});
+                            [~ , obj.Params.Skel_TOI.out.(cur_name) ] =  system(exec_cmd{end});
+                            
                             last_cur_name=cur_name;
                             wasRun=true;
                         end
@@ -2324,7 +2337,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             if obj.Params.Skel_TOI.history_saved == 0
                 obj.Params.Skel_TOI.history_saved = 1 ;
-                obj.UpdateHist_v2(obj.Params.Skel_TOI,'proc_getskeltois', '' , wasRun,exec_cmd); %no file is created in this step but update it iteratively
+                obj.UpdateHist_v2(obj.Params.Skel_TOI,'proc_getskeltois()', obj.Params.Skeletonize.out.FA{end} , wasRun,exec_cmd'); %no file is created in this step but update it iteratively
             end
             clear exec_cmd to_exec wasRun;
         end
@@ -2397,7 +2410,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 outpath=obj.getPath(a,obj.Params.AntsReg.in.movefiles);
                 clear outfile
                 obj.Params.AntsReg.out.fn{ii} = [ outpath obj.Params.AntsReg.in.prefix 'Warped.nii.gz' ];
-                if exist(obj.Params.AntsReg.out.fn{ii},'file')==0
+                if exist(obj.Params.AntsReg.out.fn{ii},'file')==0 || istrue(obj.redo_history)
                     % [~, to_exec ] = system('which
                     %exec_cmd{:,end+1}=[ strtrim(to_exec) ' '  ...
                     % NOTE: antsRegistrationSyN.sh'); %due to many versions, we
@@ -2503,7 +2516,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 outpath=obj.getPath(a,obj.Params.Skeletonize.in.movefiles);
                 clear outfile
                 obj.Params.Skeletonize.out.fn{ii} = [ outpath obj.Params.Skeletonize.in.prefix '.nii.gz' ];
-                if exist(obj.Params.Skeletonize.out.fn{ii},'file')==0
+                if exist(obj.Params.Skeletonize.out.fn{ii},'file')==0 || istrue(obj.redo_history)
                     [ ~, to_exec ] = system('which tbss_skeleton');
                     exec_cmd{:,end+1}=[  strtrim(to_exec) ' ' ...
                         ' -i '  obj.Params.Skeletonize.in.meanFA ...
@@ -2526,7 +2539,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Skeletonize.in.FA{ii}  = obj.Params.AntsReg.out.FA{ii} ;
                 obj.Params.Skeletonize.out.FA{ii} = [ outpath obj.Params.Skeletonize.in.prefix '_FA.nii.gz' ];
                 [ ~ , bbb, ccc ] = fileparts(obj.Params.Skeletonize.out.FA{ii});
-                if exist(obj.Params.Skeletonize.out.FA{ii},'file')==0
+                if exist(obj.Params.Skeletonize.out.FA{ii},'file')==0 || istrue(obj.redo_history)
                     fprintf('\nSkeletonizing  dtimetrics... ');
                     %FA:
                     exec_cmd{:,end+1} =[ 'cp ' obj.Params.Skeletonize.out.fn{ii} ' ' obj.Params.Skeletonize.out.FA{ii} ];
@@ -2654,7 +2667,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     clear tmp_fslsplit;
                     tmp_fslsplit=[ outpath 'tmp' filesep ...
                         'tmp_' strrep(b,'.nii','') filesep ];
-                    if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0
+                    if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0 || istrue(obj.redo_history)
                         exec_cmd{end+1,:} = (['mkdir -p ' tmp_fslsplit ] );
                         obj.RunBash(exec_cmd{end});
                         exec_cmd{end+1,:}=(['fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
@@ -2674,7 +2687,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     
                     %%%%%%%%STEP 2: EXRTACT INFO FROM B0s%%%%%%%%%%%%%%%%%%
                     flag_b0_idx = [] ; %this will denote what b0idx to use (later in dwi_b0_idx{ii} variable (at end of for loop)
-                    if exist(obj.Params.B0MoCo.out.fn{jj}, 'file') == 0
+                    if exist(obj.Params.B0MoCo.out.fn{jj}, 'file') == 0 || istrue(obj.redo_history)
                         %Apply bbreg to all b0s:
                         for ii=1:numel(tmp_bval_idx)
                             dwi_idx=ii-1  ; %indexing from fslsplit starts at 0 not 1 so we need this additional indexing
@@ -2703,7 +2716,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 out_dwi2firstmat_rot_only{ii} = [ tmp_fslsplit 'rotonly_mat_dwi' strrep(bn_curdwi{ii},'.nii','') '_2_firstdwi.mat' ];
                                 out_dwi2fsmat{ii} =  [ tmp_fslsplit 'fs_mat_dwi' strrep(bn_curdwi{ii},'.nii','') '_2_fsT1.dat' ];
                                 %bbregister on every b0:
-                                if exist(out_dwi2fslmat{ii},'file') == 0
+                                if exist(out_dwi2fslmat{ii},'file') == 0 || istrue(obj.redo_history)
                                     if strcmp(SHELL,'bash')
                                     exec_cmd{end+1,:} = ([ 'export SUBJECTS_DIR=' obj.FS_location ';' ...
                                         ' bbregister --s ' obj.sessionname ' --' obj.Params.B0MoCo.in.nDoF ...
@@ -2729,7 +2742,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 if ii == 1
                                     out_fsl2firstdwimat = [ tmp_fslsplit 'mat_fslT1_2_dwi' strrep(bn_curdwi{1},'.nii','') '.mat' ];
                                     %Convert dwi2T1 into T12dwi:
-                                    if exist(out_fsl2firstdwimat,'file') == 0
+                                    if exist(out_fsl2firstdwimat,'file') == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=[ 'convert_xfm -omat ' out_fsl2firstdwimat ...
                                             ' -inverse ' out_dwi2fslmat{ii} ];
                                         obj.RunBash(exec_cmd{end});
@@ -2739,7 +2752,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %warpfile again. The brain look more
                                     %spherical if added, and since this is
                                     %recycled code from Qiuyun Fang, I'll leave it as it is: 
-                                    if exist(out_dwi2firstb0{ii} ,'file') == 0
+                                    if exist(out_dwi2firstb0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
                                             ' -o ' out_dwi2firstb0{ii}  ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                             ' --rel --interp=spline' ]);
@@ -2749,7 +2762,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %Creating the eye.mat function for
                                     %reference on the firstb0 for rotation
                                     %matrices that will be used for rot. bvecs
-                                    if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0
+                                    if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=(['echo -e "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
                                             out_dwi2firstmat_rot_only{ii} ]);
                                         obj.RunBash(exec_cmd{end});
@@ -2757,14 +2770,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     
                                 else
                                     %Convert dwi2T1 into T12dwi (concating the firstb0):
-                                    if exist(out_dwi2firstmat{ii},'file') == 0
+                                    if exist(out_dwi2firstmat{ii},'file') == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=[ 'convert_xfm -omat ' out_dwi2firstmat{ii}  ...
                                             ' -concat ' out_fsl2firstdwimat ' ' out_dwi2fslmat{ii} ];
                                         obj.RunBash(exec_cmd{end});
                                     end
                                     
                                     %Apply the disco_rel here using applywarp
-                                    if exist(out_dwi2firstb0{ii} ,'file') == 0
+                                    if exist(out_dwi2firstb0{ii} ,'file') == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
                                             ' -o ' out_dwi2firstb0{ii} ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                             ' --postmat=' out_dwi2firstmat{ii} ' --interp=spline --rel ' ]);
@@ -2774,7 +2787,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %Extracing the rotation matrix only using
                                     %avscale (this will be used for modifying
                                     %the bvecs output)
-                                    if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0
+                                    if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || istrue(obj.redo_history)
                                         exec_cmd{end+1,:}=(['avscale ' out_dwi2firstmat{ii} ...
                                             ' | head -5 | tail -4 > ' out_dwi2firstmat_rot_only{ii} ]);
                                         obj.RunBash(exec_cmd{end});
@@ -2795,7 +2808,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %Applying warp to all non-B0s (as it is done in
                             %Step1)
                             
-                            if exist(out_dwi2firstb0{ii},'file') == 0
+                            if exist(out_dwi2firstb0{ii},'file') == 0 || istrue(obj.redo_history)
                                 fprintf([ '...' bn_curdwi{ii} ] );
                                 exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ...
                                     ' -r ' cur_in_dwi{1} ' -o ' out_dwi2firstb0{ii} ...
@@ -2816,14 +2829,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         
                         %Extracing the rotation matrix only using
                         %avscale (this will be used for modifying the bvecs output)
-                        if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0
+                        if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || istrue(obj.redo_history)
                             exec_cmd{end+1,:}=(['avscale ' out_dwi2firstmat{ii} ...
                                 ' | head -5 | tail -4 > ' out_dwi2firstmat_rot_only{ii} ]);
                             obj.RunBash(exec_cmd{end});
                         end
                         
                         
-                        if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0
+                        if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || istrue(obj.redo_history)
                             fprintf('Applying rotation only .mat files to bvecs..');
                             TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
                             for pp=1:size(TEMP_BVEC,1)
@@ -2838,7 +2851,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         
                         %Copy bval_in to bvals_out (just a simple copy as
                         %its not affected):
-                        if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0
+                        if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0 || istrue(obj.redo_history)
                             exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
                             obj.RunBash(exec_cmd{end});
                         end
@@ -2897,7 +2910,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.Qboot.out.dir = outpath ; 
             
             obj.Params.Qboot.out.merged_fn = [ obj.Params.Qboot.out.dir  'merged_th2samples.nii.gz'] ;
-            if exist(obj.Params.Qboot.out.merged_fn, 'file') == 0
+            if exist(obj.Params.Qboot.out.merged_fn, 'file') == 0 || istrue(obj.redo_history)
                 exec_cmd{:,end+1} = ['qboot -k ' obj.Params.Tracula.in.fn ...
                     ' -m ' obj.Params.CoRegMultiple.out.combined_mask ...
                     ' -r ' obj.Params.CoRegMultiple.out.combined_bvecs ...
@@ -2937,7 +2950,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     outpath = [ '/cluster/bang/HAB_Project1/TRACULA' filesep obj.sessionname filesep ];
                     exec_cmd{:,end+1}=(['mkdir -p ' outpath ]);
                     obj.RunBash(exec_cmd{:,end});
-                    if exist([replaced_outpath  obj.sessionname]) == 0
+                    if exist([replaced_outpath  obj.sessionname]) == 0 || istrue(obj.redo_history)
                         exec_cmd{:,end+1}=(['ln -s ' outpath ' ' replaced_outpath filesep obj.sessionname ]);
                         obj.RunBash(exec_cmd{:,end});
                     end
@@ -2948,7 +2961,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             %Create the necessary dcmirc file:
             for tohide=1:1
-                if exist(obj.Params.Tracula.out.dcmirc,'file') == 0
+                if exist(obj.Params.Tracula.out.dcmirc,'file') == 0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1} = [ 'cat ' obj.Params.Tracula.in.dcmrirc ' | sed s%''<SUBJECTID>''%' ...
                         obj.sessionname '%g | sed s%''<DTROOT>''%' outpath ...
                         '%g | sed s%''<FSSUBJECTSDIR>''%' obj.Params.Tracula.in.FSDIR ...
@@ -2974,7 +2987,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 obj.Params.Tracula.out.isrunning = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep  'scripts' filesep 'IsRunning.trac' ];
-                if exist(obj.Params.Tracula.out.prep_check,'file') == 0
+                if exist(obj.Params.Tracula.out.prep_check,'file') == 0 || istrue(obj.redo_history)
                     %Remove IsRunning.trac if exists
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
@@ -2991,7 +3004,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 clear exec_cmd; exec_cmd{:}='#INIT proc_tracula()_step2_bedpostx exec_cmd:';
                 obj.Params.Tracula.out.bedp_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dmri.bedpostX' filesep 'merged_th2samples.nii.gz' ];
-                if exist(obj.Params.Tracula.out.bedp_check, 'file') == 0
+                if exist(obj.Params.Tracula.out.bedp_check, 'file') == 0 || istrue(obj.redo_history)
                     %Remove IsRunning.trac if exists
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
@@ -3007,7 +3020,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 clear exec_cmd; exec_cmd{:}='#INIT proc_tracula()_step3_tract-all exec_cmd:';
                 obj.Params.Tracula.out.path_check = [ obj.Params.Tracula.out.dir  obj.sessionname ...
                     filesep 'dpath' filesep 'merged_avg33_mni_bbr.mgz' ];
-                if exist(obj.Params.Tracula.out.path_check,'file') == 0
+                if exist(obj.Params.Tracula.out.path_check,'file') == 0 || istrue(obj.redo_history)
                     %Remove IsRunning.trac if exists
                     if exist( obj.Params.Tracula.out.isrunning, 'file') ~= 0
                         system(['rm '  obj.Params.Tracula.out.isrunning ]);
@@ -3022,8 +3035,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Check if saved in history:
                 if wasRun == true
-                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula()', obj.Params.Tracula.out,wasRun,exec_cmd');
-                     obj.resave();
+                    obj.UpdateHist_v2(obj.Params.Tracula.out,'proc_tracula()', obj.Params.Tracula.out.path_check,wasRun,exec_cmd');
+                    obj.resave();
                 end
             end
         end
@@ -3070,7 +3083,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %MATFILE TRANSFORMATION SECTION:
             for tohide=1:1
                 %Create fx directory (if doesn't exist)
-                if exist(obj.Trkland.root,'dir') == 0
+                if exist(obj.Trkland.root,'dir') == 0 
                     exec_cmd{:,end+1} = [ 'mkdir -p ' obj.Trkland.root ];
                     obj.RunBash(exec_cmd{end});
                 end
@@ -3092,7 +3105,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %BILATERAL SECTION:
             for tohide=1:1
                 %Apply the matfile to the roi:
-                if exist(obj.Trkland.fx.in.roi_bil, 'file') == 0
+                if exist(obj.Trkland.fx.in.roi_bil, 'file') == 0 
                     [~, to_exec ] = system('which flirt');
                     exec_cmd{:,end+1} = [ strtrim(to_exec) ' -in '  obj.Trkland.fx.tmp.roi_bil  ...
                         ' -ref ' obj.Trkland.fx.in.ref ' -applyxfm -init ' obj.Trkland.fx.in.tmp2b0_matfile ...
@@ -3102,7 +3115,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
                 %Apply the matfile to the dilated solid fx:
-                if exist(obj.Trkland.fx.in.roa_bil_solid, 'file') == 0
+                if exist(obj.Trkland.fx.in.roa_bil_solid, 'file') == 0 
                     [~, to_exec ] = system('which flirt');
                     exec_cmd{:,end+1} = [ strtrim(to_exec) ' -in ' obj.Trkland.fx.tmp.roa_solid_bil ...
                         ' -ref ' obj.Trkland.fx.in.ref ' -applyxfm -init ' obj.Trkland.fx.in.tmp2b0_matfile ...
@@ -3112,7 +3125,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
                 %Erode the solid ROA:
-                if exist(obj.Trkland.fx.in.roa_bil_ero , 'file') == 0
+                if exist(obj.Trkland.fx.in.roa_bil_ero , 'file') == 0 
                     [~, to_exec ] = system('which fslmaths');
                     exec_cmd{:,end+1} = [ strtrim(to_exec) ' ' obj.Trkland.fx.in.roa_bil_solid ...
                         ' -ero ' obj.Trkland.fx.in.roa_bil_ero  ];
@@ -3154,7 +3167,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
                 %Erode the solid ROA:
-                if exist(obj.Trkland.fx.in.roa_lh_ero , 'file') == 0
+                if exist(obj.Trkland.fx.in.roa_lh_ero , 'file') == 0 
                     [~, to_exec ] = system('which fslmaths');
                     exec_cmd{:,end+1} = [strtrim(to_exec) ' ' obj.Trkland.fx.in.roa_lh_solid ...
                         ' -ero ' obj.Trkland.fx.in.roa_lh_ero  ];
@@ -3186,7 +3199,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
                 %Apply the matfile to the dilated solid fx:
-                if exist(obj.Trkland.fx.in.roa_rh_solid, 'file') == 0
+                if exist(obj.Trkland.fx.in.roa_rh_solid, 'file') == 0 
                     [~, to_exec ] = system('which flirt');
                     exec_cmd{:,end+1} = [strtrim(to_exec) ' -in ' obj.Trkland.fx.tmp.roa_solid_rh ...
                         ' -ref ' obj.Trkland.fx.in.ref ' -applyxfm -init ' obj.Trkland.fx.in.tmp2b0_matfile ...
@@ -3196,7 +3209,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('...done \n');
                 end
                 %Erode the solid ROA:
-                if exist(obj.Trkland.fx.in.roa_rh_ero , 'file') == 0
+                if exist(obj.Trkland.fx.in.roa_rh_ero , 'file') == 0 
                     [~, to_exec ] = system('which fslmaths');
                     exec_cmd{:,end+1} = [strtrim(to_exec) ' '  obj.Trkland.fx.in.roa_rh_solid ...
                         ' -ero ' obj.Trkland.fx.in.roa_rh_ero  ];
@@ -3219,7 +3232,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist(obj.Trkland.fx.QCfile_bil,'file') == 0
                     if exist(obj.Trkland.fx.QCfile_lh) == 0
                         %Left side trking:
-                        if exist(obj.Trkland.fx.out.raw_lh,'file') == 0
+                        if exist(obj.Trkland.fx.out.raw_lh,'file') == 0 
                             if strcmp(obj.projectID,'ADRC')
                                 [~ , to_exec ] = system('which dsi_studio_run');
                                 exec_cmd{:,end+1} = [strtrim(to_exec) ' --action=trk --source=' obj.Trkland.fx.in.fib ...
@@ -3251,7 +3264,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     
                     if exist(obj.Trkland.fx.QCfile_rh) == 0
                         %Right side trking:
-                        if exist(obj.Trkland.fx.out.raw_rh,'file') == 0
+                        if exist(obj.Trkland.fx.out.raw_rh,'file') == 0 
                             if strcmp(obj.projectID,'ADRC')
                                 [~ , to_exec ] = system('which dsi_studio_run');
                                 exec_cmd{:,end+1} = [strtrim(to_exec) ' --action=trk --source=' obj.Trkland.fx.in.fib ...
@@ -3303,9 +3316,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             if wasRun == true || obj.Trkland.fx.wasRun
                 if exist(obj.Trkland.fx.QCfile_lh,'file') == 2
-                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_lh', obj.Trkland.fx.QCfile_lh, wasRun,exec_cmd');
+                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_lh', obj.Trkland.fx.out.clineFAHighFA_rh, wasRun,exec_cmd');
                 elseif exist(obj.Trkland.fx.QCfile_rh,'file') == 2
-                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_rh', obj.Trkland.fx.QCfile_rh, wasRun,exec_cmd');
+                    obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_rh', obj.Trkland.fx.out.clineFAHighFA_lh, wasRun,exec_cmd');
                 elseif exist(obj.Trkland.fx.QCfile_bil,'file') == 2
                     obj.UpdateHist_v2(obj.Trkland.fx,'proc_trkland_fx() - excl_bil', obj.Trkland.fx.QCfile_bil, wasRun,exec_cmd');
                 else
@@ -3327,7 +3340,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %normal functioning of the data:
         function obj = trkland_adddata(obj,TOI,HEMI,out_fname)
             obj.getdataTRKLAND(TOI,HEMI,out_fname);
-            obj.resave(); 
+            %obj.resave(); 
         end
         
         
@@ -3414,7 +3427,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %If created, we can skip all these loops
             %Integrate the probtracx commands in here:
             obj.Params.probtrackx.(fname_bname).sh_cmd_torun = [ obj.Params.probtrackx.root 'torun_pbs_' fname_bname  '.sh'];
-            if exist(obj.Params.probtrackx.(fname_bname).sh_cmd_torun,'file') == 0
+            if exist(obj.Params.probtrackx.(fname_bname).sh_cmd_torun,'file') == 0 || istrue(obj.redo_history)
 %                     THEY WILL DIFFER IF DIFFERENT DIMENSIONS SO REMOVED
 %                     BELOW
 % 
@@ -3442,7 +3455,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Reverse normalize the mask so its align with T1 or b0
                 obj.Params.probtrackx.(fname_bname).out.revN_fname= [ obj.Params.probtrackx.(fname_bname).out.root 'revN_' fname_bname fname_ext];
-                if exist(obj.Params.probtrackx.(fname_bname).out.revN_fname,'file') == 0
+                if exist(obj.Params.probtrackx.(fname_bname).out.revN_fname,'file') == 0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(mask_fname, ' ...
                         ' obj.Params.spmT1_Proc.out.iregfile,obj.Params.probtrackx.b0, obj.Params.probtrackx.(fname_bname).out.root, ''revN_'' );'] ;
                     eval(exec_cmd{end});
@@ -3450,7 +3463,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 %QuickReslice:
                 obj.Params.probtrackx.(fname_bname).out.reslicedN= [ obj.Params.probtrackx.(fname_bname).out.root 'resliced_revN_' fname_bname fname_ext];
-                if exist(obj.Params.probtrackx.(fname_bname).out.reslicedN,'file') == 0
+                if exist(obj.Params.probtrackx.(fname_bname).out.reslicedN,'file') == 0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1} = 'obj.proc_reslice(obj.Params.probtrackx.(fname_bname).out.revN_fname,obj.Params.probtrackx.b0,'''', ''resliced_'' );';
                     eval(exec_cmd{end});
                     wasRun=true;
@@ -3474,7 +3487,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Splitting the mask by intensity:
                 obj.Params.probtrackx.(fname_bname).out.last_mask = [ cur_split_dir 'split_' pad_lastmask '_' fname_bname '.nii.gz'];
-                if exist(obj.Params.probtrackx.(fname_bname).out.last_mask,'file') == 0
+                if exist(obj.Params.probtrackx.(fname_bname).out.last_mask,'file') == 0 || istrue(obj.redo_history)
                     %Then, we will redo the split...first remove previous
                     %splits:
                     display(['Removing previous split_* for ' cur_split_dir]);
@@ -3565,7 +3578,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf('\nRun the following script from command line: \n');
                 fprintf([obj.Params.probtrackx.(fname_bname).sh_cmd_torun '\n']);
                 
-                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),[' proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
+                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),['proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
                 fprintf('**ALTERNTATIVELY: create a protected method prot_run_TRACTx() <ontheworks> \n');
             end
             fprintf(['\n\nPROBTRACKX2 SH COMMAND CREATION COMPLETED \n\n']);
@@ -4616,7 +4629,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %
             %                 %Check to see that all filepaths and image exist in in_txtfname
             %                 fileID=fopen(in_txtfname);
-            %                 %TODEBUG fileID=fopen('/cluster/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+            %                 %TODEBUG fileID=fopen('/cluster/cluster/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
             %                 tmp_txtscan=textscan(fileID,'%s');
             %                 list_MASKS=tmp_txtscan{1};
             %                 for ii=1:numel(list_MASKS)
@@ -4855,7 +4868,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Check to see that all filepaths/nii.gzs exist in the
                 %in_txtfname:
                 fileID=fopen(in_txtfname);
-                %TODEBUG fileID=fopen('/cluster/bang/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
+                %TODEBUG fileID=fopen('/cluster/cluster/ADRC/Scripts/DEPENDENCIES/fMRI_masks/mask_txt/try_masks_BAD.txt');;
                 tmp_txtscan=textscan(fileID,'%s');
                 list_MASKS=tmp_txtscan{1};
                 for ii=1:numel(list_MASKS)
@@ -5239,7 +5252,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
                 %~~~
                 %START TRIMMED PROCESS:~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                if exist(obj.Trkland.(TOI).out.(['trimmed_' HEMI ]),'file') == 0
+                if exist(obj.Trkland.(TOI).out.(['trimmed_' HEMI ]),'file') == 0 
                     %Trim tracts here:
                     switch TOI
                         case 'fx'
@@ -5337,7 +5350,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %~~~~~~~~~~~~~~~~~~~~~~END OF TRIMMEDCLEAN PROCESSS
                 
                 %START TRIMMEDCLEAN_INTERP PROCESS:~~~~~~~~~~~~~~~~
-                if exist(obj.Trkland.(TOI).out.(['trimmedclean_interp_' HEMI ]),'file') == 0
+                if exist(obj.Trkland.(TOI).out.(['trimmedclean_interp_' HEMI ]),'file') == 0 
                     obj.Trkland.Trks.([TOI '_trimmedclean_interp_' HEMI ]) = rotrk_interp(obj.Trkland.Trks.([ TOI '_trimmedclean_' HEMI]),obj.Trkland.(TOI).in.n_interp);
                     rotrk_write(obj.Trkland.Trks.([TOI '_trimmedclean_interp_' HEMI ]).header,...
                         obj.Trkland.Trks.([TOI '_trimmedclean_interp_' HEMI ]).sstr,obj.Trkland.(TOI).out.(['trimmedclean_interp_' HEMI ]));
@@ -5421,7 +5434,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = applyTRKLAND_nonFA(obj,diffM, TOI,HEMI)
-            if strcmp(diffM,'MD') || strcmp(diffM,'AxD') || strcmp(diffM,'RD')
+            if strcmp(diffM,'MD') || strcmp(diffM,'RD')
                 TRK_NAME = ['nonFA_clineLow' diffM '_' HEMI ];
                 lowFLAG=true; %Flagging for the naming convention...
             else
@@ -5435,7 +5448,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if exist(obj.Trkland.(TOI).QCfile_bil,'file') == 0
                 if exist(obj.Trkland.(TOI).(['QCfile_' HEMI]),'file') == 0 
                     %START SELECTING HIGH-NONDIFF PROCESS:~~~~~~~~~~~~~~~~~~~
-                    if exist(obj.Trkland.(TOI).out.(TRK_NAME),'file') == 0 && ~isempty(obj.Trkland.Trks.([ TOI '_trimmedclean_interp_' HEMI]).header)
+                    if exist(obj.Trkland.(TOI).out.(TRK_NAME),'file') == 0 && ~isempty(obj.Trkland.Trks.([ TOI '_trimmedclean_interp_' HEMI]).header) 
                         obj.addDTI([ TOI '_trimmedclean_interp_' HEMI]);
                         %Method to use (Either low_sc or high_sc, depending on the metric of interest):
                         if lowFLAG == true
@@ -5486,7 +5499,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %occurs between local function and updated function in
                     %Matlab2017a ]
                     splits=strsplit(data_trks{ii},'_');
-                    %First, do not extract all values for nonFA out files:
+                    %SPLITS will help us check only those TRKS that have
+                    %the same HEMI variable (eg. 'lh' or 'rh')
                     for jj=1:numel(splits)
                         if strcmp(splits(jj),HEMI)
                             if ~strcmp(data_trks{ii},'QC') %NOT SURE WHY THIS QC variable exists...easy fix for now.
@@ -5605,37 +5619,38 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %EXEC BASH SCRIPTS METHOD:
         function obj = RunBash(obj,exec_cmd, exit_status)
-            
-            %     display(exec_cmd)
-            %Code values:
-            %   44  --> Show output
-            %   144 --> Show output and exist_status is 1
-            if nargin < 3 %This will allow us to pass other exit status, such as 1 for DSISTUDIO in GQI
-                exit_status = 0 ;
-            end
-            
-            if exit_status == 44 || exit_status == 144 % 44 codes for non-comment when running system:
-                [ sys_success , sys_error ] = system(exec_cmd,'-echo') ;
-                if exit_status == 44
-                    exit_status = 0; %return exit_status to zero.
-                elseif exit_status== 255
-                    error(['obj.RunBash...when this command is run: \n ' exec_cmd  ])
-                else
-                    exit_status = 1; %return exit_status to one.
+            if  ~(obj.redo_history) %NOTHING WILL BE EXECUTED IF obj.redo_history exists --> MAKE SURE YOU REMOVE THIS BEFORE REPLACING HISTORY!
+                %     display(exec_cmd)
+                %Code values:
+                %   44  --> Show output
+                %   144 --> Show output and exist_status is 1
+                if nargin < 3 %This will allow us to pass other exit status, such as 1 for DSISTUDIO in GQI
+                    exit_status = 0 ;
                 end
-            else
-                [ sys_success , sys_error ] = system(exec_cmd) ;
-            end
-            
-            if sys_success==exit_status; disp('');
-            else
-                fprintf('\n\n===================================');
-                fprintf('===================================\n\n');
-                fprintf(['\n \t\tError in exec_cmd: \n ' exec_cmd '\n\n\n' ]);
-                fprintf(['\n \t\tError output by system(exec_cmd) is:\n ' sys_error '\n'])
-                fprintf('\n\n===================================');
-                fprintf('===================================\n\n');
-                error('Stopping now....');
+                
+                if exit_status == 44 || exit_status == 144 % 44 codes for non-comment when running system:
+                    [ sys_success , sys_error ] = system(exec_cmd,'-echo') ;
+                    if exit_status == 44
+                        exit_status = 0; %return exit_status to zero.
+                    elseif exit_status== 255
+                        error(['obj.RunBash...when this command is run: \n ' exec_cmd  ])
+                    else
+                        exit_status = 1; %return exit_status to one.
+                    end
+                else
+                    [ sys_success , sys_error ] = system(exec_cmd) ;
+                end
+                
+                if sys_success==exit_status; disp('');
+                else
+                    fprintf('\n\n===================================');
+                    fprintf('===================================\n\n');
+                    fprintf(['\n \t\tError in exec_cmd: \n ' exec_cmd '\n\n\n' ]);
+                    fprintf(['\n \t\tError output by system(exec_cmd) is:\n ' sys_error '\n'])
+                    fprintf('\n\n===================================');
+                    fprintf('===================================\n\n');
+                    error('Stopping now....');
+                end
             end
         end
         
@@ -5665,31 +5680,36 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
         end
         function obj = UpdateHist_v2(obj,Params,process_to_update,checkFile,wasRun,exec_cmd)
-            
-            
-            if isempty(exec_cmd)
-                info = regexprep(sprintf('%-35s%s', [process_to_update ':'], [checkFile]),'\n','')
+           
+            %Making sure the file exists:
+            if exist(checkFile,'file') == 0
+                warning([ checkFile ' doesnt exist. Nothing updated to history.' ] );
+                pause(2);
             else
-                if wasRun
-                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], obj.UserTime),'\n','');
+                if isempty(exec_cmd)
+                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], [checkFile]),'\n','');
                 else
+                    %                 if wasRun
+                    %                     info = regexprep(sprintf('%-35s%s', [process_to_update ':'], obj.UserTime),'\n','');
+                    %                 else
                     %%% For Linux
                     %Gets you the username:
                     [a theUser] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $3}''']);
                     %Gets you the time:
                     [a theTime] = system(['ls -l --full-time ' checkFile ' |  awk  ''{print $6" "$7}''']);
                     theTime = datestr(theTime(1:end-11));
-                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], ['last run by (file created) ' theUser ' on ' theTime]),'\n','');
+                    info = regexprep(sprintf('%-35s%s', [process_to_update ':'], ['last run by ' theUser ' on ' theTime]),'\n','');
+                    %                 end
                 end
-            end
-            Params.lastRun = info;
-            Params.exec_cmd=exec_cmd;
-            [ind assume] = obj.CheckHist(Params,wasRun);
-            Params.assume = assume;
-            obj.history{ind,1} = Params;
-            
-            if obj.dosave
-                save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+                Params.lastRun = info;
+                Params.exec_cmd=exec_cmd;
+                [ind assume] = obj.CheckHist(Params,wasRun);
+                Params.assume = assume;
+                obj.history{ind,1} = Params;
+                
+                if obj.dosave
+                    save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+                end
             end
         end
         
@@ -6089,7 +6109,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 defs.out{1}.pull.mask=1;
                 defs.out{1}.pull.fwhm=[0 0 0];
                 defs.comp{2}.idbbvox.vox = abs(x(7:9));
-                defs.comp{2}.idbbvox.bb = world_bb(h);
+                defs.comp{2}.idbbvox.bb = world_bb_v2(h);
                 
                 spm_deformations(defs);
                 

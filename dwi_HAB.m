@@ -50,7 +50,7 @@ classdef dwi_HAB < dwiMRI_Session
         
         %trkland dependencies:
         fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
-        
+        redo_history = true; %Allows us to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
     end
     
     methods
@@ -70,6 +70,14 @@ classdef dwi_HAB < dwiMRI_Session
             else
                 obj.dctl_flag = false ; 
             end
+            
+            %Check if you are in the right project (if not, probably
+            %obj.session_location doesn't exist:
+            if ~exist([obj.session_location sessionname],'dir')
+                error(['Sesion directory: ' obj.session_location ' doesn''t exist. Are you sure you are in the right Project ID?']);
+            end
+            
+            %Initialize root variables:
             obj.sessionname = sessionname;
             obj.root = [obj.root_location sessionname '/DWIs/'];
             obj.dcm_location= [ obj.dcm_location sessionname filesep ];
@@ -88,13 +96,8 @@ classdef dwi_HAB < dwiMRI_Session
                 donothing='';
                 %obj.setMyParams;
             end
-            
-            
-            %Check if you are in the right project (if not, probably
-            %obj.session_location doesn't exist:
-            if ~exist([obj.session_location sessionname],'dir')
-                error(['Sesion directory: ' obj.session_location ' doesn''t exist. Are you sure you are in the right Project ID?']);
-            end
+                      
+           
             
             %CHECK CHANGES MADE FROM DWIs_XX/Sessions/DWIs to
             %Sessions/DWIs:
@@ -485,7 +488,7 @@ classdef dwi_HAB < dwiMRI_Session
             
         end
         function resave(obj)
-            save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+            save(strrep([obj.objectHome filesep obj.sessionname '.mat'], [ filesep filesep ], filesep ),'obj');
         end
     end
     

@@ -1,8 +1,8 @@
 classdef dwi_ADRC < dwiMRI_Session
     %%  This class is a subclass of its parent class dwi_MRI_Session.m
     %%  (where it will inherent other methods).
-    %%  Created by:
-    %%              Rodrigo D. Perea grandrigo@gmail.com
+    %%  Created by: RodrigoPereaCamargo ~~> rperea14@live.com
+    %%  Inheritance credits to AaronSchultz
     %%
 
     
@@ -24,8 +24,10 @@ classdef dwi_ADRC < dwiMRI_Session
         sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
         b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        %TORM--> REPLACED BY PROPERTY ABOVE and UNUSED: init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+
+        init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %THIS IS ONLY USED IN THE proc_dcm2nii() METHOD!
         col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+        redo_history = false; %Allows to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
     end
     
     methods
@@ -57,7 +59,7 @@ classdef dwi_ADRC < dwiMRI_Session
             if exist(obj.root,'dir')==0
                 obj.make_root();
             end
-            obj.objectHome = obj.root ;
+            obj.objectHome = obj.root ; %for 
             %!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             %!!!!!!!
             
@@ -73,6 +75,8 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             %CHECK CHANGES MADE FROM /eris to /cluster
+            %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
+            %OBJECT
             if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
                 display('Changing eris to cluster folder...');
                 %Then apply the mod to cluster...
@@ -105,6 +109,8 @@ classdef dwi_ADRC < dwiMRI_Session
         
         function obj=setMyParams(obj)
             %%%%%%%%%%%%
+            % ??? ??? rdp20 ~~> Not applicable to the dwiMRI_ process as of
+            % 04/2/2018
             %Global parameters:
             %             obj.vox = [1.8 1.8 1.8];
             %             obj.setDefaultParams; %this will call the method in the superclass dwiMRI_Session.m
@@ -113,7 +119,9 @@ classdef dwi_ADRC < dwiMRI_Session
         end
         
         function resave(obj)
-            save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+            if ~(obj.redo_history)
+                save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
+            end
         end
         
         %COMMON METHODS THAT CALL post_XXX METHODS IN SUPERCLASS dwiMRI_Session.m:
@@ -587,12 +595,12 @@ classdef dwi_ADRC < dwiMRI_Session
             end
             obj.proc_t1_spm();
         end
+        
     end
     methods ( Access = protected )
         function obj = getDCM2nii(obj,torun)
             %For proc_DCM2NII:
             obj.Params.DCM2NII.specific_vols=68;
-            
             obj.Params.DCM2NII.seq_names={ 'ep2d_diff_7p5k_set1E60' 'ep2d_diff_7p5k_set2E60' ...
                 'ep2d_diff_7p5k_set3E60' 'ep2d_diff_2p5k_set4E60' };
       
@@ -634,7 +642,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
             end
             obj.proc_dcm2nii();
-            
         end
     end
 end
