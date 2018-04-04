@@ -313,6 +313,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         %%%%%%%%%%%%%%%%%% BEGIN Pre- Processing Methods %%%%%%%%%%%%%%%%%%
+        %This functino should be only used in the older Unpack data script.
+        %If NewUnpack.m is used, do not expect to call this method. 
         function obj = proc_dcm2nii(obj,~,dest,out_filename)
             fprintf('\n\n%s\n', ['PROC_DCM2NII(): MOVING RAW NIIs TO ORIG FOLDER (Total:  ' num2str(numel(obj.Params.DCM2NII.in)) ' volumes)']);
             % Initializing exec_cmd (variable to store all cmds
@@ -321,6 +323,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             %Checking if module is complete
             wasRun = false;
+            
+            %Re-define newUnpack=false if it doesnt exist:
+            if ~isfield(obj.Params.DCM2NII,'newUnpack')
+                obj.Params.DCM2NII.newUnpack=false;
+            end
             
             for ii=1:numel(obj.Params.DCM2NII.in)
                 if nargin>2 && ~isempty(dest)
@@ -339,25 +346,29 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 clear in_file out_file
                 %Check whether first_dcmfiles exist . If not (then newer
                 %unpack is given) so select the *.nii as infile:
-                if isempty(obj.Params.DCM2NII.in(ii).first_dcmfiles)
+                if obj.Params.DCM2NII.newUnpack
                     %NEWER UNPACK DEFINITION:
                     if strcmp(obj.projectID,'ADRC')
-                        [~, in_file]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.nii.gz']);
+                        [~, in_file]   = system(['ls ' obj.Params.DCM2NII.rawDiff '*' obj.Params.DCM2NII.seq_names{ii} '*.nii.gz']);
                         in_file=strtrim(in_file);
-                        
-                        [~, in_bvecs]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.bvecs']);
+                        [~, in_bvecs]   = system(['ls ' obj.Params.DCM2NII.rawDiff '*' obj.Params.DCM2NII.seq_names{ii} '*.bvecs']);
                         in_bvecs=strtrim(in_bvecs);
-                        
-                        [~, in_bvals]   = system(['ls ' obj.session_location filesep 'other' filesep '*' obj.Params.DCM2NII.seq_names{ii} '*.bvals']);
+                        [~, in_bvals]   = system(['ls ' obj.Params.DCM2NII.rawDiff '*' obj.Params.DCM2NII.seq_names{ii} '*.bvals']);
                         in_bvals=strtrim(in_bvals);
-                        
+                    elseif strcmp(obj.projectID,'HAB')
+                        [~, in_file]   = system(['ls ' obj.Params.DCM2NII.rawDiff '*.nii']);
+                        in_file=strtrim(in_file);
+                        [~, in_bvecs]   = system(['ls ' obj.Params.DCM2NII.rawDiff '*.bvecs']);
+                        in_bvecs=strtrim(in_bvecs);
+                        [~, in_bvals]   = system(['ls ' obj.Params.DCM2NII.rawDiff '*.bvals']);
+                        in_bvals=strtrim(in_bvals);
                     end
                     %Double check that the files exist:
                     if exist(in_file,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_file: ' in_file ]); end
                     if exist(in_bvecs,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_bvecs: ' in_bvecs ]); end
                     if exist(in_bvals,'file') ~= 2; error(['proc_dcm2nii(): Cannot find in_bvals: ' in_bvals ]); end
                 else
-                    %OLDER UNPACK DEFINITION:
+                    %OLD UNPACK DEFINITION:
                     in_file   = strtrim([obj.dcm_location filesep obj.Params.DCM2NII.in(ii).first_dcmfiles]);
                 end
                 out_file  = obj.Params.DCM2NII.out(ii).fn;
@@ -366,13 +377,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.DCM2NII.in(ii).fsl2std_matfile = [outpath 'fsl2std.matfile'];
                 obj.Params.DCM2NII.out(ii).bvecs=strrep(obj.Params.DCM2NII.out(ii).fn,'.nii.gz','.voxel_space.bvecs');
                 obj.Params.DCM2NII.out(ii).bvals=strrep(obj.Params.DCM2NII.out(ii).fn,'.nii.gz','.bvals');
-                
-                %Create out_file directory if doesnt exist:
-                if ~exist(obj.Params.DCM2NII.out(ii).location,'dir')
-                    exec_cmd{end+1,:} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
-                    obj.RunBash(exec_cmd{end});
-                    wasRun = true;
-                end
                 
                 %%%PROCESSING STARTS HERE
                 if exist(out_file,'file') == 0 %check if out_file exists
@@ -387,13 +391,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %Bvecs:
                             exec_cmd{end+1,:}=['cp ' in_bvecs ' ' obj.Params.DCM2NII.out(ii).bvecs ];
                             fprintf(['\nCopying in_file: ' in_bvecs ' to Orig/ ...']);
-                            obj.RunBash(exec_cmd{end},44); fprintf('done');                            
+                            obj.RunBash(exec_cmd{end},44); fprintf('done');
                             %Bvals:
                             exec_cmd{end+1,:}=['cp ' in_bvals ' ' obj.Params.DCM2NII.out(ii).bvals ];
                             fprintf(['\nCopying in_file: ' in_bvals ' to Orig/ ...']);
                             obj.RunBash(exec_cmd{end},44); fprintf('done');
                             
-                        %OLDER UNPACK:
+                            %OLDER UNPACK:
                         else
                             exec_cmd{end+1,:}=['mri_convert ' in_file ' ' out_file ];
                             obj.RunBash(exec_cmd{end},44);
@@ -432,6 +436,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     end
                 else
                     disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
+                end
+                
+                
+                %Create out_file directory if doesnt exist:
+                if ~exist(obj.Params.DCM2NII.out(ii).location,'dir')
+                    exec_cmd{end+1,:} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
+                    obj.RunBash(exec_cmd{end});
+                    wasRun = true;
                 end
             end
        
@@ -1794,7 +1806,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %Moving newer parcellation into dwi space:
             obj.Params.FS2dwi.out.wm_aparcaseg2009 = strrep(obj.Params.FS2dwi.out.fn_aparc,'aparc+aseg.nii.gz','wmparc2009.nii.gz');
             for tohide=1:1
-                if exist( obj.Params.FS2dwi.in.wm_aparcaseg2009,'file')==2
+                if exist( obj.Params.FS2dwi.in.wm_aparcaseg2009,'file') ==2
                     %Aparc.a2009+aseg to dwi:
                     [~, to_exec ] = system('which mri_vol2vol');
                     if exist(obj.Params.FS2dwi.out.wm_aparcaseg2009 ,'file') == 0 || istrue(obj.redo_history)
@@ -2291,7 +2303,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf(['The file ' bb cc ' is complete\n']);
                 end
                 try
-                    obj.Params.GQI.out.fibs_fn{ii} = ls([outpath '*.fib.gz' ] );
+                    obj.Params.GQI.out.fibs_fn{ii} = ls([outpath '*gqi*.fib.gz' ] );
                     %strtrimming fibs:
                     obj.Params.GQI.out.fibs_fn{ii}= strtrim(obj.Params.GQI.out.fibs_fn{ii});
                 catch
@@ -5790,7 +5802,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             if isempty(exec_cmd)
                 sth_toupdate=false;
             end
-            if size(exec_cmd,1)
+            if size(exec_cmd,1) == 1 
                 sth_toupdate=false;
             end
             

@@ -30,7 +30,7 @@ classdef dwi_HAB < dwiMRI_Session
         ref_region='/usr/pubsw/packages/fsl/5.0.9/data/standard/LowerCingulum_1mm.nii.gz';
         
         %sh dependencies:
-        init_rotate_bvecs_sh='/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/deps/SHELL/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        init_rotate_bvecs_sh='/cluster/sperling/HAB/Project1/Scripts/DWIs/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
         dependencies_dir='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/';
         %Freesurfer Dependencies:
         init_FS = '/usr/local/freesurfer/stable6';
@@ -50,7 +50,7 @@ classdef dwi_HAB < dwiMRI_Session
         
         %trkland dependencies:
         fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
-        redo_history = false; %(always FALSE unles...) --> Allows us to redo the history of all processes withouth running any obj.BashCode.
+        redo_history = true; %Allows us to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
     end
     
     methods
@@ -526,9 +526,6 @@ classdef dwi_HAB < dwiMRI_Session
                 exec_cmd=[ 'TEMP_AA=$( ls ' obj.Params.DCM2NII.rawDiff '*.nii ) ; fslinfo $TEMP_AA | grep ^dim4 | awk ''{ print $2 }'' ' ];
             else
                 exec_cmd=[ 'cat ' obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names ' | grep " 35 " | grep err | awk ''{ print $7 }'' ' ];
-                %we modified grep err instead of tail -1 due to error in some subjects (e.g. 120419_4TT01420)
-                exec_cmd=[ 'cat ' obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names ' | grep " 35 " | grep err | awk ''{ print $8 }'' ' ];
-                [ ~ , obj.Params.DCM2NII.in(ii).first_dcmfiles ] = system(exec_cmd);
             end
             [ ~ , obj.Params.DCM2NII.in.nvols ] = system(exec_cmd);
             
@@ -537,17 +534,18 @@ classdef dwi_HAB < dwiMRI_Session
             if obj.Params.DCM2NII.in.nvols ~=35 
                 error(['Raw image: '])
             end
-            
-            ii=1; %Expecting only on DWI sequence in the HAB1 project, so no loop
             obj.Params.DCM2NII.in.fsl2std_param = '-1 0 0 254 \n0 1 0 254 \n0 0 -1 0 \n0 0 0 1';
+            
+            %we modified grep err instead of tail -1 due to error in some subjects (e.g. 120419_4TT01420)
+            exec_cmd=[ 'cat ' obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names ' | grep " 35 " | grep err | awk ''{ print $8 }'' ' ];
+            [ ~ , obj.Params.DCM2NII.in(ii).first_dcmfiles ] = system(exec_cmd);
+            
             obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];
             obj.Params.DCM2NII.out(ii).fn = [ obj.Params.DCM2NII.out(ii).location obj.Params.DCM2NII.seq_names '.nii.gz' ];
+        end
+            if (torun) ; obj.proc_dcm2nii() ; end
             
-            
-            if (torun) ; 
-                obj.proc_dcm2nii() ; 
-            end
-        end            
+        end
     end
     
     methods

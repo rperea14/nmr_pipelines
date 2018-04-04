@@ -636,8 +636,10 @@ classdef dwi_ADRC < dwiMRI_Session
                         ' | tail -1 | awk ''{ print $8 }'' ' ]);
                 %NEWER UNPACK (Feb 2018):
                 elseif exist(strtrim(tmp_bvecs),'file')
+                    obj.Params.DCM2NII.newUnpack = true;
                     [ ~ , obj.Params.DCM2NII.in(ii).nvols ] = system(['cat ' ...
                         strtrim(tmp_bvecs) ' | wc -l ' ]);
+                    obj.Params.DCM2NII.rawDiff = [ obj.session_location filesep 'other' filesep ] ;
                     obj.Params.DCM2NII.in(ii).first_dcmfiles = [] ; %No need to same first_dcmfile since its already been unpacked with *.bvecs
                 else
                     fprintf(['ERROR! \n 1. No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ...
