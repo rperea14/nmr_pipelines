@@ -31,6 +31,7 @@ classdef dwi_HAB < dwiMRI_Session
         
         %sh dependencies:
         init_rotate_bvecs_sh='/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/deps/SHELL/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+        col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
         dependencies_dir='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/';
         %Freesurfer Dependencies:
         init_FS = '/usr/local/freesurfer/stable6';

@@ -2274,7 +2274,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     [~, nrow ]=system(['cat ' obj.Params.GQI.in.bvecs{ii} ' | wc -l | awk  '' {print $1} '' '  ] );
                     nrow=str2num(nrow);
                     if nrow == 3 ; %then its in column form, change it...
-                        exec_cmd{:,end+1}=[ '/cluster/cluster/ADRC/Scripts/older/other_scripts/drigo_col2rows.sh ' obj.Params.GQI.in.bvecs{ii} ...
+                        exec_cmd{:,end+1}=[ obj.col2rows_sh ' ' obj.Params.GQI.in.bvecs{ii} ...
                             ' > ' temp_bvecs{ii}];
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
@@ -3677,6 +3677,49 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %%%%%%%%%%%%%% END OF  TRACX IMPLEMENTATION %%%%%%%%%%%%%%%%%%%
             
         end
+        
+        
+        
+        %CoReg related (accesor method):
+        function obj = get_coreg2dwi(obj,mov,ref,outdir)
+            AA=1;
+            if exist(outdir,'dir') == 0 
+                mkdir(outdir);                
+            end
+            
+            %Copy mov to outdir
+            if ischar(mov) %most likely the case of one argument...
+                [mov_dir, mov_fn, mov_ext ] = fileparts(mov);
+                if strcmp(mov_ext,'.gz')
+                    mov_out = [  strrep([outdir filesep ],[filesep filesep ], filesep) mov_fn ];
+                else
+                    mov_out = [  strrep([outdir filesep ],[filesep filesep ], filesep) mov_fn mov_ext ] ;
+                end
+                if exist(mov_out{ii},'file') == 0
+                    system(['mri_convert ' mov ' ' mov_out ]);
+                end
+                obj.proc_coreg2dwib0(mov,ref,outdir);
+            else
+                for ii=1:numel(mov)
+                    [mov_dir{ii}, mov_fn{ii}, mov_ext{ii} ] = fileparts(mov{ii});
+                    if strcmp(mov_ext{ii},'.gz')
+                        mov_out{ii} = [  strrep([outdir filesep ],[filesep filesep ], filesep) mov_fn{ii} ] ;
+                    else
+                        mov_out{ii} = [  strrep([outdir filesep ],[filesep filesep ], filesep) mov_fn{ii} mov_ext{ii} ] ;
+                    end
+                    if exist(mov_out{ii},'file') == 0
+                        system(['mri_convert ' mov{ii} ' '  mov_out{ii} ]);
+                    end
+                end
+                warning(['mov argument has more than 1 filename. Coregistering the first filename and applying it to subsequents...']);
+                pause(1)
+                obj.proc_coreg2dwib0(mov{1},ref,outdir);
+            end
+            
+            %Apply correction:
+            obj.proc_apply_coreg2dwib0(mov_out,1,ref)
+        end
+        
         
         %!!!
         %ON THE WORKS:
@@ -5988,7 +6031,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             else
                 load([outpath2 'CoReg.mat']);
             end
-            disp('CoReg.mathas been saved.');
+            disp('CoReg.mat has been saved.');
         end
         function obj = proc_apply_coreg2dwib0(obj,fn,reslice,dwib0)
             fprintf('\n%s\n', '\t\tPERFORMING COREGISTRATION TO B0...');
@@ -6017,7 +6060,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     copyfile(fn{ii},nfn{ii});
                     MM = spm_get_space(nfn{ii});
                     spm_get_space(nfn{ii}, M\MM);
-                    if reslice == 1
+                end
+                if reslice == 1
+                    [res_dirname, res_bname , res_ext ] = fileparts(fn{ii});
+                    h1.fname = [res_dirname filesep 'resliced_coreg2dwi_' res_bname res_ext];
+                    if exist(h1.fname,'file') == 0
                         %h1 = spm_vol(obj.Params.tracxBYmask.T1coregDWI.in_b0);
                         [dwi_dir,dwib0_bname,dwib0_ext] = fileparts(dwib0);
                         if strcmp(dwib0_ext,'.gz') %assume gzip
@@ -6032,7 +6079,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         h2 = spm_vol(nfn{ii});
                         m = dwi_resizeVol2(h2,h1,[3 0 ]);
                         %Adding resclied to the naming convention
-                        [res_dirname, res_bname , res_ext ] = fileparts(fn{1});
+                        [res_dirname, res_bname , res_ext ] = fileparts(fn{ii});
                         h1.fname = [res_dirname filesep 'resliced_coreg2dwi_' res_bname res_ext];
                         h1.dt = h2.dt;
                         spm_write_vol(h1,m);
