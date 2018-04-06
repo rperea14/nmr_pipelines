@@ -2,7 +2,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     %%% Written by: 
     %%%             Rodrigo Perea (rpereacamargo@mgh.harvard.edu)
     %%%             Aaron Schultz (aschultz@martinos.org) 
-    %  Github (code also in here)
+    %  Github (code also in here) Try 2
     %      Dependencies (and tested in):
     %          -FreeSurfer v6.0
     %          -SPM12
