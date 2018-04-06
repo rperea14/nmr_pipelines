@@ -501,6 +501,8 @@ classdef dwi_HAB < dwiMRI_Session
     
     methods ( Access = protected )
         function obj = getDCM2nii(obj,torun)
+            ii=1; %Expecting only on DWI sequence in the HAB1 project, so no loop
+            
             %For proc_DCM2NII:
             obj.Params.DCM2NII.specific_vols=35;
             
@@ -539,7 +541,7 @@ classdef dwi_HAB < dwiMRI_Session
                 error(['Raw image: '])
             end
             
-            ii=1; %Expecting only on DWI sequence in the HAB1 project, so no loop
+            
             obj.Params.DCM2NII.in.fsl2std_param = '-1 0 0 254 \n0 1 0 254 \n0 0 -1 0 \n0 0 0 1';
             obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];
             obj.Params.DCM2NII.out(ii).fn = [ obj.Params.DCM2NII.out(ii).location obj.Params.DCM2NII.seq_names '.nii.gz' ];

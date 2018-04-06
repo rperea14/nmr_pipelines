@@ -1,8 +1,8 @@
 classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
-    %%% Written by:
+    %%% Written by: 
     %%%             Rodrigo Perea (rpereacamargo@mgh.harvard.edu)
-    %%%             Aaron Schultz (aschultz@martinos.org)
-    %
+    %%%             Aaron Schultz (aschultz@martinos.org) 
+    %  Code also in github
     %      Dependencies (and tested in):
     %          -FreeSurfer v6.0
     %          -SPM12
@@ -3428,7 +3428,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %This accesor method 'trkland_adddata()' will allow us to create data specific to
         %out filenames in *.trk.gz and denoted in obj.Trkland.<TOI>.out.XX (e.g. nonFA values that deviate from
         %normal functioning of the data:
-        function obj = trkland_adddata(obj,TOI,HEMI,out_fname)
+        function obj = trkland_adddata(obj,TOI,HEMI,out_fname,do_paths)
             obj.getdataTRKLAND(TOI,HEMI,out_fname);
             %obj.resave(); 
         end
@@ -3436,9 +3436,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         
         %fMRI or any masks to probabilistic tracking (it will
         %generate a shell script to run it from SHELL):
-        function obj = proc_probtrackx(obj,mask_fname,mask_SPACE)
+        function obj = proc_probtrackx(obj,mask_fname,mask_SPACE,do_paths)
             wasRun=false;
-            
+            if nargin <4
+                do_paths=false ; %Variable that will create another *.sh file for creating targetpaths of probablistic tractography. 
+                %ONLY USE THIS IF YOU HAVE FEW REGIONS AS IT WILL GENERATE
+                %NxN paths, N being the number of regions.
+            end
+                
             %%%%%%%%%%%%%%%FILE CHECKING AND INIT STARTS HERE%%%%%%%%%%%%%%
             for tohide_fileChecking=1:1
                 %Checking arguments:
@@ -3479,7 +3484,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     mkdir(obj.Params.probtrackx.root);
                 end
 
-                [~, obj.Params.probtrackx.bedp_dir, ~ ]  = fileparts(obj.Params.Tracula.out.bedp_check);
+                [obj.Params.probtrackx.bedp_dir, ~, ~ ]  = fileparts(obj.Params.Tracula.out.bedp_check);
 %                 if strcmp(obj.projectID,'ADRC')
 %                     %obj.Params.probtrackx.bedp_dir = obj.Params.Qboot.out.dir;
 %                     obj.Params.probtrackx.bedp_dir = obj.Params.tracxBYmask.tracula.bedp_dir;
@@ -3550,6 +3555,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if exist(obj.Params.probtrackx.(fname_bname).out.revN_fname,'file') == 0 || istrue(obj.redo_history)
                     exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(mask_fname, ' ...
                         ' obj.Params.spmT1_Proc.out.iregfile,obj.Params.probtrackx.b0, obj.Params.probtrackx.(fname_bname).out.root, ''revN_'' );'] ;
+                    if ~isfield(obj.Params,'spmT1_Proc')
+                        obj.proc_t1_spm();
+                    end
                     eval(exec_cmd{end});
                     wasRun=true;
                 end
@@ -3661,6 +3669,38 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 wasRun=true;
                 fclose(fileID); fprintf('..done \n');
                 
+                
+                %Creating targetpaths:
+                if do_paths
+                    obj.Params.probtrackx.(fname_bname).do_paths = true; 
+                    display(['Creating do_paths shell ... ']);
+                    cmd_probtrackx2=strtrim(cmd_probtrackx2);
+                    exec_cmd{:,end+1} = [cmd_probtrackx2  ' -x  ' ...
+                        obj.Params.probtrackx.(fname_bname).out.txt_masks ' ' ...
+                        obj.Params.probtrackx.probtracx2_args ' ' ...
+                        ' -s ' obj.Params.probtrackx.bedp_dir filesep 'merged' ...
+                        ' -m ' obj.Params.probtrackx.b0_mask  ...
+                        ' --dir=' obj.Params.probtrackx.(fname_bname).out.probtrackx2_dir '_do_paths' ...
+                        ' --targetmasks=' obj.Params.probtrackx.(fname_bname).out.txt_masks ...
+                        ' --os2t --otargetpaths ' ...
+                        ];
+                    obj.Params.probtrackx.(fname_bname).sh_cmd_torun_dopaths  =  strrep(obj.Params.probtrackx.(fname_bname).sh_cmd_torun,'.sh','_dopaths.sh');
+                    if exist(obj.Params.probtrackx.(fname_bname).sh_cmd_torun_dopaths,'file') ~= 0
+                        system(['mv ' obj.Params.probtrackx.(fname_bname).sh_cmd_torun_dopaths ' ' ...
+                            obj.Params.probtrackx.(fname_bname).sh_cmd_torun_dopaths '_bak_' date]);
+                    end
+                    system(['touch ' obj.Params.probtrackx.(fname_bname).sh_cmd_torun_dopaths ]);
+                    %Write to sh now:
+                    fileID=fopen(obj.Params.probtrackx.(fname_bname).sh_cmd_torun_dopaths,'w');
+                    fprintf(fileID,'%s',exec_cmd{end}) ;
+                    fprintf(fileID,'\n\n');
+                    wasRun=true;
+                    fclose(fileID); fprintf('..done \n');
+                else
+                    obj.Params.probtrackx.(fname_bname).do_paths = false;
+                end
+            else
+                fprintf([ '\n\n' obj.Params.probtrackx.(fname_bname).sh_cmd_torun ' exists. Nothing to do...']);
             end
             
             %Letting the user know that these commands should be run
@@ -3670,7 +3710,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 fprintf('\nRun the following script from command line: \n');
                 fprintf([obj.Params.probtrackx.(fname_bname).sh_cmd_torun '\n']);
                 
-                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),['proc_probtrackx - ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
+                obj.UpdateHist_v2(obj.Params.probtrackx.(fname_bname),['probtrackx-> ' fname_bname ], obj.Params.probtrackx.(fname_bname).sh_cmd_torun,wasRun,exec_cmd');
                 fprintf('**ALTERNTATIVELY: create a protected method prot_run_TRACTx() <ontheworks> \n');
             end
             fprintf(['\n\nPROBTRACKX2 SH COMMAND CREATION COMPLETED \n\n']);
@@ -5569,7 +5609,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
         
         function obj = applyTRKLAND_nonFA(obj,diffM, TOI,HEMI)
-            if strcmp(diffM,'MD') || strcmp(diffM,'RD')
+            if ( strcmp(diffM,'MD') || strcmp(diffM,'RD') ) || strcmp(diffM,'AxD')
                 TRK_NAME = ['nonFA_clineLow' diffM '_' HEMI ];
                 lowFLAG=true; %Flagging for the naming convention...
             else
