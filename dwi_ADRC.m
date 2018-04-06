@@ -19,7 +19,7 @@ classdef dwi_ADRC < dwiMRI_Session
         FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
-        fx_template_dir='/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
+        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
         %Dep properties:
         sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
@@ -73,6 +73,8 @@ classdef dwi_ADRC < dwiMRI_Session
                 donothing=1;
             end
             
+            %Reinitialize variables:
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
             
             %CHECK CHANGES MADE FROM /eris to /cluster
             %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
@@ -380,7 +382,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.fx.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
                 obj.Trkland.fx.in.FA = obj.Params.Dtifit.out.FA{1};
                 %Based on orientation, we will chooose a specific template (usually RAS)
-                [~, Ori ] = system(['mri_info ' obj.Trkland.fx.in.b0 ' | grep Orientation | awk ''{print $3}'''] );
+                [~, Ori ] = system([obj.init_FS filesep 'bin' filesep 'mri_info ' obj.Trkland.fx.in.b0 ' | grep Orientation | awk ''{print $3}'''] );
                 obj.Trkland.fx.tmp.ori = strtrim(Ori); clear Ori;
         
                 %Fib params:
