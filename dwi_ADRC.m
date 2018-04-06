@@ -73,9 +73,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 donothing=1;
             end
             
-            %Reinitialize variables:
-            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
-            
             %CHECK CHANGES MADE FROM /eris to /cluster
             %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
             %OBJECT
@@ -101,6 +98,11 @@ classdef dwi_ADRC < dwiMRI_Session
                 RunFlag = true ;
                 obj.getDCM2nii(RunFlag);
             end
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Reinitialize variables:
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+            
             
             %Start the CommonPreProc:
             obj.CommonPreProc();

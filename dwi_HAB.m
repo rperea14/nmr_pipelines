@@ -50,7 +50,7 @@ classdef dwi_HAB < dwiMRI_Session
             'SLF_R_edJHU' 'SLF_R_edJHU_no_temporal' 'allTracts_edJHU' 'Global_skel'  };
         
         %trkland dependencies:
-        fx_template_dir= '/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
+        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
         redo_history = false; %(always FALSE unles...) --> Allows us to redo the history of all processes withouth running any obj.BashCode.
     end
     
@@ -149,6 +149,12 @@ classdef dwi_HAB < dwiMRI_Session
             else
                 obj.dctl_flag = false ;
             end
+            
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Reinitialize variables:
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+            
             %Continue with CommonPreProc
             obj.CommonPreProc();
             %Continue with CommonPostProc
@@ -170,8 +176,13 @@ classdef dwi_HAB < dwiMRI_Session
             RunFlag=false; %here, we only allocate variable, not run proc_dcm2nii
             obj.getDCM2nii(RunFlag);
             
+            %Selecting the raw files
+            obj.rawfiles = strtrim(dir_wfp([obj.root 'Orig/*.nii.gz' ] ));
+            
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For BET2:
+            
             obj.Params.Bet2.in.movefiles = ['..' filesep '01_Bet'];
             obj.Params.Bet2.in.fracthrsh = 0.4;
             obj.Params.Bet2.in.fn = obj.rawfiles;
@@ -526,21 +537,22 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.DCM2NII.seq_names='DIFFUSION_HighRes_30';
             %we modified grep err instead of tail -1 due to error in some subjects (e.g. 120419_4TT01420)
             if obj.Params.DCM2NII.newUnpack
-                exec_cmd=[ 'TEMP_AA=$( ls ' obj.Params.DCM2NII.rawDiff '*.nii ) ; fslinfo $TEMP_AA | grep ^dim4 | awk ''{ print $2 }'' ' ];
+                obj.Params.DCM2NII.out.rawOrig = strtrim(dir_wfp([obj.Params.DCM2NII.rawDiff '*.nii' ]));
+                exec_cmd=[ 'fslinfo ' obj.Params.DCM2NII.out.rawOrig   ' | grep ^dim4 | awk ''{ print $2 }'' ' ];
+                obj.RunBash(exec_cmd);
+                [ ~ , obj.Params.DCM2NII.in.nvols ] = str2num(strtrim(system(exec_cmd)));
+                %CHECK IF CORRECT NUMBER OF NVOLS:
+                if obj.Params.DCM2NII.in.nvols ~=35
+                    error(['This image does not contain 35 volume (for' obj.projectID '): ' obj.Params.DCM2NII.rawDiff  ])
+                end
+                
             else
                 exec_cmd=[ 'cat ' obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names ' | grep " 35 " | grep err | awk ''{ print $7 }'' ' ];
                 %we modified grep err instead of tail -1 due to error in some subjects (e.g. 120419_4TT01420)
                 exec_cmd=[ 'cat ' obj.Params.DCM2NII.scanlog ' | grep ' obj.Params.DCM2NII.seq_names ' | grep " 35 " | grep err | awk ''{ print $8 }'' ' ];
                 [ ~ , obj.Params.DCM2NII.in(ii).first_dcmfiles ] = system(exec_cmd);
             end
-            [ ~ , obj.Params.DCM2NII.in.nvols ] = system(exec_cmd);
-            
-            obj.Params.DCM2NII.in.nvols=str2num(strtrim(obj.Params.DCM2NII.in.nvols));
-            %CHECK IF CORRECT NUMBER OF NVOLS:
-            if obj.Params.DCM2NII.in.nvols ~=35 
-                error(['Raw image: '])
-            end
-            
+   
             
             obj.Params.DCM2NII.in.fsl2std_param = '-1 0 0 254 \n0 1 0 254 \n0 0 -1 0 \n0 0 0 1';
             obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];

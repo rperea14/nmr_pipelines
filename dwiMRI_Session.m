@@ -413,7 +413,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         fprintf('\nFslreorienting to standard...');
                         %Reorient to std that nii files -->
                         exec_cmd{:,end+1}=['fslreorient2std ' out_file ' ' out_file ];
-                        obj.RunBash(exec_cmd{end}); fprintf('done');
+                        obj.RunBash(exec_cmd{end}); fprintf('done\n');
                         %%%
                         
                         %Reorient to std the bvecs -->
@@ -421,8 +421,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             exec_cmd{:,end+1}=['fslreorient2std ' out_file ' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
                             obj.RunBash(exec_cmd{end});
                         else
+                            fprintf(['Rotating the dwi sequence based on the provided matfile: ' obj.Params.DCM2NII.in(ii).fsl2std_matfile '...']);
                             exec_cmd{:,end+1}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
                             obj.RunBash(exec_cmd{end});
+                            fprintf('done\n');
+                            
                         end
                         %%%
                         
@@ -440,7 +443,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         wasRun = true;
                         fprintf('\n....done');
                     else
-                        error('==> obj.Params.DCM2NII.specific_vols  not equal to obj.Params.DCM2NII.in(ii).nvols ');
+                        error(['==> obj.Params.DCM2NII.specific_vols (' obj.Params.DCM2NII.specific_vols ')'...
+                            ' not equal to obj.Params.DCM2NII.in(ii).nvols  (' obj.Params.DCM2NII.in(ii).nvols  ')']);
                     end
                 else
                     disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
@@ -474,7 +478,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.DropVols.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.DropVols.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.DropVols.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.DropVols.in.fn{ii});
                 else
                     cur_fn=obj.Params.DropVols.in.fn{ii};
                 end
@@ -645,7 +649,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     clear cur_fn;
                     %INIT VARIABLES:
                     if iscell(obj.Params.B0MoCo.in.fn{jj})
-                        cur_fn=cell2char(obj.Params.B0MoCo.in.fn{jj});
+                        cur_fn=cell2char_rdp(obj.Params.B0MoCo.in.fn{jj});
                     else
                         cur_fn=obj.Params.B0MoCo.in.fn{jj};
                     end
@@ -916,7 +920,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.Bet2.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.Bet2.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.Bet2.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.Bet2.in.fn{ii});
                 else
                     cur_fn=obj.Params.Bet2.in.fn{ii};
                 end
@@ -958,7 +962,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.Eddy.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.Eddy.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.Eddy.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.Eddy.in.fn{ii});
                 else
                     cur_fn=obj.Params.Eddy.in.fn{ii};
                 end
@@ -1038,7 +1042,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     strrep(obj.Params.EddyMotion.in.fn_eddy{ii},'.nii.gz','.eddy_restricted_movement_rms');
                 if exist(obj.Params.EddyMotion.in.fn_motion{ii} ) || obj.redo_history
                     if iscell(obj.Params.EddyMotion.in.fn_motion{ii})
-                        cur_fn=cell2char(obj.Params.EddyMotion.in.fn_motion{ii});
+                        cur_fn=cell2char_rdp(obj.Params.EddyMotion.in.fn_motion{ii});
                     else
                         cur_fn=obj.Params.EddyMotion.in.fn_motion{ii};
                     end
@@ -1159,7 +1163,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.B0mean.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.B0mean.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.B0mean.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.B0mean.in.fn{ii});
                 else
                     cur_fn=obj.Params.B0mean.in.fn{ii};
                 end
@@ -1976,7 +1980,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 if ii ==  obj.Params.CoRegMultiple.in.ref_iteration
                     tmp_b_split = strsplit(b,'_');
-                    obj.Params.CoRegMultiple.in.ref_prefix = cell2char(strrep(tmp_b_split(end),'.nii',''));
+                    obj.Params.CoRegMultiple.in.ref_prefix = cell2char_rdp(strrep(tmp_b_split(end),'.nii',''));
                     obj.Params.CoRegMultiple.in.ref_file = obj.Params.CoRegMultiple.in.b0{ii};
                     %Copy the files in this for loop (since nothing will be done to ref)
                     if exist(obj.Params.CoRegMultiple.out.fn{ii},'file') == 0 || obj.redo_history
@@ -2008,7 +2012,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 [aa bb cc ] = fileparts(obj.Params.CoRegMultiple.in.fn{ii});
                 tmp_bb_split = strsplit(bb,'_');
                 obj.Params.CoRegMultiple.out.matfile{ii} = [ outpath ...
-                    'xfm_b0' cell2char(strrep(tmp_bb_split(end),'.nii','_2_')) ...
+                    'xfm_b0' cell2char_rdp(strrep(tmp_bb_split(end),'.nii','_2_')) ...
                     obj.Params.CoRegMultiple.in.ref_prefix '.mat' ];
                 %End of init
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2194,7 +2198,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.Dtifit.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.Dtifit.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.Dtifit.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.Dtifit.in.fn{ii});
                 else
                     cur_fn=obj.Params.Dtifit.in.fn{ii};
                 end
@@ -2259,7 +2263,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.GQI.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.GQI.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.GQI.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.GQI.in.fn{ii});
                 else
                     cur_fn=obj.Params.GQI.in.fn{ii};
                 end
@@ -2492,7 +2496,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.AntsReg.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.AntsReg.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.AntsReg.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.AntsReg.in.fn{ii});
                 else
                     cur_fn=obj.Params.AntsReg.in.fn{ii};
                 end
@@ -2598,7 +2602,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             for ii=1:numel(obj.Params.Skeletonize.in.fn)
                 clear cur_fn;
                 if iscell(obj.Params.Skeletonize.in.fn{ii})
-                    cur_fn=cell2char(obj.Params.Skeletonize.in.fn{ii});
+                    cur_fn=cell2char_rdp(obj.Params.Skeletonize.in.fn{ii});
                 else
                     cur_fn=obj.Params.Skeletonize.in.fn{ii};
                 end
@@ -2741,7 +2745,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     clear cur_fn;
                     %Variable type fixing issues:
                     if iscell(obj.Params.B0MoCo.in.fn{jj})
-                        cur_fn=cell2char(obj.Params.B0MoCo.in.fn{jj});
+                        cur_fn=cell2char_rdp(obj.Params.B0MoCo.in.fn{jj});
                     else
                         cur_fn=obj.Params.B0MoCo.in.fn{jj};
                     end
@@ -6503,20 +6507,20 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     disp(''); %Skip uploading because it already exists!
                 else
                     fprintf(['\nUploading motion value: ' MOTION_fields{ii} '(' ...
-                        strtrim(cell2char(obj.Params.EddyMotion.out.vals.(MOTION_fields{ii})))  ') for ' obj.sessionname ]);
+                        strtrim(cell2char_rdp(obj.Params.EddyMotion.out.vals.(MOTION_fields{ii})))  ') for ' obj.sessionname ]);
                     dctl_cmd = [ ' SELECT MRI_skelDWI_motion_eddyres_' MOTION_fields{ii} ...
                         ' FROM MRI.skelDWI  WHERE MRI_Session_ID = ' num2str(cur_DC_ID.MRI_Session_ID)  ];
                     check_dctl_cmd = DataCentral(dctl_cmd);
                     if isempty(check_dctl_cmd.(['MRI_skelDWI_motion_eddyres_' MOTION_fields{ii}]))
                         fprintf(['Motion values: ' MOTION_fields{ii} ' is: '   ])
                         dctl_cmd = [ 'INSERT INTO MRI.skelDWI (MRI_Session_ID,  MRI_skelDWI_motion_eddyres_' MOTION_fields{ii} ') ' ...
-                            ' values ( ' num2str(cur_DC_ID.MRI_Session_ID) ',' strtrim(cell2char(obj.Params.EddyMotion.out.vals.(MOTION_fields{ii}))) ')'   ] ;
+                            ' values ( ' num2str(cur_DC_ID.MRI_Session_ID) ',' strtrim(cell2char_rdp(obj.Params.EddyMotion.out.vals.(MOTION_fields{ii}))) ')'   ] ;
                         DataCentral(dctl_cmd);
                         fprintf('...done\n');
                     elseif isnan(check_dctl_cmd.(['MRI_skelDWI_motion_eddyres_' MOTION_fields{ii}]))
                         fprintf(['Skel TOI ==> Uploading to DataCentral: ' id ' and TOI: ' MOTION_fields{ii}  ])
                         dctl_cmd = [ 'UPDATE MRI.skelDWI SET MRI_skelDWI_motion_eddyres_' MOTION_fields{ii} ...
-                            ' = ''' strtrim(cell2char(obj.Params.EddyMotion.out.vals.(MOTION_fields{ii}))) ''' WHERE MRI_Session_ID =  ' ...
+                            ' = ''' strtrim(cell2char_rdp(obj.Params.EddyMotion.out.vals.(MOTION_fields{ii}))) ''' WHERE MRI_Session_ID =  ' ...
                             num2str(cur_DC_ID.MRI_Session_ID)   ] ;
                         DataCentral(dctl_cmd);
                         fprintf('...done\n');
