@@ -646,10 +646,13 @@ classdef dwi_ADRC < dwiMRI_Session
                     obj.Params.DCM2NII.rawDiff = [ obj.session_location filesep 'other' filesep ] ;
                     obj.Params.DCM2NII.in(ii).first_dcmfiles = [] ; %No need to same first_dcmfile since its already been unpacked with *.bvecs
                 else
-                    fprintf(['ERROR! \n 1. No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ...
-                        ' \nor 2.Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ]);
+                    fprintf(['DIFFUSION DICOMS NOT COMPLETE!\n 1.(newer unpack) Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ... 
+                        '\n 2.(older unpack, before 2018) No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ]);
                     
-                    error('Please verify that DCM files have been unpacked. Exiting now...');
+                    fprintf(['PLEASE CHECK THE LOGBOOK TO SEE IF DIFFUSION SEQUENCES WERE COLLECTED\n']);
+                    fprintf('Throwing an error now....');
+                    
+                    error('Please verify that all the diffucion DCM files exist. Exiting now...');
                 end
                 obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
                 obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];

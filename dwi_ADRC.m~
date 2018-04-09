@@ -1,8 +1,8 @@
 classdef dwi_ADRC < dwiMRI_Session
     %%  This class is a subclass of its parent class dwi_MRI_Session.m
     %%  (where it will inherent other methods).
-    %%  Created by:
-    %%              Rodrigo D. Perea grandrigo@gmail.com
+    %%  Created by: RodrigoPereaCamargo ~~> rperea14@live.com
+    %%  Inheritance credits to AaronSchultz
     %%
 
     
@@ -19,14 +19,15 @@ classdef dwi_ADRC < dwiMRI_Session
         FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
-        fx_template_dir='/space/public_html/rdp20/fornix_ROA/FX_1.8mm_orig/';
+        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
         %Dep properties:
         sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
         b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-        %TORM--> REPLACED BY PROPERTY ABOVE and UNUSED: init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+
+        init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %THIS IS ONLY USED IN THE proc_dcm2nii() METHOD!
         col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        redo_history = false; %Allows us to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
+        redo_history = false; %Allows to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
     end
     
     methods
@@ -58,7 +59,7 @@ classdef dwi_ADRC < dwiMRI_Session
             if exist(obj.root,'dir')==0
                 obj.make_root();
             end
-            obj.objectHome = obj.root ;
+            obj.objectHome = obj.root ; %for 
             %!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             %!!!!!!!
             
@@ -72,8 +73,9 @@ classdef dwi_ADRC < dwiMRI_Session
                 donothing=1;
             end
             
-            
             %CHECK CHANGES MADE FROM /eris to /cluster
+            %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
+            %OBJECT
             if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
                 display('Changing eris to cluster folder...');
                 %Then apply the mod to cluster...
@@ -97,6 +99,11 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.getDCM2nii(RunFlag);
             end
             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Reinitialize variables:
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+            
+            
             %Start the CommonPreProc:
             obj.CommonPreProc();
             %Start the CommonPostProc (commenting it? Maybe, maybe not?):
@@ -106,6 +113,8 @@ classdef dwi_ADRC < dwiMRI_Session
         
         function obj=setMyParams(obj)
             %%%%%%%%%%%%
+            % ??? ??? rdp20 ~~> Not applicable to the dwiMRI_ process as of
+            % 04/2/2018
             %Global parameters:
             %             obj.vox = [1.8 1.8 1.8];
             %             obj.setDefaultParams; %this will call the method in the superclass dwiMRI_Session.m
@@ -114,7 +123,7 @@ classdef dwi_ADRC < dwiMRI_Session
         end
         
         function resave(obj)
-            if ~istrue(obj.redo_history)
+            if ~(obj.redo_history)
                 save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
             end
         end
@@ -302,12 +311,16 @@ classdef dwi_ADRC < dwiMRI_Session
             %For GQI:
             obj.Params.GQI.in.movefiles = [ '..' filesep '07_Combined_Recon_gqi' ];
             obj.Params.GQI.in.fn = {obj.Params.CoRegMultiple.out.combined_fn};
-            obj.Params.GQI.in.prefix = 'GQI_DSISv053117' ; %Double check this so you prefix the version of DSISTUDIO!
             obj.Params.GQI.in.mask ={obj.Params.CoRegMultiple.out.combined_mask};
             obj.Params.GQI.in.bvecs = {obj.Params.CoRegMultiple.out.combined_bvecs};
             obj.Params.GQI.in.bvals = {obj.Params.CoRegMultiple.out.combined_bvals};
             
+            obj.Params.GQI.in.prefix = 'GQI_DSISv053117' ; %Double check this so you prefix the version of DSISTUDIO!
             obj.Params.GQI.out.export = 'gfa,nqa0,nqa1';
+            
+            obj.Params.GQI.in.method = '4';    %for gqi model
+            obj.Params.GQI.in.num_fiber = '3'; %modeling 3 fiber population
+            obj.Params.GQI.in.param0 = '1.25'; %default parameter for gqi
             
             obj.proc_gqi();
             
@@ -338,15 +351,6 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.proc_FS2dwi();
         end
         function obj = CommonPostProc(obj)
-            %Multi-shell bedpostX
-            obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
-            obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
-            obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
-            obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
-            
-            obj.proc_qboot();
-            
-            
             %TRACULA RELATED:
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -360,6 +364,19 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.proc_tracula();
             end
             
+            
+            %Multi-shell bedpostX QBOOT
+            %At this time and for this project this will be avoided since Qboot ideally works
+            %with three b-values instead of only two.
+            %For more information, check:
+            %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap 
+%             obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
+%             obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
+%             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
+%             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
+%             
+            %obj.proc_qboot();
+            
             %TRKLAND RELATED - FX:
             for tohide=1:1
                 obj.Trkland.root = [ obj.root  'post_TRKLAND' filesep ];
@@ -367,7 +384,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.fx.in.b0 = obj.Params.CoRegMultiple.out.combined_b0;
                 obj.Trkland.fx.in.FA = obj.Params.Dtifit.out.FA{1};
                 %Based on orientation, we will chooose a specific template (usually RAS)
-                [~, Ori ] = system(['mri_info ' obj.Trkland.fx.in.b0 ' | grep Orientation | awk ''{print $3}'''] );
+                [~, Ori ] = system([obj.init_FS filesep 'bin' filesep 'mri_info ' obj.Trkland.fx.in.b0 ' | grep Orientation | awk ''{print $3}'''] );
                 obj.Trkland.fx.tmp.ori = strtrim(Ori); clear Ori;
         
                 %Fib params:
@@ -596,7 +613,6 @@ classdef dwi_ADRC < dwiMRI_Session
         function obj = getDCM2nii(obj,torun)
             %For proc_DCM2NII:
             obj.Params.DCM2NII.specific_vols=68;
-            
             obj.Params.DCM2NII.seq_names={ 'ep2d_diff_7p5k_set1E60' 'ep2d_diff_7p5k_set2E60' ...
                 'ep2d_diff_7p5k_set3E60' 'ep2d_diff_2p5k_set4E60' };
       
@@ -624,21 +640,24 @@ classdef dwi_ADRC < dwiMRI_Session
                         ' | tail -1 | awk ''{ print $8 }'' ' ]);
                 %NEWER UNPACK (Feb 2018):
                 elseif exist(strtrim(tmp_bvecs),'file')
+                    obj.Params.DCM2NII.newUnpack = true;
                     [ ~ , obj.Params.DCM2NII.in(ii).nvols ] = system(['cat ' ...
                         strtrim(tmp_bvecs) ' | wc -l ' ]);
+                    obj.Params.DCM2NII.rawDiff = [ obj.session_location filesep 'other' filesep ] ;
                     obj.Params.DCM2NII.in(ii).first_dcmfiles = [] ; %No need to same first_dcmfile since its already been unpacked with *.bvecs
                 else
-                    fprintf(['ERROR! \n 1. No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ...
-                        ' \nor 2.Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ]);
+                    fprintf(['DCERROR \n 1.(newer unpack) Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ... 
+                        '\n 2. (older unpack, before 2018) No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ]);
+                    
+                    fprintf(['PLEASE CHECK THE LOGBOOK TO SEE IF DIFFUSION SEQUENCES WERE COLLECTED']);
                     
                     error('Please verify that DCM files have been unpacked. Exiting now...');
                 end
                 obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
                 obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];
-                obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
+                obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char_rdp(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
             end
             obj.proc_dcm2nii();
-            
         end
     end
 end

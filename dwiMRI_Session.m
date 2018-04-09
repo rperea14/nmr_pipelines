@@ -444,10 +444,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         wasRun = true;
                         fprintf('\n....done');
                     else
+                        if isfield( obj.Params.DCM2NII.in,'prefix')
+                            err_prefix=obj.Params.DCM2NII.in(ii).prefix;
+                        else
+                            err_prefix='-no prefix in this project -';
+                        end
+                        display(['In prefix: ' err_prefix '...']);
                         display(['==> obj.Params.DCM2NII.specific_vols (' num2str(obj.Params.DCM2NII.specific_vols) ')'...
-                            ' not equal to obj.Params.DCM2NII.in(ii).nvols  (' num2str(obj.Params.DCM2NII.in(ii).nvols)  ')']);
-                        fprintf('\n You should double check this information in the logbook. Stopping for now!\n\n');
-                        display('NOTHING MORE TO DO..throwing an error');
+                            ' not equal to obj.Params.DCM2NII.in(ii).nvols (' num2str(obj.Params.DCM2NII.in(ii).nvols)  ')']);
+                        
+                        fprintf('    You should double check this information in the logbook. Stopping for now!\n\n');
+                        fprintf('NOTHING MORE TO DO...\n Throwing an error ~~>');
                         error('Exiting now...');
                         
                     end
@@ -1326,7 +1333,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         %(TODO: replace/modify it to work simliarly to other objects' methods). 
         
         function obj = proc_t1_spm(obj)
-            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
+            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM:');
             wasRun = false;
             %Check if obj.fsdir has been initialized correctly:
             if ~isfield(obj,'fsdir')
@@ -2485,7 +2492,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %does not exist
             
             for zz = 1:3
-                tmp_all = ReadInFile(files{zz},'\t',0); tmp = tmp_all(contains('^# ColHeaders',tmp_all):end);
+                tmp_all = ReadInFile(files{zz},'\t',0); tmp = tmp_all(contains_rdp20('^# ColHeaders',tmp_all):end);
                 
                 for ii = 1:50
                     tmp = regexprep(tmp,'  ', ' ');
@@ -2509,7 +2516,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %Getting estimated measures
                 if zz == 3 %In aparc.stats
-                    col_estimatedMeas=tmp_all(contains('^# Measure',tmp_all));
+                    col_estimatedMeas=tmp_all(contains_rdp20('^# Measure',tmp_all));
                     for jj=1:numel(col_estimatedMeas)
                         spl_TICV{jj}=strsplit(col_estimatedMeas{jj},', ');
                         T(end+1,4)=  num2cell(str2num(strrep(spl_TICV{jj}{end-1},',','')));
@@ -2547,7 +2554,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     % NOTE: antsRegistrationSyN.sh'); %due to many versions, we
                     % modify this and call the one we needed explicitly
                     % with obj.Params.AntsReg.in.run_ants
-                    exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'antsRegistrationSyN.sh  '  ...
+                    run_path = obj.addtoSHELLPATH(obj.Params.AntsReg.in.run_ants);
+                    exec_cmd{:,end+1}=[ run_path  ' antsRegistrationSyN.sh  '  ...
                         obj.Params.AntsReg.in.antsparams ...
                         ' -f '  obj.Params.AntsReg.in.ref ...
                         ' -m '  obj.Params.AntsReg.in.fn{ii} ...
@@ -2569,7 +2577,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                          %FA:                         
                          %[~, to_exec ] = system('which WarpImageMultiTransform');
                          %exec_cmd{:,end+1}=[ strtrim(to_exec)  ' 3 ' ...
-                         exec_cmd{:,end+1}=[ obj.Params.AntsReg.in.run_ants filesep 'WarpImageMultiTransform 3  '  ...
+                         run_path = obj.addtoSHELLPATH(obj.Params.AntsReg.in.run_ants);
+                         exec_cmd{:,end+1}=[ run_path ' WarpImageMultiTransform 3 ' ...
                              ' ' obj.Params.Dtifit.out.FA{ii}  ...
                              ' ' obj.Params.AntsReg.out.FA{ii} ...
                              ' -R '  obj.Params.AntsReg.in.ref ...
@@ -3597,8 +3606,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     exec_cmd{:,end+1} = [ 'obj.proc_apply_resversenorm(mask_fname, ' ...
                         ' obj.Params.spmT1_Proc.out.iregfile,obj.Params.probtrackx.b0, obj.Params.probtrackx.(fname_bname).out.root, ''revN_'' );'] ;
                     if ~isfield(obj.Params,'spmT1_Proc')
-                        obj.Params.spmT1_Proc.in.tpm = obj.prep_spmT1_proc(); 
                         obj.proc_t1_spm();
+                    end
+                    
+                    %Fixing previous faulty varaible assignation:
+                    if ~ischar(obj.Params.spmT1_Proc.in.tpm)
+                        obj.Params.spmT1_Proc.in.tpm = '/autofs/space/schopenhauer_002/users/spm12/tpm/TPM.nii';
                     end
                     eval(exec_cmd{end});
                     wasRun=true;
@@ -5870,16 +5883,62 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
         end
-        
-        function [echoFN] = whatecho(obj)
+        function [echoFN, temp_shell] = whatecho(obj)
             [~, full_shell]=system('echo $SHELL');
             [~, temp_shell ] = fileparts(full_shell);
                 if strcmp(temp_shell,'bash')
-                    echoFN='echo -e '
+                    echoFN='echo -e ';
                 else
-                    echoFN='echo '
+                    echoFN='echo ';
                 end
+                
         end
+        
+        function [oneliner ] = addtoSHELLPATH(obj,file_path)
+            [ ~ , temp_shell ] = obj.whatecho();
+            [sys_ok, temp_PATH ] = system('echo $PATH');
+            if sys_ok ~= 0
+                error('Error when trying to look for the SHELL path! ');
+            end
+            %Making sure the fileseparator '/'(unix), '\' (windows) is added at the end
+            file_path=[file_path filesep ] ; 
+            file_path=regexprep(file_path,[filesep filesep ], filesep);
+            %Remove '/' and '\' at the end:
+            if strcmp(file_path(end),filesep)
+                file_path=file_path(1:end-1);
+            end
+            %Added path here:
+            added_PATH = strtrim(regexprep(temp_PATH,file_path,file_path));
+            if strcmp(temp_shell,'bash')
+                oneliner = ['export PATH = ' added_PATH ' ; ' ];
+            else
+                oneliner = ['setenv PATH ' added_PATH ' ; ' ];
+            end
+        end
+        
+        function outpath = getPath(obj,a,movefiles)
+            if isempty(movefiles)
+                outpath = [a filesep movefiles filesep];
+            else
+                if movefiles(1)==filesep || movefiles(1)=='~'
+                    outpath = [movefiles filesep];
+                else
+                    outpath = [a filesep movefiles filesep];
+                end
+            end
+            outpath = regexprep(outpath,[filesep filesep],filesep);
+            
+            %%%% Do I want to do the below?
+            if ~exist(outpath,'dir');
+                mkdir(outpath);
+            end
+            hm = pwd;
+            cd(outpath)
+            
+            outpath = [pwd filesep];
+            cd(hm);
+        end
+        
         
         %COMMAND HISTORY METHODS (Adapted from fmri_Session.m):
         function [ind, assume] = CheckHist(obj,step,wasRun)
@@ -6076,7 +6135,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 error('Invalid number of arguments. Please enter the source and target images');
             end
             
-            [a b c] = fileparts(mov);
+            if iscell(mov)
+                [a b c] = fileparts(mov{end});
+            else
+                [a b c] = fileparts(mov);
+            end
             outpath2 = obj.getPath(outdir,'./');
             disp('USING SPM:');
             if exist([outpath2 'CoReg.mat'],'file')==0
@@ -6181,8 +6244,82 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             fprintf('\n');
         end
+        function obj = proc_apply_resversenorm(obj,fn,regfile,targ,outdir,prefix)
+            fprintf('\n%s\n', 'APPLYING SPM STYLE REVERSE NORMALIZATION:');
+            wasRun = false;
+            if nargin <6
+                prefix = '' ;
+            end
+            if nargin <5
+                error('Incorrect number of arguments. Please enter at least 5');
+            end
+            
+            
+            if ischar(fn)
+                fn = cellstr(fn);
+            end
+            
+            outpath = outdir;
+            if exist(outpath,'dir')==0
+                mkdir(outpath);
+            end
+            
+            nfn = [];
+            for ii = 1:numel(fn);
+                [a1 b1 c1] = fileparts(fn{ii});
+                ff = regexprep([outpath prefix b1 c1],[filesep filesep],filesep);
+                nfn{end+1,1} = ff;
+            end
+            
+            check = 0;
+            for ii = 1:numel(nfn)
+                if exist(nfn{ii},'file')>0
+                    check = check+1;
+                end
+            end
+            
+            if check ~= (numel(fn))
+                wasRun = true;
+                [targ_dir, targ_bname,  targ_ext ] = fileparts(targ);
+                
+                if strcmp(targ_ext,'.gz')
+                    system(['gunzip ' targ ]);
+                    targ=[targ_dir filesep targ_bname ] ;
+                end
+                h = spm_vol(targ);
+                if strcmp(targ_ext,'.gz')
+                    system(['gzip ' targ ]);
+                end
+                x = spm_imatrix(h.mat);
+                
+                %defs = obj.Params.ApplyNormNew.in.pars;
+                %defs = obj.Params.ApplyReverseNormNew.in.pars;
+                defs.comp{1}.def = {regfile};
+                defs.out{1}.pull.fnames  = fn(:)';
+                
+                defs.out{1}.pull.savedir.savesrc=1;
+                defs.out{1}.pull.interp=0;
+                defs.out{1}.pull.mask=1;
+                defs.out{1}.pull.fwhm=[0 0 0];
+                defs.comp{2}.idbbvox.vox = abs(x(7:9));
+                defs.comp{2}.idbbvox.bb = world_bb_v2(h);
+                
+                spm_deformations(defs);
+                
+                nfn = [];
+                for ii = 1:numel(fn);
+                    [a1 b1 c1] = fileparts(fn{ii});
+                    ff = [outpath prefix b1 c1];
+                    movefile([a1 filesep 'w' b1 c1], ff);
+                    obj.proc_remove_spm_nans(ff);
+                    nfn{end+1,1} = ff;
+                end
+            end
+            disp('Applying Normalization is complete');
+            fprintf('\n');
+        end
         function obj = obsolete_replaced_proc_t1_spm(obj,coreg2dwi_T1,outdir)
-            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM12:');
+            fprintf('\n\n%s\n', 'PROCESS T1 WITH SPM:');
             wasRun = false;
             
             if nargin <3
@@ -6313,105 +6450,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %             obj.Params.spmT1_Proc.out.iregfile = [a filesep 'iy_' b c];
             
             fprintf('\n');
-        end %replaced with public method
-        function obj = proc_apply_resversenorm(obj,fn,regfile,targ,outdir,prefix)
-            fprintf('\n%s\n', 'APPLYING SPM12 STYLE REVERSE NORMALIZATION:');
-            wasRun = false;
-            if nargin <6
-                prefix = '' ;
-            end
-            if nargin <5
-                error('Incorrect number of arguments. Please enter at least 5');
-            end
-            
-            
-            if ischar(fn)
-                fn = cellstr(fn);
-            end
-            
-            outpath = outdir;
-            if exist(outpath,'dir')==0
-                mkdir(outpath);
-            end
-            
-            nfn = [];
-            for ii = 1:numel(fn);
-                [a1 b1 c1] = fileparts(fn{ii});
-                ff = regexprep([outpath prefix b1 c1],[filesep filesep],filesep);
-                nfn{end+1,1} = ff;
-            end
-            
-            check = 0;
-            for ii = 1:numel(nfn)
-                if exist(nfn{ii},'file')>0
-                    check = check+1;
-                end
-            end
-            
-            if check ~= (numel(fn))
-                wasRun = true;
-                [targ_dir, targ_bname,  targ_ext ] = fileparts(targ);
-                
-                if strcmp(targ_ext,'.gz')
-                    system(['gunzip ' targ ]);
-                    targ=[targ_dir filesep targ_bname ] ;
-                end
-                h = spm_vol(targ);
-                if strcmp(targ_ext,'.gz')
-                    system(['gzip ' targ ]);
-                end
-                x = spm_imatrix(h.mat);
-                
-                %defs = obj.Params.ApplyNormNew.in.pars;
-                %defs = obj.Params.ApplyReverseNormNew.in.pars;
-                defs.comp{1}.def = {regfile};
-                defs.out{1}.pull.fnames  = fn(:)';
-                
-                defs.out{1}.pull.savedir.savesrc=1;
-                defs.out{1}.pull.interp=0;
-                defs.out{1}.pull.mask=1;
-                defs.out{1}.pull.fwhm=[0 0 0];
-                defs.comp{2}.idbbvox.vox = abs(x(7:9));
-                defs.comp{2}.idbbvox.bb = world_bb_v2(h);
-                
-                spm_deformations(defs);
-                
-                nfn = [];
-                for ii = 1:numel(fn);
-                    [a1 b1 c1] = fileparts(fn{ii});
-                    ff = [outpath prefix b1 c1];
-                    movefile([a1 filesep 'w' b1 c1], ff);
-                    obj.proc_remove_spm_nans(ff);
-                    nfn{end+1,1} = ff;
-                end
-            end
-            disp('Applying Normalization is complete');
-            fprintf('\n');
-        end
+        end %replaced with a public method
         
         %MISC FUNCTIONALITIES
-        function outpath = getPath(obj,a,movefiles)
-            if isempty(movefiles)
-                outpath = [a filesep movefiles filesep];
-            else
-                if movefiles(1)==filesep || movefiles(1)=='~'
-                    outpath = [movefiles filesep];
-                else
-                    outpath = [a filesep movefiles filesep];
-                end
-            end
-            outpath = regexprep(outpath,[filesep filesep],filesep);
-            
-            %%%% Do I want to do the below?
-            if ~exist(outpath,'dir');
-                mkdir(outpath);
-            end
-            hm = pwd;
-            cd(outpath)
-            
-            outpath = [pwd filesep];
-            cd(hm);
-        end
         function out = UserTime(obj)
             tmp = pwd;
             cd ~
@@ -6754,7 +6795,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             disp('skelTOIs values have been uploaded to DataCentral');
         end
-        
         function obj = deprecated_proc_as_coreg(obj,source,target,list_toxform,coreg_tech)
             %              fprintf('\n%s\n', 'PERFORMING COREGISTRATION');
             %              wasRun = false;
@@ -6864,7 +6904,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             %                      return
             %            end
         end
-        
         function obj = deprecated_remove_trkland_fields(obj,curTRK)
             if isfield(obj.Trkland.Trks,curTRK)
                 temp_fields = fieldnames(obj.Trkland.Trks.(curTRK));
