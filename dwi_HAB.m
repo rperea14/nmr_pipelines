@@ -538,9 +538,23 @@ classdef dwi_HAB < dwiMRI_Session
             %we modified grep err instead of tail -1 due to error in some subjects (e.g. 120419_4TT01420)
             if obj.Params.DCM2NII.newUnpack
                 obj.Params.DCM2NII.out.rawOrig = strtrim(dir_wfp([obj.Params.DCM2NII.rawDiff '*.nii' ]));
+                if iscell(obj.Params.DCM2NII.out.rawOrig)
+                    obj.Params.DCM2NII.out.rawOrig=cell2char_rdp(obj.Params.DCM2NII.out.rawOrig);
+                end
                 exec_cmd=[ 'fslinfo ' obj.Params.DCM2NII.out.rawOrig   ' | grep ^dim4 | awk ''{ print $2 }'' ' ];
-                obj.RunBash(exec_cmd);
-                [ ~ , obj.Params.DCM2NII.in.nvols ] = str2num(strtrim(system(exec_cmd)));
+                [ ~ , temp_nvols ] = system(exec_cmd); 
+                
+                %Added the 'in' fields if it doesnt exist:
+                if ~isfield(obj.Params.DCM2NII,'in')
+                    obj.Params.DCM2NII.in = [] ; 
+                end
+                %Assigning number of volumes:
+                if ischar(temp_nvols)
+                    obj.Params.DCM2NII.in.nvols = str2num(temp_nvols);
+                else %assuming double...
+                    obj.Params.DCM2NII.in.nvols = temp_nvols;
+                end
+                
                 %CHECK IF CORRECT NUMBER OF NVOLS:
                 if obj.Params.DCM2NII.in.nvols ~=35
                     error(['This image does not contain 35 volume (for' obj.projectID '): ' obj.Params.DCM2NII.rawDiff  ])

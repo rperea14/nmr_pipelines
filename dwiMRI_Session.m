@@ -422,7 +422,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             obj.RunBash(exec_cmd{end});
                         else
                             fprintf(['Rotating the dwi sequence based on the provided matfile: ' obj.Params.DCM2NII.in(ii).fsl2std_matfile '...']);
-                            exec_cmd{:,end+1}=['echo -e ''' obj.Params.DCM2NII.in(ii).fsl2std_param ''' > ' obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            exec_cmd{:,end+1}=[obj.whatecho() ' '' ' obj.Params.DCM2NII.in(ii).fsl2std_param  ''' > '  obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            obj.RunBash(exec_cmd{end});
                             obj.RunBash(exec_cmd{end});
                             fprintf('done\n');
                             
@@ -443,8 +444,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         wasRun = true;
                         fprintf('\n....done');
                     else
-                        error(['==> obj.Params.DCM2NII.specific_vols (' obj.Params.DCM2NII.specific_vols ')'...
-                            ' not equal to obj.Params.DCM2NII.in(ii).nvols  (' obj.Params.DCM2NII.in(ii).nvols  ')']);
+                        display(['==> obj.Params.DCM2NII.specific_vols (' num2str(obj.Params.DCM2NII.specific_vols) ')'...
+                            ' not equal to obj.Params.DCM2NII.in(ii).nvols  (' num2str(obj.Params.DCM2NII.in(ii).nvols)  ')']);
+                        fprintf('\n You should double check this information in the logbook. Stopping for now!\n\n');
+                        display('NOTHING MORE TO DO..throwing an error');
+                        error('Exiting now...');
+                        
                     end
                 else
                     disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
@@ -729,7 +734,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %matrices that will be used for rot. bvecs
                                     outmat_dwi2earlierb0{1}=outmat_dwi2refb0{ii};
                                     if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || obj.redo_history
-                                        exec_cmd{end+1,:}=(['echo -e "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
+                                        exec_cmd{end+1,:}=([ obj.whatecho() ' "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
                                             outmat_dwi2refb0{ii} ]);
                                         obj.RunBash(exec_cmd{end});
                                     end
@@ -972,7 +977,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %(dependency) Attempting to create acqp file:
                 obj.Params.Eddy.out.fn_acqp{ii}= [ outpath 'acqp.txt' ] ;
                 if exist(obj.Params.Eddy.out.fn_acqp{ii},'file')==0 || obj.redo_history
+                    
                     exec_cmd{:,end+1}=['echo " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
+                    
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_acqp{ii}  ]);
                     obj.RunBash(exec_cmd{end});
                     wasRun=true;
@@ -1055,17 +1062,42 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Attempting to create the eddy_motion file:
                 outpath=obj.getPath(a,obj.Params.EddyMotion.in.movefiles);
                 obj.Params.EddyMotion.out.fn_motion{ii}= [ outpath 'motion_' b '.txt' ] ;
-                cmd_1=sprintf([ 'awk ''{for(i=1;i<=NF;i++) {sum[i] += $i; sumsq[i] += ($i)^2}} \n ' ...
-                    '  END {for (i=1;i<=NF;i++) { \n' ...
-                    ' printf "' ] );
-                cmd_2= ('%f %f \n", sum[i]/NR, sqrt((sumsq[i]-sum[i]^2/NR)/NR)} ' ) ;
-                cmd_3= sprintf(['\n }'' ' obj.Params.EddyMotion.in.fn_motion{ii}  ' > ' obj.Params.EddyMotion.out.fn_motion{ii} ]);
+                
+                %BELOW IS THE CODE IN SHELL: (REPLACED DUE TO PROBLEM WHEN SHELL IN NOT BASH
+%                 cmd_1=sprintf([ 'awk ''{for(i=1;i<=NF;i++) {sum[i] += $i; sumsq[i] += ($i)^2}} \n ' ...
+%                     '  END {for (i=1;i<=NF;i++) { \n' ...
+%                     ' printf "' ] );
+%                 cmd_2= ('%f %f \n", sum[i]/NR, sqrt((sumsq[i]-sum[i]^2/NR)/NR)} ' ) ;
+%                 cmd_3= sprintf(['\n }'' ' obj.Params.EddyMotion.in.fn_motion{ii}  ' > ' obj.Params.EddyMotion.out.fn_motion{ii} ]);
                 if exist(obj.Params.EddyMotion.out.fn_motion{ii},'file')==0 || obj.redo_history
                     fprintf(['\nGetting motion parameters from: ' obj.Params.EddyMotion.in.fn_motion{ii} ]);
                     %Break the command so I can denote the newline (\n
                     %character):
-                    exec_cmd{:,end+1} = [ cmd_1 cmd_2 cmd_3 ] ;
-                    obj.RunBash(exec_cmd{end});
+                    
+                    fileID=fopen(obj.Params.EddyMotion.in.fn_motion{ii});
+                    temp_motion{ii}=textscan(fileID,'%f %f ');
+                    fclose(fileID);
+                    
+                    obj.Params.EddyMotion.out.vals.rel_2_firstb0{ii}= temp_motion{ii}{1};
+                    obj.Params.EddyMotion.out.vals.rel_2_previous{ii}= temp_motion{ii}{2};
+                    
+                    
+                    obj.Params.EddyMotion.out.vals.initb0_mean{ii}=mean(obj.Params.EddyMotion.out.vals.rel_2_firstb0{ii});
+                    obj.Params.EddyMotion.out.vals.initb0_std{ii}=std(obj.Params.EddyMotion.out.vals.rel_2_firstb0{ii});
+                    obj.Params.EddyMotion.out.vals.rel_mean{ii}=mean(obj.Params.EddyMotion.out.vals.rel_2_previous{ii});
+                    obj.Params.EddyMotion.out.vals.rel_std{ii}=std(obj.Params.EddyMotion.out.vals.rel_2_previous{ii});
+                    
+                    fn_motion=1;
+                    
+                    %Writing to file:
+                    fileID=fopen(obj.Params.EddyMotion.out.fn_motion{ii},'w');
+                    fprintf(fileID,'%2.4f %2.4f\n',[ obj.Params.EddyMotion.out.vals.initb0_mean{ii} obj.Params.EddyMotion.out.vals.initb0_std{ii}]);
+                    fprintf(fileID,'%2.4f %2.4f\n',[obj.Params.EddyMotion.out.vals.rel_mean{ii} obj.Params.EddyMotion.out.vals.rel_std{ii} ]);
+                    fclose(fileID);
+
+                    
+%                     exec_cmd{:,end+1} = [ cmd_1 cmd_2 cmd_3 ] ;
+%                     obj.RunBash(exec_cmd{end});
                     %OUTPUT SHOULD LOOK LIKE THESE:
                     % rdp20@kant 05_MotionFromEDDY] $ cat motion_eddy_moco_gnc_dv_ep2d_diff_2p5k_set4E60.txt
                     % 0.919434 (A) 0.313574 (B)
@@ -1074,7 +1106,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %                     B: standard deviation of A
                     %                     C: average root meat squared movement of each slice relative to the previous one
                     %                     D: standard deviation of C
-                    %                     SOME ADDITIONAL USEFUL INFORMATION FROM: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/eddy
+                    %                     SOME ADDITIONAL USEFUL INFORMATION  FROM: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/eddy
+                    for tohide=1:1
                     %                     my_eddy_output.eddy_movement_rms:
                     %                     A summary of the "total movement" in each volume is created by calculating
                     %                     the displacement of each voxel and then averaging the squares of those
@@ -1097,25 +1130,29 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %                         But it matters if one wants to know how much the subject moved.
                     %                         We therefore supplies this file that estimates the movement RMS as
                     %                         above, but which disregards translation in the PE direction.
+                    end
                     fprintf('...done \n');
                     wasRun=true;
                 else
                     [~, bb, cc ] =  fileparts(obj.Params.EddyMotion.out.fn_motion{ii});
                     fprintf(['File ' bb cc ' exists\n']) ;
                 end
-                %Populating the variables needed:
-                %Average RMS movememt in relation to first volume
-                exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | head -1 | awk '' {print $1} '' ' ];
-                [ ~, obj.Params.EddyMotion.out.vals.initb0_mean{ii} ]  = system(exec_cmd{end});
-                %STD RMS movememt in relation to first volume
-                exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | head -1 | awk '' {print $2} '' ' ];
-                [ ~, obj.Params.EddyMotion.out.vals.initb0_std{ii} ]  = system(exec_cmd{end});
-                %Average RMS movememt in relation to previous volume
-                exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | tail -1 | awk '' {print $1} '' ' ];
-                [ ~ , obj.Params.EddyMotion.out.vals.rel_mean{ii} ] = system(exec_cmd{end});
-                %STD RMS movememt in relation to previous volume
-                exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | tail -1 | awk '' {print $2} '' ' ];
-                [ ~ , obj.Params.EddyMotion.out.vals.rel_std{ii} ] = system(exec_cmd{end});
+                
+                %REMOVE AS THIS IS PART OF THE SHELL SCRIPT THAT WAS
+                %REPLACED! 
+%                 %Populating the variables needed:
+%                 %Average RMS movememt in relation to first volume
+%                 exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | head -1 | awk '' {print $1} '' ' ];
+%                 [ ~, obj.Params.EddyMotion.out.vals.initb0_mean{ii} ]  = system(exec_cmd{end});
+%                 %STD RMS movememt in relation to first volume
+%                 exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | head -1 | awk '' {print $2} '' ' ];
+%                 [ ~, obj.Params.EddyMotion.out.vals.initb0_std{ii} ]  = system(exec_cmd{end});
+%                 %Average RMS movememt in relation to previous volume
+%                 exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | tail -1 | awk '' {print $1} '' ' ];
+%                 [ ~ , obj.Params.EddyMotion.out.vals.rel_mean{ii} ] = system(exec_cmd{end});
+%                 %STD RMS movememt in relation to previous volume
+%                 exec_cmd{:,end+1}=[ 'cat ' obj.Params.EddyMotion.out.fn_motion{ii} ' | tail -1 | awk '' {print $2} '' ' ];
+%                 [ ~ , obj.Params.EddyMotion.out.vals.rel_std{ii} ] = system(exec_cmd{end});
             end
             
             %Average grand total movement
@@ -1124,21 +1161,21 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.EddyMotion.out.vals.rel_mean_grandtotal = 0;
             obj.Params.EddyMotion.out.vals.rel_std_grandtotal = 0;
             for ii=1:numel(obj.Params.EddyMotion.in.fn_eddy)
-                obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal = ...
-                    str2num(obj.Params.EddyMotion.out.vals.initb0_mean{ii}) + obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal;
-                obj.Params.EddyMotion.out.vals.initb0_std_grandtotal = ...
-                    str2num(obj.Params.EddyMotion.out.vals.initb0_std{ii}) + obj.Params.EddyMotion.out.vals.initb0_std_grandtotal;
-                obj.Params.EddyMotion.out.vals.rel_mean_grandtotal = ...
-                    str2num(obj.Params.EddyMotion.out.vals.rel_mean{ii}) + obj.Params.EddyMotion.out.vals.rel_mean_grandtotal;
-                obj.Params.EddyMotion.out.vals.rel_std_grandtotal = ...
-                    str2num(obj.Params.EddyMotion.out.vals.rel_std{ii}) + obj.Params.EddyMotion.out.vals.rel_std_grandtotal;
-            end
+%                 obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal = ...
+%                     str2num(obj.Params.EddyMotion.out.vals.initb0_mean{ii}) + obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal;
+%                 obj.Params.EddyMotion.out.vals.initb0_std_grandtotal = ...
+%                     str2num(obj.Params.EddyMotion.out.vals.initb0_std{ii}) + obj.Params.EddyMotion.out.vals.initb0_std_grandtotal;
+%                 obj.Params.EddyMotion.out.vals.rel_mean_grandtotal = ...
+%                     str2num(obj.Params.EddyMotion.out.vals.rel_mean{ii}) + obj.Params.EddyMotion.out.vals.rel_mean_grandtotal;
+%                 obj.Params.EddyMotion.out.vals.rel_std_grandtotal = ...
+%                     str2num(obj.Params.EddyMotion.out.vals.rel_std{ii}) + obj.Params.EddyMotion.out.vals.rel_std_grandtotal;
+             end
             %Dividing by n:
-            n_value=numel(obj.Params.EddyMotion.in.fn_eddy);
-            obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal = obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal/n_value;
-            obj.Params.EddyMotion.out.vals.initb0_std_grandtotal = obj.Params.EddyMotion.out.vals.initb0_std_grandtotal/n_value;
-            obj.Params.EddyMotion.out.vals.rel_mean_grandtotal = obj.Params.EddyMotion.out.vals.rel_mean_grandtotal/n_value;
-            obj.Params.EddyMotion.out.vals.rel_std_grandtotal = obj.Params.EddyMotion.out.vals.rel_std_grandtotal/n_value;
+%             n_value=numel(obj.Params.EddyMotion.in.fn_eddy);
+%             obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal = obj.Params.EddyMotion.out.vals.initb0_mean_grandtotal/n_value;
+%             obj.Params.EddyMotion.out.vals.initb0_std_grandtotal = obj.Params.EddyMotion.out.vals.initb0_std_grandtotal/n_value;
+%             obj.Params.EddyMotion.out.vals.rel_mean_grandtotal = obj.Params.EddyMotion.out.vals.rel_mean_grandtotal/n_value;
+%             obj.Params.EddyMotion.out.vals.rel_std_grandtotal = obj.Params.EddyMotion.out.vals.rel_std_grandtotal/n_value;
             %Update history if possible
             if  wasRun == true
                obj.UpdateHist_v2(obj.Params.EddyMotion,'proc_getmotion_from_eddy()', obj.Params.EddyMotion.out.fn_motion{ii},wasRun,exec_cmd');
@@ -2857,7 +2894,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %reference on the firstb0 for rotation
                                     %matrices that will be used for rot. bvecs
                                     if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=(['echo -e "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
+                                        exec_cmd{end+1,:}=([ obj.whatecho() ' "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
                                             out_dwi2firstmat_rot_only{ii} ]);
                                         obj.RunBash(exec_cmd{end});
                                     end
@@ -5832,6 +5869,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     error('Stopping now....');
                 end
             end
+        end
+        
+        function [echoFN] = whatecho(obj)
+            [~, full_shell]=system('echo $SHELL');
+            [~, temp_shell ] = fileparts(full_shell);
+                if strcmp(temp_shell,'bash')
+                    echoFN='echo -e '
+                else
+                    echoFN='echo '
+                end
         end
         
         %COMMAND HISTORY METHODS (Adapted from fmri_Session.m):

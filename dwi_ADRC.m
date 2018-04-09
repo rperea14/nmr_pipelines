@@ -653,7 +653,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 end
                 obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
                 obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];
-                obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
+                obj.Params.DCM2NII.out(ii).fn = [  obj.Params.DCM2NII.out(ii).location  cell2char_rdp(obj.Params.DCM2NII.seq_names(ii)) '.nii.gz' ];
             end
             obj.proc_dcm2nii();
         end
