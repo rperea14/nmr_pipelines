@@ -50,7 +50,7 @@ classdef dwi_HAB < dwiMRI_Session
             'SLF_R_edJHU' 'SLF_R_edJHU_no_temporal' 'allTracts_edJHU' 'Global_skel'  };
         
         %trkland dependencies:
-        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
         redo_history = false; %(always FALSE unles...) --> Allows us to redo the history of all processes withouth running any obj.BashCode.
     end
     
@@ -153,7 +153,10 @@ classdef dwi_HAB < dwiMRI_Session
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Reinitialize variables:
-            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
+            obj.redo_history = false;
+            %Add rotrk_tools to path if not defined:
+            addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
             
             %Continue with CommonPreProc
             obj.CommonPreProc();

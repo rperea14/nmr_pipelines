@@ -1,0 +1,78 @@
+#!/bin/bash
+
+
+#RDP@)
+
+SESSIONS_DIR='/cluster/bang/ADRC/Sessions' 
+PROJECT_DIR='/cluster/bang/ADRC/PROJECTS/prep_tract_clustering' 
+
+echo SESSIONS_DIR is: $SESSIONS_DIR
+echo PROJECT_DIR is: $PROJECT_DIR
+
+for DIR in $(ls -1d ${SESSIONS_DIR}/1* ) ; do
+ echo $DIR
+ SUBJ=$(basename $DIR  )
+ echo $SUBJ ... 
+ SUBJDIR="${PROJECT_DIR}/${SUBJ}"
+ mkdir -p ${SUBJDIR}
+
+ #COPY DWI_APARC2009:
+ APARC_FILE_OUT="${SUBJDIR}/dwi_aparc.a2009+aseg.nii.gz"
+ if [ ! -f ${APARC_FILE_OUT} ] ; then
+  cp ${DIR}/DWIs/07_Combined_FS2dwi/dwi_aparc.a2009+aseg.nii.gz ${APARC_FILE_OUT}
+ fi
+ 
+
+ DSI_DIR_IN=${SESSIONS_DIR}/${SUBJ}/DWIs/07_Combined_Recon_gqi
+ SRC_FILE_IN=${DSI_DIR_IN}/GQI_DSISv053117.src.gz
+ BTABLE_FILE_IN=${DSI_DIR_IN}/GQI_DSISv053117_btable.txt
+
+
+
+ #GQI RECON:
+ GQI_RECON=${DSI_DIR_IN}/GQI_DSISv053117.src.gz.odf8.f3.012fy.rdi.gqi.1.25.fib.gz
+
+ #DTI RECON:
+ DTI_RECON=${DSI_DIR_IN}/GQI_DSISv053117.src.gz.012fy.dti.fib.gz
+ echo $DTI_RECON
+ if [ ! -f ${DTI_RECON}  ]  ; then
+  dsi_studio_run --action=rec --source=${SRC_FILE_IN} --method=1 
+ fi
+
+ 
+
+ #QBI RECON:
+ QBI_RECON=${DSI_DIR_IN}/GQI_DSISv053117.src.gz.odf8.f3.012fy.qbi.5_15.fib.gz 
+ if [ ! -f ${QBI_RECON} ]  ; then
+   dsi_studio_run --action=rec --source=${SRC_FILE_IN}  --method=2  --num_fiber=3
+ fi 
+
+
+ 
+ #TRACKING STARTS HERE
+ IN_MASK=${SESSIONS_DIR}/${SUBJ}/DWIs/06_CoRegDWIs/combined_preproc_bet_mask.nii.gz
+ ROA_IN=${SESSIONS_DIR}/${SUBJ}/DWIs/06_CoRegDWIs/combined_preproc_bet_mask_ROA.nii.gz #ROA_IN
+ if [ ! -f ${ROA_IN} ] ; then
+  fslmaths ${IN_MASK} -binv ${ROA_IN}
+ fi
+
+ OUT_TRK_GQI="${SUBJDIR}/GQI.trk.gz"
+ if [ ! -f ${OUT_TRK_GQI} ] ; then
+ dsi_studio_run --action=trk --source=${GQI_RECON} --min_length=20 --seed=${IN_MASK} --roa=${ROA_IN} --step_size=0.75 --method=0 --smoothing=0.2 --fiber_count=10000 --output=${OUT_TRK_GQI}
+ fi
+
+ OUT_TRK_DTI="${SUBJDIR}/DTI.trk.gz"
+ if [ ! -f ${OUT_TRK_DTI} ] ; then
+ dsi_studio_run --action=trk --source=${DTI_RECON} --min_length=20 --seed=${IN_MASK} --roa=${ROA_IN} --step_size=0.75 --method=0 --smoothing=0.2 --fiber_count=10000 --output=${OUT_TRK_DTI}
+ fi
+
+
+ OUT_TRK_QBI="${SUBJDIR}/QBI.trk.gz"
+ if [ ! -f ${OUT_TRK_QBI} ] ; then
+ dsi_studio_run --action=trk --source=${QBI_RECON} --min_length=20 --seed=${IN_MASK} --roa=${ROA_IN} --step_size=0.75 --method=0 --smoothing=0.2 --fiber_count=10000 --output=${OUT_TRK_QBI}
+ fi
+
+ echo "Gunzipping ${SUBJDIR}..."
+ gunzip ${SUBJDIR}/*
+ gunzip 
+done

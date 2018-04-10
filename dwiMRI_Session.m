@@ -1850,7 +1850,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             obj.Params.FS2dwi.in.wm_aparcaseg2009 = strrep(obj.Params.FS2dwi.in.aparcaseg,'aparc+aseg.mgz','wmparc2009.nii.gz');
             if exist(obj.Params.FS2dwi.in.wm_aparcaseg2009 ,'file') == 0 || obj.redo_history
                 [~, to_exec ] = system('which mri_aparc2aseg');
-                disp('proc_FS2dwi: Running mti_aparc2aseg for creating wmparc2009.nii.gz...')
+                disp('proc_FS2dwi: Running mri_aparc2aseg for creating wmparc2009.nii.gz...')
                 exec_cmd{:,end+1}=[ export_shell ' ' strtrim(to_exec) ' --s ' obj.sessionname ...
                     ' --labelwm --hypo-as-wm --rip-unknown --labelwm --hypo-as-wm --rip-unknown ' ...
                     ' --o '  obj.Params.FS2dwi.in.wm_aparcaseg2009 ...
@@ -3610,6 +3610,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     end
                     
                     %Fixing previous faulty varaible assignation:
+                    if ~isfield(obj.Params.spmT1_Proc.in,'tpm')
+                        obj.Params.spmT1_Proc.in.tpm = '/autofs/space/schopenhauer_002/users/spm12/tpm/TPM.nii';
+                    end
                     if ~ischar(obj.Params.spmT1_Proc.in.tpm)
                         obj.Params.spmT1_Proc.in.tpm = '/autofs/space/schopenhauer_002/users/spm12/tpm/TPM.nii';
                     end

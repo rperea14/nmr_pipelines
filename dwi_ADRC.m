@@ -102,7 +102,9 @@ classdef dwi_ADRC < dwiMRI_Session
             %%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Reinitialize variables:
             obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
-            
+            obj.redo_history = false;
+            %Add rotrk_tools to path if not defined:
+            addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
             
             %Start the CommonPreProc:
             obj.CommonPreProc();
