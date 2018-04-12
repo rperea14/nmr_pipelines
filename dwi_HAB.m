@@ -134,23 +134,6 @@ classdef dwi_HAB < dwiMRI_Session
                 obj.getDCM2nii(RunFlag);
             end
             
-            if nargin>1
-                if strcmp(opt,'DataCentral')
-                    obj.dctl_flag = true ;
-                    obj.proc_get_eddymotion();
-                    obj.UploadData_DWI();
-                    return
-                else
-                    if ~strcmpi(oldroot,newroot)
-                        obj = replaceObjText(obj,{oldroot},{newroot});
-                        obj.resave;
-                    end
-                end
-            else
-                obj.dctl_flag = false ;
-            end
-            
-            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Reinitialize variables:
             obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
@@ -175,22 +158,19 @@ classdef dwi_HAB < dwiMRI_Session
             obj.dosave = true ; %To record process in MAT file
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Get DCM2NII File location:
-            %
             RunFlag=false; %here, we only allocate variable, not run proc_dcm2nii
             obj.getDCM2nii(RunFlag);
-            
             %Selecting the raw files
             obj.rawfiles = strtrim(dir_wfp([obj.root 'Orig/*.nii.gz' ] ));
-            
-            
+      
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For BET2:
-            
             obj.Params.Bet2.in.movefiles = ['..' filesep '01_Bet'];
             obj.Params.Bet2.in.fracthrsh = 0.4;
             obj.Params.Bet2.in.fn = obj.rawfiles;
             
             obj.proc_bet2();
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For EDDY:
@@ -249,6 +229,7 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.Dtifit.in.mask = obj.Params.MaskAfterEddy.out.finalmask;
             
             obj.proc_dtifit();
+         
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For GQI:
@@ -264,7 +245,6 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.GQI.in.method = '4';    %for gqi model
             obj.Params.GQI.in.num_fiber = '3'; %modeling 3 fiber population
             obj.Params.GQI.in.param0 = '1.25'; %default parameter for gqi
-            
             
             obj.proc_gqi();
       
@@ -302,8 +282,13 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.Skel_TOI.in.suffix = '_n272TMP';
            
             obj.proc_getskeltois();
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Upload skeletons and diffusion motion to DataCentral:
+            obj.UploadData_DWI(); %*Make sure you have a connDB.p in your path for this to work - rdp 4/12/18!
+    
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For FreeSurfer recon-all
             [ tmpa, tmpb ] = system('whoami ');
@@ -330,6 +315,7 @@ classdef dwi_HAB < dwiMRI_Session
             
             obj.proc_getFreeSurfer();
              
+        
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %FS2dwi (move aparc and aparc2009 segmes to dwi space):
             obj.Params.FS2dwi.in.movefiles = ['..' filesep '05_FS2dwi' ];
@@ -340,10 +326,7 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir  filesep 'FS_DEPS' filesep  'FS_hippolabels_bil.txt' ] ;
             obj.Params.FS2dwi.in.aparcaseg2009 = ...
                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','aparc.a2009s+aseg')); 
-            
-            %A possible error is the naming convention when only a T1 was
-            %used!!
-              
+            %*A possible error is the naming convention when only a T1 was used!
             %Using this will allow us to automatically select hippo-fields without discriminating whetehr they come from only a T1 or using T1-T2:            
             [~ , tmp_hippo_L ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels*') ' | tail -1 ']);
             obj.Params.FS2dwi.in.hippofield_left = strtrim(tmp_hippo_L);
@@ -369,24 +352,11 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
             
             obj.proc_T1toDWI();
-            
-            
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            if obj.dctl_flag == true
-                if ~isdeployed() %Not compiled code, so run this!
-                    %Uploading Skel Data into DataCentral:
-                    UploadData_DWI(obj)
-                    
-                    if obj.dosave
-                        save([obj.objectHome filesep obj.sessionname '.mat'],'obj');
-                    end
-                end
-            end
+
         end
         
         
         function obj = CommonPostProc(obj) 
-            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Creating Fornix TRKLAND 
             %TRKLAND
@@ -493,21 +463,22 @@ classdef dwi_HAB < dwiMRI_Session
             %trkland_cingulum(obj); obj.resave();
             end
             
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %TRACULA (and implicit functionality of bedpostx):
-            obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
-            obj.Params.Tracula.in.fn = obj.Params.Eddy.out.fn{1} ; 
-            obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir  filesep 'TRACULA_DEPS' filesep  'dcmrirc.template' ];
-            obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
-            obj.Params.Tracula.in.bvec = obj.Params.Eddy.out.bvecs{1};  
-            obj.Params.Tracula.in.bval = obj.Params.Eddy.in.bvals{1};
-            obj.Params.Tracula.in.nb0 = 5;
-            
-            %IMPLEMENTED BUT FULLY TESTED HENCE COMMENTED BELOW:
-            obj.proc_tracula();
-            
-            
+            for tohide=1:1
+                obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
+                obj.Params.Tracula.in.fn = obj.Params.Eddy.out.fn{1} ;
+                obj.Params.Tracula.in.dcmrirc = [obj.dependencies_dir  filesep 'TRACULA_DEPS' filesep  'dcmrirc.template' ];
+                obj.Params.Tracula.in.FSDIR = obj.Params.FreeSurfer.dir;
+                obj.Params.Tracula.in.bvec = obj.Params.Eddy.out.bvecs{1};
+                obj.Params.Tracula.in.bval = obj.Params.Eddy.in.bvals{1};
+                obj.Params.Tracula.in.nb0 = 5;
+                %IMPLEMENTED BUT FULLY TESTED HENCE COMMENTED BELOW:
+                obj.proc_tracula();
+            end
         end
+        
+        
         function resave(obj)
             save(strrep([obj.objectHome filesep obj.sessionname '.mat'], [ filesep filesep ], filesep ),'obj');
         end

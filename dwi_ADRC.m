@@ -19,7 +19,7 @@ classdef dwi_ADRC < dwiMRI_Session
         FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
-        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
         %Dep properties:
         sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
@@ -101,7 +101,7 @@ classdef dwi_ADRC < dwiMRI_Session
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Reinitialize variables:
-            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
             obj.redo_history = false;
             %Add rotrk_tools to path if not defined:
             addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
@@ -353,6 +353,10 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.proc_FS2dwi();
         end
         function obj = CommonPostProc(obj)
+            %PREPARE T1 for Normalization using spm:
+            obj.prep_spmT1_proc();
+            
+            
             %TRACULA RELATED:
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -365,19 +369,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 obj.proc_tracula();
             end
-            
-            
-            %Multi-shell bedpostX QBOOT
-            %At this time and for this project this will be avoided since Qboot ideally works
-            %with three b-values instead of only two.
-            %For more information, check:
-            %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap 
-%             obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
-%             obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
-%             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
-%             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
-%             
-            %obj.proc_qboot();
             
             %TRKLAND RELATED - FX:
             for tohide=1:1
@@ -397,9 +388,25 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
                 obj.trkland_fx();
             end
+          
+            
+            
             
             %FOR MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
             %% [ TO MODIFY OR DEPRECATED METHODS ]
+              %Multi-shell bedpostX QBOOT (not in used now)
+            for tohide =1:1
+            %At this time and for this project this will be avoided since Qboot ideally works
+            %with three b-values instead of only two.
+            %For more information, check:
+            %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap 
+%             obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
+%             obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
+%             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
+%             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
+%             
+            %obj.proc_qboot();
+            end
             for tomodify_or_deprecated=1:1
                 %% [TO MODIFY ]
                 % [TO MODIFY ROIs/ROAs] TRKLAND_HIPPOCING:
@@ -603,7 +610,7 @@ classdef dwi_ADRC < dwiMRI_Session
         end
         
         function obj = prep_spmT1_proc(obj)
-            obj.Params.spmT1_Proc.in.tpm = '/autofs/space/schopenhauer_002/users/spm12/tpm/TPM.nii';
+            obj.Params.spmT1_Proc.in.tpm = [ fileparts(which('spm')) filesep 'tpm/TPM.nii'];
             if exist(obj.Params.spmT1_Proc.in.tpm,'file') == 0 
                 error(['Cannot find: ' obj.Params.spmT1_Proc.in.tpm  ' Please check, exiting...' ]);
             end
