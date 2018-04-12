@@ -5,8 +5,6 @@ classdef dwi_ADRC < dwiMRI_Session
     %%  Inheritance credits to AaronSchultz
     %%
 
-    
-    
     properties
         %Check protected method initProperties()
         %root directoy where raw data lives:
@@ -19,7 +17,7 @@ classdef dwi_ADRC < dwiMRI_Session
         FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
         init_FS = '/usr/local/freesurfer/stable6';
         %trkland dependencies:
-        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
+        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
         %Dep properties:
         sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
             '/usr/pubsw/common/matlab/8.5'];
@@ -35,6 +33,8 @@ classdef dwi_ADRC < dwiMRI_Session
             %For compiled code:
             if ~isdeployed()
                 addpath(genpath(obj.object_dir));
+                %Not sure about this statement, but maybe add the
+                %rotrk_tools library as well? 
             end
             
             %%%  If opt is passed, then the root Sessions folder will be
@@ -43,15 +43,14 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.root = opt;
             end
             
-            %Check if you are in the right project (if not, probably
-            %obj.session_location doesn't exist:
+            %Check if you are in the right project (if not, probably obj.session_location doesn't exist:
             if ~exist([obj.session_location sessionname],'dir')
                 error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you sure are in the right Project ID?']);
             end
+            
             %Initialize root variables:
             obj.sessionname = sessionname;
             obj.root = [obj.session_location sessionname '/DWIs/'];
-            
             obj.dcm_location = [ obj.dcm_location sessionname filesep ];
             obj.session_location= [ obj.session_location sessionname filesep ] ;
             
@@ -59,9 +58,7 @@ classdef dwi_ADRC < dwiMRI_Session
             if exist(obj.root,'dir')==0
                 obj.make_root();
             end
-            obj.objectHome = obj.root ; %for 
-            %!!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            %!!!!!!!
+            obj.objectHome = obj.root ;
             
             %Check to see if a *.mat file exists.
             if exist([obj.objectHome filesep sessionname '.mat'],'file')>0
@@ -88,10 +85,6 @@ classdef dwi_ADRC < dwiMRI_Session
             %Init project ID
             obj.projectID='ADRC';
             
-            if isempty(obj.T1)
-                [~ , obj.T1 ]  = system([ 'ls ' obj.session_location 'T1' filesep '*.nii | head -1' ]);
-            end
-            
             %Check if *.nii.gz files exist, if not get them from DCM2nii:
             obj.rawfiles = dir_wfp([obj.root 'Orig/*.nii.gz' ] );
             if isempty(obj.rawfiles) || numel(obj.rawfiles) ~= 4 % 4 DWIs sequence acquired here
@@ -101,13 +94,16 @@ classdef dwi_ADRC < dwiMRI_Session
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Reinitialize variables:
-            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig';
-            
-            
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
+            obj.redo_history = false;
+            %Add rotrk_tools to path if not defined:
+            addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
+            %Remove previous variable no needed anymore:
+            obj.T1 = 'Please refer to --> obj.Params.T1toDWI.in.T1';
+           
             %Start the CommonPreProc:
             obj.CommonPreProc();
             %Start the CommonPostProc (commenting it? Maybe, maybe not?):
-            %fprintf(['\n>>*If first time running, please run obj.CommonPostProc() after this! \n<<\n'])
             obj.CommonPostProc();
         end
         
@@ -148,7 +144,9 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.DropVols.in.fn=obj.rawfiles;
             % Bvecs and bvals will be created from XX.in.fn and XX.out.fn
             obj.Params.DropVols.out.fn=dir_wfp([obj.root, '01_DropVols', filesep, '*.nii.gz']);
+            
             obj.proc_drop_vols();
+            
             
             %%%%%%%%%%%%
             %02_GradCorrect
@@ -156,10 +154,11 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.GradNonlinCorrect.in.movefiles = '../02_GradCorrect/';
             obj.Params.GradNonlinCorrect.in.fn = obj.Params.DropVols.out.fn;
             obj.Params.GradNonlinCorrect.in.prefix = 'gnc_';
-            
             obj.Params.GradNonlinCorrect.in.gradfile = obj.gradfile;
             obj.Params.GradNonlinCorrect.in.fslroi = [ 0 1 ]; %To extraact the 1st b0 and apply gnc only to it
+            
             obj.proc_gradient_nonlin_correct();
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %??_Proc_FreeSurfer
@@ -171,12 +170,8 @@ classdef dwi_ADRC < dwiMRI_Session
             %Retrieving a T1 scan:
             [~ , obj.Params.FreeSurfer.in.T1raw ] = system(['ls ' obj.session_location 'T1' filesep 'rawT1_HCPF_1mm_001.nii | head -1' ]);
             obj.Params.FreeSurfer.in.T1raw = strtrim(obj.Params.FreeSurfer.in.T1raw );
-            try
-                if exist(obj.Params.FreeSurfer.in.T1raw,'file') == 0 %No problem, we get the T1 the continue...
-                    error(['\nT1 not found:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
-                end
-            catch
-                error(['\nError when finding the T1:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
+            if exist(obj.Params.FreeSurfer.in.T1raw,'file') == 0 %No problem, we get the T1 the continue...
+                error(['\nT1 not found:'  obj.Params.FreeSurfer.in.T1raw  '\n'])
             end
             %Retrieving a T2 scan:
             [~ , obj.Params.FreeSurfer.in.T2raw ] = system(['ls ' obj.session_location 'T2' filesep 'rawT2_HCPF_1mm* | head -1' ]);
@@ -191,16 +186,16 @@ classdef dwi_ADRC < dwiMRI_Session
             %Some optional parameters specific to what SHELL envinroment is
             %being used. If 'rdp20' then syntanx should be in bash.
             %Otherwise, the syntax should be in csh/tsch
-            [ tmpa, tmpb ] = system('whoami ');
-            obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
+            [ ~, tmpb ] = system('whoami ');
+            obj.Params.FreeSurfer.shell = strtrim(tmpb);
             
             obj.proc_getFreeSurfer();
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %T1_02_Getting the necessary values from FreeSurfer's output:
             obj.getdata_FreeSurfer();
-            
-            
+                        
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %03_B0 motion correciton (based on interspersed b0s)
@@ -225,6 +220,7 @@ classdef dwi_ADRC < dwiMRI_Session
             
             obj.proc_bet2();
             
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For EDDY:
             obj.Params.Eddy.in.movefiles = ['..' filesep '04_Eddy'];
@@ -237,12 +233,14 @@ classdef dwi_ADRC < dwiMRI_Session
             
             obj.proc_eddy();
             
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %DERIVED MOVEMENT FROM EDDY:
             obj.Params.EddyMotion.in.movefiles = ['..' filesep '05_MotionFromEDDY'];
             obj.Params.EddyMotion.in.fn_eddy = obj.Params.Eddy.out.fn;
             
             obj.proc_get_eddymotion();
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %To generate a mask after Eddy:
@@ -274,8 +272,7 @@ classdef dwi_ADRC < dwiMRI_Session
             
             
             obj.proc_coreg_multiple();
-            
-            
+                        
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Coregistering the T1 to B0:
@@ -306,6 +303,7 @@ classdef dwi_ADRC < dwiMRI_Session
             obj.Params.Dtifit.in.mask = {obj.Params.CoRegMultiple.out.combined_mask};
             
             obj.proc_dtifit();
+            
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For GQI:
@@ -339,18 +337,23 @@ classdef dwi_ADRC < dwiMRI_Session
             [~ , tmp_hippo_R ] = system(['ls ' strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels*') ' | tail -1 ']);
             obj.Params.FS2dwi.in.hippofield_right = strtrim(tmp_hippo_R);
             clear tmp_hippo_L tmp_hippo_R;
-%             obj.Params.FS2dwi.in.hippofield_left = ...
-%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10'));
-%             obj.Params.FS2dwi.in.hippofield_right = ...
-%                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10'));
-            
+            %             obj.Params.FS2dwi.in.hippofield_left = ...
+            %                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','lh.hippoSfLabels-T1-T2.v10'));
+            %             obj.Params.FS2dwi.in.hippofield_right = ...
+            %                 strtrim(strrep(obj.Params.FreeSurfer.out.aparcaseg,'aparc+aseg','rh.hippoSfLabels-T1-T2.v10'));
             obj.Params.FS2dwi.in.tmpfile_aparcaseg = [ obj.dependencies_dir filesep 'FS_DEPS' filesep  'FS_aparc.txt' ];
             obj.Params.FS2dwi.in.tmpfile_aparcaseg2009 = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_aparc2009.txt' ];
             obj.Params.FS2dwi.in.tmpfile_hippo_bil = [ obj.dependencies_dir filesep 'FS_DEPS' filesep   'FS_hippolabels_bil.txt' ];
             
             obj.proc_FS2dwi();
+            
+            %~~~~> goint now to obj.CommonPostProc();
         end
+        
         function obj = CommonPostProc(obj)
+            %PREPARE T1 for Normalization using spm:
+            obj.prep_spmT1_proc();
+         
             %TRACULA RELATED:
             for tohide=1:1
                 obj.Params.Tracula.in.movefiles = ['..' filesep 'post_TRACULA' ];
@@ -363,19 +366,6 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 obj.proc_tracula();
             end
-            
-            
-            %Multi-shell bedpostX QBOOT
-            %At this time and for this project this will be avoided since Qboot ideally works
-            %with three b-values instead of only two.
-            %For more information, check:
-            %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap 
-%             obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
-%             obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
-%             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
-%             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
-%             
-            %obj.proc_qboot();
             
             %TRKLAND RELATED - FX:
             for tohide=1:1
@@ -395,12 +385,46 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
                 obj.trkland_fx();
             end
+          
             
-            %FOR MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
+            
+            
+            %MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
             %% [ TO MODIFY OR DEPRECATED METHODS ]
+
+            
+            
             for tomodify_or_deprecated=1:1
-                %% [TO MODIFY ]
-                % [TO MODIFY ROIs/ROAs] TRKLAND_HIPPOCING:
+                %% [HIDDEN]
+                % Multi-shell bedpostX QBOOT 
+                %          (not in used for now as we need at least 3 
+                %          b-values to work correctly. Results were compared 
+                %          and seemed to work but I decided to keep this
+                %          option hidden, check: 
+                %          https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap 
+                %          for more details)
+                for tohide =1:1
+                    %At this time and for this project this will be avoided since Qboot ideally works
+                    %with three b-values instead of only two.
+                    %For more information, check:
+                    %https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FDT/UserGuide#qboot_-_Estimation_of_fibre_orientations_using_q-ball_ODFs_and_residual_bootstrap
+                    %             obj.Params.Qboot.in.movefiles = ['..' filesep 'post_Qboot' ];
+                    %             obj.Params.Qboot.in.fn = obj.Params.CoRegMultiple.out.combined_fn;
+                    %             obj.Params.Qboot.in.bvec = obj.Params.CoRegMultiple.out.combined_bvecs;
+                    %             obj.Params.Qboot.in.bval = obj.Params.CoRegMultiple.out.combined_bvals;
+                    %
+                    %obj.proc_qboot();
+                end
+            
+                %% [INACTIVE]
+                %TRKLAND yields in tractography hollowed Regions, at this
+                %moment we only have done this for the fornix and previous
+                %implementation of TRKLAND_HIPPOCING AND TRKLAND_CINGULUM
+                %contains dilarted FreeSurfer parcellations for seed
+                %tractography, not ideal as it does not follow the
+                %TRKLAND_fx
+                
+                % [INACTIVE ROIs/ROAs] TRKLAND_HIPPOCING:
                 for tohide=1:1
                     %                 obj.Trkland.hippocing.in.hippo_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Left-Hippocampus.nii.gz');
                     %                 obj.Trkland.hippocing.in.hippo_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc2009_aseg/dwi_fs_Right-Hippocampus.nii.gz');
@@ -411,7 +435,7 @@ classdef dwi_ADRC < dwiMRI_Session
                     %                 obj.Trkland.hippocing.in.n_interp=33;
                     %                 obj.trkland_hippocing();
                 end
-                %  [TO MODIFY ROIs/ROAs] TRKLAND_CINGULUM:
+                %  [INACTIVE ROIs/ROAs] TRKLAND_CINGULUM:
                 for tohide=1:1
                     %                 obj.Trkland.cingulum.in.rostantcing_lh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-lh-rostralanteriorcingulate.nii.gz');
                     %                 obj.Trkland.cingulum.in.rostantcing_rh = strrep(obj.Params.FS2dwi.out.fn_aparc,'dwi_aparc+aseg.nii.gz','aparc_aseg/dwi_ctx-rh-rostralanteriorcingulate.nii.gz');
@@ -425,6 +449,9 @@ classdef dwi_ADRC < dwiMRI_Session
                     %                 obj.Trkland.cingulum.in.n_interp = 32;
                     %                 trkland_cingulum(obj);
                 end
+                
+                
+                
                 %% [ DEPRECATED METHODS ]
                 for tohide_deprecated=1:1
                     % [ DEPRECATED - THIS WAS DONE INDIVIDUALLY ]  White matter Lesions 2 DWI space:
@@ -601,7 +628,7 @@ classdef dwi_ADRC < dwiMRI_Session
         end
         
         function obj = prep_spmT1_proc(obj)
-            obj.Params.spmT1_Proc.in.tpm = '/autofs/space/schopenhauer_002/users/spm12/tpm/TPM.nii';
+            obj.Params.spmT1_Proc.in.tpm = [ fileparts(which('spm')) filesep 'tpm/TPM.nii'];
             if exist(obj.Params.spmT1_Proc.in.tpm,'file') == 0 
                 error(['Cannot find: ' obj.Params.spmT1_Proc.in.tpm  ' Please check, exiting...' ]);
             end
@@ -646,12 +673,13 @@ classdef dwi_ADRC < dwiMRI_Session
                     obj.Params.DCM2NII.rawDiff = [ obj.session_location filesep 'other' filesep ] ;
                     obj.Params.DCM2NII.in(ii).first_dcmfiles = [] ; %No need to same first_dcmfile since its already been unpacked with *.bvecs
                 else
-                    fprintf(['DCERROR \n 1.(newer unpack) Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ... 
-                        '\n 2. (older unpack, before 2018) No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ]);
+                    fprintf(['DIFFUSION DICOMS NOT COMPLETE!\n 1.(newer unpack) Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ... 
+                        '\n 2.(older unpack, before 2018) No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ]);
                     
-                    fprintf(['PLEASE CHECK THE LOGBOOK TO SEE IF DIFFUSION SEQUENCES WERE COLLECTED']);
+                    fprintf(['PLEASE CHECK THE LOGBOOK TO SEE IF DIFFUSION SEQUENCES WERE COLLECTED\n']);
+                    fprintf('Throwing an error now....');
                     
-                    error('Please verify that DCM files have been unpacked. Exiting now...');
+                    error('Please verify that all the diffucion DCM files exist. Exiting now...');
                 end
                 obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
                 obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];
