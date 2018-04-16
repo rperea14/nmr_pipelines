@@ -33,8 +33,9 @@ classdef dwi_ADRC < dwiMRI_Session
             %For compiled code:
             if ~isdeployed()
                 addpath(genpath(obj.object_dir));
-                %Not sure about this statement, but maybe add the
-                %rotrk_tools library as well? 
+                %Add rotrk_tools to path if not defined:
+                addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
+                
             end
             
             %%%  If opt is passed, then the root Sessions folder will be
@@ -96,8 +97,6 @@ classdef dwi_ADRC < dwiMRI_Session
             %Reinitialize variables:
             obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
             obj.redo_history = false;
-            %Add rotrk_tools to path if not defined:
-            addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
             %Remove previous variable no needed anymore:
             obj.T1 = 'Please refer to --> obj.Params.T1toDWI.in.T1';
            
@@ -383,12 +382,10 @@ classdef dwi_ADRC < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
+             
                 obj.trkland_fx();
             end
           
-            
-            
-            
             %MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
             %% [ TO MODIFY OR DEPRECATED METHODS ]
 

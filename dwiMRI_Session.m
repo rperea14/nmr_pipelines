@@ -1252,6 +1252,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %(compatible with dwi_ADRC.m)
                     obj.Params.MaskAfterEddy.in.b0{ii} = [ outpath 'b0_' b c ] ;
                     [~, to_exec ] = system('which fslroi');
+                    
+                    %Make sure there is only one versio of b0mean:
+                    [b0mean_dir, b0mean_fname, b0mean_ext ] = fileparts(obj.Params.MaskAfterEddy.in.fn{ii});
+                    if exist([b0mean_dir filesep b0mean_fname ]) && exist(obj.Params.MaskAfterEddy.in.fn{ii})
+                       obj.RunBash(['rm ' b0mean_dir filesep b0mean_fname ]) 
+                    end
+                    
+                    
                     if exist(obj.Params.MaskAfterEddy.in.b0{ii},'file') == 0 || obj.redo_history
                         fprintf(['\n proc_mask_after_eddy: Extracting the first b0 for iteration: ' num2str(ii) ]);
                         exec_cmd{:,end+1} = ([ strtrim(to_exec) ' ' obj.Params.MaskAfterEddy.in.fn{ii} ...
