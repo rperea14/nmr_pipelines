@@ -1,0 +1,141 @@
+#!/bin/bash
+
+#Rodrigo Perea
+#rperea@kumc.edu (alternative email grandrigo@gmail.com)
+#this Script was created to change or rename files in a directory at once. 
+#PLEASE MAKE SURE YOU KNOW HOW TO USE IT BEFORE EXECUTE IT 
+#IT COULD MODIFIED YOUR FILES AND THERE IS NO UNDO OF IT!
+#To read instructions type: ./renamer -help 
+#Any questions please feel free to contact me at the email provided above.
+
+
+pwd=SOURCE
+
+#Checking what you are doing.....
+if  [ $1 = "-help" ] ; then
+    
+    
+    echo " "
+    echo " " 
+    echo "Command options:"
+    echo "  Add line at begining:           -addbeg <flag of files>    <expression to add>"
+    echo "  Add line at the end:            -addend <flag of files>    <expression to add>"
+    echo "  Add line in the middle:         -addmid <flag of files>    <before what string> <expression to add>"
+    echo "                                    An input will be asked where to add the string..."
+    echo " "
+    echo "  Remove and replace string:      -rmre     <flag of files>     <string replaced>   <for this>"
+    echo "  Remove string by typing it:     -rm       <flag of files>     <string to remove> "
+    echo "  Remove strings after the flag:  -rmafter  <flag of files (will be also removed)>     <string where it starts>"  
+    echo "  Remove strings before the flag: -rmbefore <flag of files (will be also removed)>     <string where it ends>"
+    echo "  Remove dates in format:
+                            YEARMODY --> YEARMODY:  
+                                            -rmdate   <flag what files you want to execute>"
+    echo " "
+    echo " To EXECUTE in all files, type TOALL instead of flag of FILES "
+    exit
+
+fi
+
+
+#Files to be rename...
+#for FILE in $( ls  $SOURCE*$2*); 
+# do
+#    echo $FILE
+#done
+
+	if [ $1 = "-addbeg" ]; then
+	    echo "Adding $3 at the beginning of $2"
+
+	elif [ $1 = "-addend" ]; then 
+	    echo "Adding $3 at the end of $2"
+
+	elif [ $1 = "-addmid" ]; then
+	    echo "Adding $3 at the middle of files $2"
+	elif [ $1 = "-rm" ]; then
+	    echo "Removing $3 in files $2"
+	elif [ $1 = "-rmre" ]; then
+	    echo "Removing and replacing $3 with $4 in files $2"
+	elif [ $1 = "-rmafter" ]; then
+	    echo "Remove ($3)* and all after in strings $2"
+	elif [ $1 = "-rmbefore" ]; then
+	    echo "Remove *($3) and all before in strings $2"
+	elif [ $1 = "-rmdate" ]; then
+	    echo "Remove date for a special format "
+	else
+	    echo "Incorrect Argument $1. Please verify instructions with -help"
+	    exit 
+
+	fi
+
+#Here is where the applicatinos actually occur...
+
+ 
+if [ $2 = "TOALL" ]; then
+    FLAG=( '*' )
+    echo "$1 will be applied to ALL THE FILES. Is this correct (y/n) ?"
+    read CORRECT
+else
+    echo "$1 will be applied to files starting with $2. Is this correct (y/n) ?"
+    FLAG=*$2*
+    CORRECT="y"
+   # read CORRECT
+fi
+
+if [ $CORRECT = "y" ]; then
+
+
+#THIS IS HOW YOU COMMENT CHUNKS OF CODE
+#<<*/'
+
+    for FILE in $( ls $SOURCE$FLAG );
+    do 
+	if [ $1 = "-addbeg" ]; then
+	    mv $FILE  $3"${FILE}" > ~/temprename.log;
+
+	elif [ $1 = "-addend" ]; then 
+	    mv $FILE  $FILE$3 > ~/temprename.log;
+	    echo "."
+
+	elif [ $1 = "-addmid" ]; then
+	    PRE=${FILE//$3*}
+	    PRO=${FILE//*$3}
+	    mv $FILE $PRE$3$4$PRO > ~/temprename.log;
+
+	elif [ $1 = "-rm" ]; then
+	    mv $FILE "${FILE//$3}" > ~/temprename.log;
+
+	elif [ $1 = "-rmre" ]; then
+	    mv $FILE "${FILE/$3/$4}" > ~/temprename.log;
+
+	elif [ $1 = "-rmafter" ]; then
+	    mv $FILE "${FILE/$3*}" > ~/temprename.log;
+      
+	elif [ $1 = "-rmbefore" ]; then
+	    mv $FILE "${FILE/*$3}" > ~/temprename.log;
+
+	elif [ $1 = "-rmdate" ]; then
+	    mv $FILE ${FILE/_[1-2][0-9][0-9][0-9][0-1][0-9][0-3][0-9]/} > ~/temprename.log;
+	else
+	    echo "Incorrect Argument $1. Please verify instructions with -help"
+	    exit 
+
+	fi
+    done
+
+else
+ echo "Incorrect instructions....please re-run."
+ exit
+fi
+
+
+
+#Files to be rename...
+ echo "
+New file names:";
+for FILE in $( ls  $SOURCE); 
+    do echo $FILE;
+done
+
+
+#/*'
+

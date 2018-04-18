@@ -6,64 +6,29 @@ classdef dwi_ADRC < dwiMRI_Session
     %%
 
     properties
-        %Check protected method initProperties()
-        %root directoy where raw data lives:
-        object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
-        session_location='/cluster/bang/ADRC/Sessions/';
-        dcm_location = '/cluster/bang/ADRC/DICOM_Archive/';
-        gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
-        dependencies_dir='/cluster/bang/ADRC/Scripts/DEPENDENCIES/';
-        %FreeSurfer Dependencies
-        FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
-        init_FS = '/usr/local/freesurfer/stable6';
-        %trkland dependencies:
-        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
-        %Dep properties:
-        sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
-            '/usr/pubsw/common/matlab/8.5'];
-        b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
-
-        init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %THIS IS ONLY USED IN THE proc_dcm2nii() METHOD!
-        col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        redo_history = false; %Allows to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE! 
+       %Properties initialized in parent class dwiMRI_Session() and 
+        %And assgiend values in method: obj.setMyParams() which is called
+        %in the class constructor dwi_ADRC(). 
     end
     
     methods
         function obj = dwi_ADRC(sessionname,opt)
-            %For compiled code:
-            if ~isdeployed()
-                addpath(genpath(obj.object_dir));
-                %Add rotrk_tools to path if not defined:
-                addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
-                
-            end
-            
-            %%%  If opt is passed, then the root Sessions folder will be
-            %%%  replaced with this argument.
-            if nargin>1
-                obj.root = opt;
-            end
-            
-            %Check if you are in the right project (if not, probably obj.session_location doesn't exist:
-            if ~exist([obj.session_location sessionname],'dir')
-                error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you sure are in the right Project ID?']);
-            end
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %INITIALIZE VARIABLES NOW:
+            obj.setMyParams();
             
             %Initialize root variables:
+            obj.projectID='ADRC';
             obj.sessionname = sessionname;
-            obj.root = [obj.session_location sessionname '/DWIs/'];
+            obj.root = [obj.session_dir sessionname '/DWIs/'];
             obj.dcm_location = [ obj.dcm_location sessionname filesep ];
-            obj.session_location= [ obj.session_location sessionname filesep ] ;
-            
-            %If the folder /DWIs/ does not exist, then create it!
-            if exist(obj.root,'dir')==0
-                obj.make_root();
-            end
-            obj.objectHome = obj.root ;
-            
+            obj.session_location= [ obj.session_dir sessionname filesep ] ;
+           
+
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Check to see if a *.mat file exists.
-            if exist([obj.objectHome filesep sessionname '.mat'],'file')>0
-                load([obj.objectHome filesep sessionname '.mat']);
+            if exist([obj.session_location 'DWIs' filesep  sessionname '.mat'],'file')>0
+                load([obj.session_location 'DWIs' filesep  sessionname '.mat']);
                 oldroot = obj.root;
                 obj.wasLoaded = true;
             else
@@ -71,10 +36,29 @@ classdef dwi_ADRC < dwiMRI_Session
                 donothing=1;
             end
             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %Check if you are in the right project (if not, probably obj.session_location doesn't exist:
+            if ~exist([obj.session_location ],'dir')
+                error(['Sesion directory: ' obj.session_location sessionname ' doesn''t exist. Are you sure are in the right Project ID?']);
+            end
+
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%
+            %Utilizing 1st Argument:
+            if nargin>1
+                obj.root = opt;
+            end
+             %If the folder /DWIs/ does not exist, then create it!
+            if exist(obj.root,'dir')==0
+                obj.make_root();
+            end
+            obj.objectHome = obj.root ;
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %CHECK CHANGES MADE FROM /eris to /cluster
             %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
             %OBJECT
-            if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
+            if ~strcmp(strtrim(obj.FS_location),'/cluster/bang/ADRC/FreeSurferv6.0/')
                 display('Changing eris to cluster folder...');
                 %Then apply the mod to cluster...
                 newobj = replaceObjText_v2(obj,{'eris'},{'cluster'});
@@ -83,9 +67,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 display('CHANGING: ''eris'' was changed to ''cluster'' ');
                 obj.resave();
             end
-            %Init project ID
-            obj.projectID='ADRC';
-            
+           
             %Check if *.nii.gz files exist, if not get them from DCM2nii:
             obj.rawfiles = dir_wfp([obj.root 'Orig/*.nii.gz' ] );
             if isempty(obj.rawfiles) || numel(obj.rawfiles) ~= 4 % 4 DWIs sequence acquired here
@@ -93,28 +75,52 @@ classdef dwi_ADRC < dwiMRI_Session
                 obj.getDCM2nii(RunFlag);
             end
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Reinitialize variables:
-            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
-            obj.redo_history = false;
-            %Remove previous variable no needed anymore:
-            obj.T1 = 'Please refer to --> obj.Params.T1toDWI.in.T1';
-           
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Start the CommonPreProc:
             obj.CommonPreProc();
             %Start the CommonPostProc (commenting it? Maybe, maybe not?):
             obj.CommonPostProc();
+            
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%             if isdeployed()
+%                 display('Diffusion Pre- and Post- processing completed')
+%                 fprintf('\n\n *If running the compiled version and for completion, \n make sure you run (from MATLAB terminal):')
+%                 fprintf('\n * 1. Load the object ~~> load(<Sessions>/<SUBJID>/DWIs/<SUBJID>.mat) \n')
+%                 fprintf('\n * 2. Run             ~~> obj.proc_T1toDWI() \n')
+%                 fprintf('\n * 3. Run             ~~> obj.prep_spmT1_proc() \n')
+%                 fprintf('\n * 4. Run             ~~> obj.trkland_fx() \n')
+%             end
+            
         end
         
-        function obj=setMyParams(obj)
-            %%%%%%%%%%%%
-            % ??? ??? rdp20 ~~> Not applicable to the dwiMRI_ process as of
-            % 04/2/2018
-            %Global parameters:
-            %             obj.vox = [1.8 1.8 1.8];
-            %             obj.setDefaultParams; %this will call the method in the superclass dwiMRI_Session.m
-            %             obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii.gz' ] );
-            %
+        function obj= setMyParams(obj)
+            %Remove previous variable no needed anymore:
+            obj.T1 = 'Please refer to --> obj.Params.T1toDWI.in.T1';
+            
+            %Check protected method initProperties()
+            %root directoy where raw data lives:
+            obj.object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
+            obj.session_dir='/cluster/bang/ADRC/Sessions/';
+            obj.dcm_location = '/cluster/bang/ADRC/DICOM_Archive/';
+            obj.gradfile='/autofs/space/kant_004/users/ConnectomeScanner/Scripts/adrc_diff_prep/bash/gradient_nonlin_unwarp/gradient_coil_files/coeff_AS302.grad';
+            obj.dependencies_dir='/cluster/bang/ADRC/Scripts/DEPENDENCIES/';
+            
+            %FreeSurfer Dependencies
+            obj.FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
+            obj.init_FS = '/usr/local/freesurfer/stable6';
+            
+            %Trkland dependencies:
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
+            
+            %Dependency properties:
+            obj.sh_gradfile=['/cluster/bang/ADRC/Scripts/DEPENDENCIES/GradNonLin_Correc/run_mris_gradient_nonlin__unwarp_volume__batchmode_ADRC_v3.sh ' ...
+                '/usr/pubsw/common/matlab/8.5'];
+            obj.b0MoCo_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/rotate_bvecs.sh'; %For rotating the bvecs after proc_b0MoCo
+            
+            obj.init_rotate_bvecs_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/mod_fdt_rotate_bvecs.sh'; %THIS IS ONLY USED IN THE proc_dcm2nii() METHOD!
+            obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+            obj.redo_history = false; %Allows to redo the history of all processes withouth running any obj.BashCode. IT SHOULD ALWAYS BE FALSE UNLESS OTHERWISE!
         end
         
         function resave(obj)
@@ -284,7 +290,7 @@ classdef dwi_ADRC < dwiMRI_Session
                 [~ , obj.Params.T1toDWI.in.T1 ] = system(['ls ' obj.session_location 'T1' filesep 'gnc_T1.nii' ]);
                 obj.Params.T1toDWI.in.T1=strtrim(obj.Params.T1toDWI.in.T1);
             end
-            obj.proc_T1toDWI();
+            obj.proc_T1toDWI(); % ~~~> NOT IN COMPILED VERSION
                 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For DWI combined DTIFIT:
@@ -351,7 +357,8 @@ classdef dwi_ADRC < dwiMRI_Session
         
         function obj = CommonPostProc(obj)
             %PREPARE T1 for Normalization using spm:
-            obj.prep_spmT1_proc();
+            obj.prep_spmT1_proc(); % ~~~~> NOT INCLUDED IN COMPILED
+            %VERSION! 
          
             %TRACULA RELATED:
             for tohide=1:1
@@ -383,13 +390,13 @@ classdef dwi_ADRC < dwiMRI_Session
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
              
-                obj.trkland_fx();
+                obj.trkland_fx();  %~~~> NOT INCLUDED IN COMPILED
+               % VERSION!!
             end
           
             %MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:
             %% [ TO MODIFY OR DEPRECATED METHODS ]
-
-            
+       
             
             for tomodify_or_deprecated=1:1
                 %% [HIDDEN]
@@ -630,10 +637,10 @@ classdef dwi_ADRC < dwiMRI_Session
                     fprintf(['DIFFUSION DICOMS NOT COMPLETE!\n 1.(newer unpack) Cannot find bvecs (newer unpack) in: '  strtrim(tmp_bvecs) ... 
                         '\n 2.(older unpack, before 2018) No scan.log found (older unpack) in: '  obj.Params.DCM2NII.scanlog ]);
                     
-                    fprintf(['PLEASE CHECK THE LOGBOOK TO SEE IF DIFFUSION SEQUENCES WERE COLLECTED\n']);
+                    fprintf(['\nPLEASE CHECK THE LOGBOOK TO SEE IF DIFFUSION SEQUENCES WERE COLLECTED\n']);
                     fprintf('Throwing an error now....');
                     
-                    error('Please verify that all the diffucion DCM files exist. Exiting now...');
+                    error('Please verify that all the diffusion DCM files exist. Exiting now...');
                 end
                 obj.Params.DCM2NII.in(ii).nvols=str2num(obj.Params.DCM2NII.in(ii).nvols);
                 obj.Params.DCM2NII.out(ii).location = [ obj.root 'Orig' filesep ];

@@ -15,66 +15,33 @@ classdef dwi_HAB < dwiMRI_Session
     %%  *Only filesep wit '/' are used in the properties class declaration.
     %%   Besides these, all should be any operating system compatible (tested in CentOS Linux)
     properties
-        %software used:
-        dsistudio_version='GQI_DSISv053117'
-        
-        %root directoy where raw data lives:
-        object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
-        root_location='/cluster/sperling/HAB/Project1/Sessions/';
-        dcm_location='/cluster/sperling/HAB/Project1/DICOM_ARCHIVE/All_DICOMS/';
-        session_location='/cluster/sperling/HAB/Project1/Sessions/';
-        
-        %template dependencies:
-        HABn272_meanFA='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/HABn272_MNI_Target/HABn272_meanFA.nii.gz';
-        HABn272_meanFA_skel_dst='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/HABn272_MNI_Target/HABn272_meanFA_skeleton_mask_dst.nii.gz';
-        ref_region='/usr/pubsw/packages/fsl/5.0.9/data/standard/LowerCingulum_1mm.nii.gz';
-        
-        %sh dependencies:
-        init_rotate_bvecs_sh='/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/deps/SHELL/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
-        col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
-        dependencies_dir='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/';
-        %Freesurfer Dependencies:
-        init_FS = '/usr/local/freesurfer/stable6';
-        FS_location='/cluster/bang/HAB_Project1/FreeSurferv6.0';
-        %DataCentral (if false, we won't upload)
-        dctl_flag = false;
-        
-        %skel_TOI dependencies
-        skeltoi_location='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/edJHU_MASK_ROIs/';
-        skeltoi_tois={ 'not_ATR_edJHU' 'not_CCG_edJHU' 'not_CHIPP_edJHU' 'not_CST_edJHU'  ...
-            'not_Fma_edJHU' 'not_Fmi_edJHU' 'not_IFOF_edJHU' 'not_ILF_edJHU' ...
-            'not_SLF_no_temp_edJHU'  'ATR_L_edJHU' 'ATR_R_edJHU' ...
-            'CCG_L_edJHU' 'CCG_R_edJHU' 'CHIPP_L_edJHU' 'CHIPP_R_edJHU' 'CST_L_edJHU' ...
-            'CST_R_edJHU' 'Fma_edJHU' 'Fmi_edJHU' 'IFOF_L_edJHU' 'IFOF_R_edJHU' ...
-            'ILF_L_edJHU' 'ILF_R_edJHU' 'SLF_L_edJHU' 'SLF_L_edJHU_no_temporal' ...
-            'SLF_R_edJHU' 'SLF_R_edJHU_no_temporal' 'allTracts_edJHU' 'Global_skel'  };
-        
-        %trkland dependencies:
-        fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
-        redo_history = false; %(always FALSE unles...) --> Allows us to redo the history of all processes withouth running any obj.BashCode.
+        %Properties initialized in parent class dwiMRI_Session() and 
+        %And assgiend values in method: obj.setMyParams() which is called
+        %in the class constructor dwi_HAB().
     end
     
     methods
         function obj = dwi_HAB(sessionname,opt)
-            %For compiler code:
-            if ~isdeployed()
-                addpath(genpath(obj.object_dir));
-                %Not sure about this statement, but maybe add the
-                %rotrk_tools library as well? 
-            end
+            %%%%%%%%%%%%%%%%%%%%%%%%
+            %Initialize Parameters:
+            obj.setMyParams();
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%
+            %Initialize root variables:
+            obj.sessionname = sessionname;
+            obj.root = [obj.session_dir sessionname '/DWIs/'];
+            obj.dcm_location= [ obj.dcm_location sessionname filesep ];
+            obj.session_location= [ obj.session_dir sessionname filesep ];
+            %Assign Project ID:
+            obj.projectID='HAB';
             
             %Check if you are in the right project (if not, probably
             %obj.session_location doesn't exist:
-            if ~exist([obj.session_location sessionname],'dir')
+            if ~exist([obj.session_location ],'dir')
                 error(['Sesion directory: ' obj.session_location ' doesn''t exist. Are you sure you are in the right Project ID?']);
             end
             
-            %Initialize root variables:
-            obj.sessionname = sessionname;
-            obj.root = [obj.root_location sessionname '/DWIs/'];
-            obj.dcm_location= [ obj.dcm_location sessionname filesep ];
-            obj.session_location= [ obj.session_location sessionname filesep ];
-            
+            %%%%%%%%%%%%%%%%%%%%%%%%
             %If the folder <XX>/DWIs/ does not exist, then create it!
             if exist(obj.root,'dir')==0
                 obj.make_root();
@@ -88,7 +55,9 @@ classdef dwi_HAB < dwiMRI_Session
                 donothing='';
                 %obj.setMyParams;
             end
-                      
+            
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %CHECK CHANGES MADE FROM DWIs_XX/Sessions/DWIs to
             %Sessions/DWIs:
             if strcmp(strtrim(['/cluster/sperling/HAB/Project1/DWIs_30b700/Sessions/' obj.sessionname '/DWIs/' ] ),obj.root)
@@ -100,6 +69,8 @@ classdef dwi_HAB < dwiMRI_Session
                 display(['CHANGING: ''<HAB1>/DWIs_30b700/Sessions/' obj.sessionname  'DWIs'' was changed to ''<HAB1>/Sessions/' obj.sessionname   '/DWIs/'' ']);
                 obj.resave();
             end
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %CHECK CHANGES MADE FROM /eris to /cluster
             if strcmp(strtrim(obj.FS_location),'/eris/bang/HAB_Project1/FreeSurferv6.0')
                 display('Changing eris to cluster folder...');
@@ -111,9 +82,8 @@ classdef dwi_HAB < dwiMRI_Session
                 obj.resave();
             end
             
-            %Assign Project ID:
-            obj.projectID='HAB';
             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Check if *.nii.gz files exist, if not get them from DCM2nii:
             obj.rawfiles = dir_wfp([obj.root 'Orig/*.nii.gz' ] );
             if isempty(obj.rawfiles)
@@ -121,17 +91,23 @@ classdef dwi_HAB < dwiMRI_Session
                 obj.getDCM2nii(RunFlag);
             end
             
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %Reinitialize variables:
-            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
-            obj.redo_history = false;
-            %Add rotrk_tools to path if not defined:
-            addpath('/cluster/brutha/MATLAB_Scripts/rotrk_tools/');
             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Continue with CommonPreProc
             obj.CommonPreProc();
             %Continue with CommonPostProc
             obj.CommonPostProc();
+            
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if isdeployed()
+                display('Diffusion Pre- and Post- processing completed')
+                fprintf('\n\n *If running the compiled version and for completion, \n make sure you run (from MATLAB terminal):')
+                fprintf('\n * 1. Load the object ~~> load(<Sessions>/<SUBJID>/DWIs/<SUBJID>.mat) \n')
+                fprintf('\n * 2. Run             ~~> obj.proc_T1toDWI() \n')
+                fprintf('\n * 3. Run             ~~> obj.trkland_fx() \n')
+            end
+            
         end
        
         function obj = CommonPreProc(obj)
@@ -331,7 +307,8 @@ classdef dwi_HAB < dwiMRI_Session
             obj.Params.T1toDWI.in.b0 = strtrim(obj.Params.B0mean.out.fn{1}); %strtrim will remove the leading \n special character
             obj.Params.T1toDWI.in.T1 = strtrim(obj.Params.FreeSurfer.in.T1);
             
-            obj.proc_T1toDWI();
+            %obj.proc_T1toDWI(); %!!*NOT IN COMPILED VERSION DUE TO ERROR
+            %READING PRIVATE FUNCTIONS (read_hdr(), part of spm12)
             
             %~~~Continue with obj.CommonPostProc...>
         end
@@ -405,7 +382,8 @@ classdef dwi_HAB < dwiMRI_Session
                 
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to average value on previous studies in connectome!
-                obj.trkland_fx(); 
+                %obj.trkland_fx(); %!!*NOT IN COMPILED VERSION DUE TO ERROR
+            %READING PRIVATE FUNCTIONS (read_hdr(), part of spm12)
                
             end
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -457,9 +435,47 @@ classdef dwi_HAB < dwiMRI_Session
         end
     
         function obj = setMyParams(obj)
+            %software used:
+            obj.dsistudio_version='GQI_DSISv053117';
+            
+            %root directoy where raw data lives:
+            obj.object_dir= '/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/'; %To add to path if needed
+            obj.dcm_location='/cluster/sperling/HAB/Project1/DICOM_ARCHIVE/All_DICOMS/';
+            obj.session_dir='/cluster/sperling/HAB/Project1/Sessions/';
+            
+            %template dependencies:
+            obj.HABn272_meanFA='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/HABn272_MNI_Target/HABn272_meanFA.nii.gz';
+            obj.HABn272_meanFA_skel_dst='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/HABn272_MNI_Target/HABn272_meanFA_skeleton_mask_dst.nii.gz';
+            obj.ref_region='/usr/pubsw/packages/fsl/5.0.9/data/standard/LowerCingulum_1mm.nii.gz';
+            
+            %sh dependencies:
+            obj.init_rotate_bvecs_sh='/cluster/brutha/MATLAB_Scripts/Objects/Diffusion/deps/SHELL/mod_fdt_rotate_bvecs.sh'; %For standarizing the bvecs after proc_dcm2nii
+            obj.col2rows_sh='/cluster/bang/ADRC/Scripts/DEPENDENCIES/PREPROC_DEPS/drigo_col2rows.sh';
+            obj.dependencies_dir='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/';
+            %Freesurfer Dependencies:
+            obj.init_FS = '/usr/local/freesurfer/stable6';
+            obj.FS_location='/cluster/bang/HAB_Project1/FreeSurferv6.0';
+            %DataCentral (if false, we won't upload)
+            obj.dctl_flag = false;
+            
+            %skel_TOI dependencies
+            obj.skeltoi_location='/cluster/hab/HAB/Project1/DWIs_30b700/DEPENDENCIES/edJHU_MASK_ROIs/';
+            obj.skeltoi_tois={ 'not_ATR_edJHU' 'not_CCG_edJHU' 'not_CHIPP_edJHU' 'not_CST_edJHU'  ...
+                'not_Fma_edJHU' 'not_Fmi_edJHU' 'not_IFOF_edJHU' 'not_ILF_edJHU' ...
+                'not_SLF_no_temp_edJHU'  'ATR_L_edJHU' 'ATR_R_edJHU' ...
+                'CCG_L_edJHU' 'CCG_R_edJHU' 'CHIPP_L_edJHU' 'CHIPP_R_edJHU' 'CST_L_edJHU' ...
+                'CST_R_edJHU' 'Fma_edJHU' 'Fmi_edJHU' 'IFOF_L_edJHU' 'IFOF_R_edJHU' ...
+                'ILF_L_edJHU' 'ILF_R_edJHU' 'SLF_L_edJHU' 'SLF_L_edJHU_no_temporal' ...
+                'SLF_R_edJHU' 'SLF_R_edJHU_no_temporal' 'allTracts_edJHU' 'Global_skel'  };
+            
+            %trkland dependencies:
+            obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
+            obj.redo_history = false; %(always FALSE unles...) --> Allows us to redo the history of all processes withouth running any obj.BashCode.
+            
             %Global parameters:
             obj.vox= [2 2 2 ];
-            obj.setDefaultParams; %from dwiMRI_Session class
+            %obj.setDefaultParams; %from dwiMRI_Session class NOT USED!
+            
         end
      
         function resave(obj)

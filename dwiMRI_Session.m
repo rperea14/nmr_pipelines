@@ -12,6 +12,54 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     %
     %%
     
+    
+    properties
+        %NOT SURE IF ALL THESE PROPERTIES ARE NECESSARY TO INITIALIZE...
+        T1 = '' ;
+        sessionname = '';
+        object_dir = ''; 
+        session_location = ''; %Will be replace with session_dir
+        session_dir = ''; %This should reaplce session_location
+        dcm_location= '' ;
+        gradfile = ''; 
+        dependencies_dir = ''; 
+        projectID='';
+        FS_location = '';
+        init_FS = '';
+
+        fx_template_dir='';
+        sh_gradfile = '';
+        b0MoCo_rotate_bvecs_sh = '';
+        init_rotate_bvecs_sh = '';
+        col2rows_sh = '';
+        redo_history = false ; 
+        
+        rawfiles = '';
+        root=''; %to be modified if specified as an argument.
+        dosave = false;
+        wasLoaded = false;
+        rawstructural = '';
+        
+        %HAB_1 Class Related:
+        vox = [];
+        dsistudio_version = '';
+        HABn272_meanFA = '';
+        HABn272_meanFA_skel_dst = '';
+        ref_region = '';
+        dctl_flag = false
+        skeltoi_location = ''; 
+        skeltoi_tois =  ''; 
+        %%% Change things so that these are the only version used.
+        fsdir = '';
+        fsubj = '';
+        FSdata='';
+        objectHome = '';
+        history=[] ; 
+        pth = [];
+        dbentry = [];
+        Params = [];
+        Trkland = [] ;
+    end
     properties (GetAccess=private)
         %%% For properties that cannot be accessed or changed from outside
         %%% the class.
@@ -20,37 +68,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
     properties (Constant)
         %%% For setting properties that never change.
     end
-    
     properties (Dependent)
         %%% For setting properties that get automatically updated when
         %%% other variables change
     end
     
-    properties
-        %NOT SURE IF ALL THESE PROPERTIES ARE NECESSARY TO INITIALIZE...
-        exec_onecmd = '' ; %Sets the opt option when initialize to execute one single instruction.
-        sessionname = '';
-        rawfiles = '';
-        root=''; %to be modified if specified as an argument.
-        dosave = false;
-        wasLoaded = false;
-        rawstructural = '';
-        %%% Change things so that these are the only version used.
-        fsdir = '';
-        fsubj = '';
-        FSdata='';
-        objectHome = '';
-        T1 = '' ;
-        projectID = ''
-        history=[] ; 
-        pth = [];
-        dbentry = [];
-        Params = [];
-        Trkland = [] ;
-    end
-    
     %Pre- processing public methods (and MISC):
     methods
+        
         %Constructor:
         function obj=dwiMRI_Session()
             setDefaultParams(obj);
@@ -424,9 +449,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             fprintf(['Rotating the dwi sequence based on the provided matfile: ' obj.Params.DCM2NII.in(ii).fsl2std_matfile '...']);
                             exec_cmd{:,end+1}=[obj.whatecho() ' '' ' obj.Params.DCM2NII.in(ii).fsl2std_param  ''' > '  obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
                             obj.RunBash(exec_cmd{end});
-                            obj.RunBash(exec_cmd{end});
                             fprintf('done\n');
-                            
                         end
                         %%%
                         
@@ -804,10 +827,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     obj.RunBash(exec_cmd{end});
                                     wasRun=true;
                                 end
-                            
+                                
                             else
                                 %check if it's a b0 image, if so, apply the
-                                %flirt to ref b0. 
+                                %flirt to ref b0.
                                 is2B0=false;
                                 for bb=1:numel(b0idx_MATLABnot) ; if b0idx_MATLABnot{bb} == ii ; is2B0=true; break ; end ; end
                                 if is2B0==true
@@ -856,39 +879,43 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         fprintf('\n\t \tDONE STEP4! (STEP4: APPLYING TRANSFORMS)'); pause(1);
                         %%%%%%%%
                         
+                        
                         %%%%%%%%STEP5: APPLYING TRANSFORMS TO BVECS AND COPY BVALS
-                        fprintf('\n\tSTEP5: APPLYING TRANSFORMS TO BVECS AND COPY BVALS \n'); pause(1);
-                        for tohide=1:1
-                            %BVECS:
-                            %Applying rotate_bvecs.sh...
-                            if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || obj.redo_history
-                                fprintf('Applying rotation only .mat files to bvecs..');
-                                TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
-                                for pp=1:size(TEMP_BVEC,1)
-                                    exec_cmd{end+1,:}=[obj.Params.B0MoCo.in.sh_rotate_bvecs ...
-                                        ' ' num2str(TEMP_BVEC(pp,:)) ...
-                                        ' ' final_mat_dwi2B0{pp} ...
-                                        ' >> ' (obj.Params.B0MoCo.out.bvecs{jj}) ];
-                                    obj.RunBash(exec_cmd{end});
-                                    wasRun=true;
-                                end
-                                fprintf('...done');
-                            end
-                            %BVALS:
-                            %Copy bval_in to bvals_out (just a simple copy as
-                            %its not affected):
-                            if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0 || obj.redo_history
-                                exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
+                        %BVECS:
+                        %Applying rotate_bvecs.sh...
+                        if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || obj.redo_history
+                            fprintf('\n\tSTEP5a: APPLYING TRANSFORMS TO BVECS AND COPY BVALS \n');
+                            fprintf('Applying rotation only .mat files to bvecs..');
+                            TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
+                            for pp=1:size(TEMP_BVEC,1)
+                                exec_cmd{end+1,:}=[obj.Params.B0MoCo.in.sh_rotate_bvecs ...
+                                    ' ' num2str(TEMP_BVEC(pp,:)) ...
+                                    ' ' final_mat_dwi2B0{pp} ...
+                                    ' >> ' (obj.Params.B0MoCo.out.bvecs{jj}) ];
                                 obj.RunBash(exec_cmd{end});
                                 wasRun=true;
                             end
+                            fprintf('...done');
+                            fprintf('\n\t \tDONE STEP5! (APPLYING TRANSFORMS TO BVECS AND COPY BVALS) \n'); pause(1);
                         end
-                        fprintf('\n\t \tDONE STEP5! (APPLYING TRANSFORMS TO BVECS AND COPY BVALS) \n'); pause(1);
+                        
+                        
+                        %BVALS:
+                        %Copy bval_in to bvals_out (just a simple copy as
+                        %its not affected):
+                        if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0 || obj.redo_history
+                            fprintf('\n\tSTEP5b: COPYING  BVALS \n'); pause(1);
+                            exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
+                            fprintf('Copying bvals ..');
+                            obj.RunBash(exec_cmd{end});
+                            fprintf('...done\n');
+                            wasRun=true;
+                        end
                         %%%%%%%%
                         
                         %%%%%%%%STEP6: MERGING MOTION CORRECTED DWI
-                        fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
-                            if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0 || obj.redo_history
+                        if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0 || obj.redo_history
+                            fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
                                 clear all_niis
                                 for bb=1:numel(final_nii_dwi2B0)
                                     if bb==1
@@ -902,8 +929,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 wasRun=true;
                                 obj.RunBash(exec_cmd{end});
                             end
+                            fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
                         end
-                        fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
                         %%%%%%%%
                     end
                 end
@@ -1006,7 +1033,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Eddy.out.bvecs{ii} = [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','.eddy_rotated_bvecs') ];
                 %EXEC command to store:
                 if exist(obj.Params.Eddy.out.fn{ii},'file')==0 || obj.redo_history
-                    try
                         [~, to_exec] =system(['which eddy_openmp']);
                         exec_cmd{:,end+1}=[  strtrim(to_exec) ' --imain=' obj.Params.Eddy.in.fn{ii} ...
                             ' --mask=' obj.Params.Eddy.in.mask{ii} ...
@@ -1020,10 +1046,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         obj.RunBash(exec_cmd{end},44);
                         fprintf('...done \n');
                         wasRun=true;
-                    catch
-                        errormsg=['PROC_EDDY: Cannnot run eddy in: ' ...
-                            obj.Params.Eddy.in.fn{ii} 'please double check parameters?\n' ];
-                    end
                 else
                     [aa, bb, cc] = fileparts(obj.Params.Eddy.out.fn{ii});
                     fprintf(['File ' bb cc ' is now complete \n']) ;
@@ -3627,9 +3649,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 [fname_dir, fname_bname, fname_ext ]  = fileparts(mask_fname);
                 %Check if gzipped:
                 if strcmp(fname_ext,'.gz')
-                    error('Make sure you gunzip your mask_image! Quitting now...');
+                    error(['You fname_mask: ' mask_fname ' ends in *.gz ~~> Make sure you gunzip your mask_image! Quitting now...']);
                 end
-                
                 
                 %INIT exec_cmd:
                 if ~exist('exec_cmd','var')
@@ -3647,8 +3668,25 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 if ~exist(obj.Params.probtrackx.root,'dir')
                     mkdir(obj.Params.probtrackx.root);
                 end
-
-                [obj.Params.probtrackx.bedp_dir, ~, ~ ]  = fileparts(obj.Params.Tracula.out.bedp_check);
+                
+                %CHECK IF THE BEDPOSTX DIRECTORY EXISTS AND IF IT CONTAINS
+                %THE CORRECT NUMBER OF MERGED_* FILES:
+                if isfield(obj.Params,'Tracula')
+                    [obj.Params.probtrackx.bedp_dir, ~, ~ ]  = fileparts(obj.Params.Tracula.out.bedp_check);
+                    if exist(obj.Params.probtrackx.bedp_dir,'dir') == 7
+                        temp_mergeds = dir_wfp([ obj.Params.probtrackx.bedp_dir filesep 'merged*' ]);
+                        size_mergeds = size(temp_mergeds,1);
+                        if size_mergeds ~=6
+                            error(['Incomplete number of merged_* files in: ' obj.Params.probtrackx.bedp_dir  'Should be 6 and there is: ' num2str(size_mergeds)]);
+                        end
+                    else
+                        error(['Cannot find bedpostx directory: ' ' Was obj.proc_tracula() completely run? Exiting now...']);
+                    end
+                else
+                    error('obj.Params.Tracula is not a field. Was obj.proc_tracula() run? Exiting now');
+                end
+                %TRYING TO USE the post_QBOOT bedpostx but commented as I
+                %am not sure if it works with only 2 b-values:
 %                 if strcmp(obj.projectID,'ADRC')
 %                     %obj.Params.probtrackx.bedp_dir = obj.Params.Qboot.out.dir;
 %                     obj.Params.probtrackx.bedp_dir = obj.Params.tracxBYmask.tracula.bedp_dir;
@@ -5856,7 +5894,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         function [echoFN, temp_shell] = whatecho(obj)
             [~, full_shell]=system('echo $SHELL');
             [~, temp_shell ] = fileparts(full_shell);
-                if strcmp(temp_shell,'bash')
+                if strcmp(strtrim(temp_shell),'bash')
                     echoFN='echo -e ';
                 else
                     echoFN='echo ';
