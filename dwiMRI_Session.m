@@ -25,6 +25,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         dependencies_dir = ''; 
         projectID='';
         FS_location = '';
+        FSL_dir = '' ; 
         init_FS = '';
 
         fx_template_dir='';
@@ -447,7 +448,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             obj.RunBash(exec_cmd{end});
                         else
                             fprintf(['Rotating the dwi sequence based on the provided matfile: ' obj.Params.DCM2NII.in(ii).fsl2std_matfile '...']);
-                            exec_cmd{:,end+1}=[obj.whatecho() ' '' ' obj.Params.DCM2NII.in(ii).fsl2std_param  ''' > '  obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
+                            exec_cmd{:,end+1}=[' printf '' ' obj.Params.DCM2NII.in(ii).fsl2std_param  ''' > '  obj.Params.DCM2NII.in(ii).fsl2std_matfile ];
                             obj.RunBash(exec_cmd{end});
                             fprintf('done\n');
                         end
@@ -485,7 +486,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
                 end
                 
-                
+                obj.RunBash
                 %Create out_file directory if doesnt exist:
                 if ~exist(obj.Params.DCM2NII.out(ii).location,'dir')
                     exec_cmd{:,end+1} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
@@ -605,7 +606,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             gradfile = obj.gradfile;
             
             %%% Compute the grdient nonlinearity correction or check if
-            %%% file XXX_grad_rel.nii.gz exists. 
+            %%% file XXX_grad_reobj.RunBashl.nii.gz exists. 
             obj.Params.GradNonlinCorrect.out.warpfile{1} = strrep(first_b0_infile,'.nii','_deform_grad_rel.nii');
             if exist(obj.Params.GradNonlinCorrect.out.warpfile{1},'file')==0 || obj.redo_history
                 exec_cmd{:,end+1}=['sh ' obj.sh_gradfile ' '  first_b0_infile ' ' first_b0_outfile ' ' gradfile ' '];
@@ -677,271 +678,274 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 display('proc_b0S_MoCo(): No refB0 inputted. Assigning the first volume')
                 pause(2)
             end
-
+            
             %Check if the FreeSurfer location exists (due to bbreg dependency):
-            if exist(obj.Params.B0MoCo.FS,'dir') ~=0  || obj.redo_history %if so continue, else break!
-                for jj=1:numel(obj.Params.B0MoCo.in.fn)
-                    clear cur_fn;
-                    %INIT VARIABLES:
-                    if iscell(obj.Params.B0MoCo.in.fn{jj})
-                        cur_fn=cell2char_rdp(obj.Params.B0MoCo.in.fn{jj});
-                    else
-                        cur_fn=obj.Params.B0MoCo.in.fn{jj};
+            for jj=1:numel(obj.Params.B0MoCo.in.fn)
+                clear cur_fn;
+                %INIT VARIABLES:
+                if iscell(obj.Params.B0MoCo.in.fn{jj})
+                    cur_fn=cell2char_rdp(obj.Params.B0MoCo.in.fn{jj});
+                else
+                    cur_fn=obj.Params.B0MoCo.in.fn{jj};
+                end
+                %Splitting the naming convention:
+                [a b c ] = fileparts(cur_fn);
+                %Creating an output directory:
+                outpath=obj.getPath(a,obj.Params.B0MoCo.in.movefiles);
+                %Initializing obj.Params.B0MoCo.out.XX:
+                obj.Params.B0MoCo.out.fn{jj}= [ outpath obj.Params.B0MoCo.in.prefix b c ] ;
+                obj.Params.B0MoCo.out.bvecs{jj}= [ outpath  obj.Params.B0MoCo.in.prefix strrep(b,'.nii','.voxel_space.bvecs') ];
+                obj.Params.B0MoCo.out.bvals{jj}= [ outpath  obj.Params.B0MoCo.in.prefix strrep(b,'.nii','.bvals') ];
+                
+                %%%%%%%%ENTRERING CODE IF OUTPUT DOESNT EXIST%%%%%%%%%%
+                if exist(obj.Params.B0MoCo.out.fn{jj}, 'file') == 0 || obj.redo_history
+                    %%%%%%%%STEP 1: SPLIT EACH DWI INTO MULTIPLE 3D VOLUMES
+                    fprintf('\n\tSTEP1:SPLIT EACH DWI INTO MULTIPLE 3D VOLUMES...');
+                    for tohide=1:1
+                        %Splitting the current DWI:
+                        clear tmp_fslsplit;
+                        tmp_fslsplit=[ outpath 'tmp' filesep ...
+                            'tmp_' strrep(b,'.nii','') filesep ];
+                        if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0  || obj.redo_history
+                            exec_cmd{end+1,:} = (['mkdir -p ' tmp_fslsplit ] );
+                            obj.RunBash(exec_cmd{end});
+                            exec_cmd{end+1,:}=([obj.FSL_dir  'bin/fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
+                                ' ' tmp_fslsplit ' -t ']);
+                            obj.RunBash(exec_cmd{end});
+                        end
                     end
-                    %Splitting the naming convention:
-                    [a b c ] = fileparts(cur_fn);
-                    %Creating an output directory:
-                    outpath=obj.getPath(a,obj.Params.B0MoCo.in.movefiles);
-                    %Initializing obj.Params.B0MoCo.out.XX:
-                    obj.Params.B0MoCo.out.fn{jj}= [ outpath obj.Params.B0MoCo.in.prefix b c ] ;
-                    obj.Params.B0MoCo.out.bvecs{jj}= [ outpath  obj.Params.B0MoCo.in.prefix strrep(b,'.nii','.voxel_space.bvecs') ];
-                    obj.Params.B0MoCo.out.bvals{jj}= [ outpath  obj.Params.B0MoCo.in.prefix strrep(b,'.nii','.bvals') ];
+                    fprintf('DONE \n'); pause(0.25);
+                    %%%%%%%%
                     
-                    %%%%%%%%ENTRERING CODE IF OUTPUT DOESNT EXIST%%%%%%%%%%
-                    if exist(obj.Params.B0MoCo.out.fn{jj}, 'file') == 0 || obj.redo_history
-                        %%%%%%%%STEP 1: SPLIT EACH DWI INTO MULTIPLE 3D VOLUMES
-                        fprintf('\n\tSTEP1:SPLIT EACH DWI INTO MULTIPLE 3D VOLUMES...'); 
-                        for tohide=1:1
-                            %Splitting the current DWI:
-                            clear tmp_fslsplit;
-                            tmp_fslsplit=[ outpath 'tmp' filesep ...
-                                'tmp_' strrep(b,'.nii','') filesep ];
-                            if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0  || obj.redo_history
-                                exec_cmd{end+1,:} = (['mkdir -p ' tmp_fslsplit ] );
-                                obj.RunBash(exec_cmd{end});
-                                exec_cmd{end+1,:}=(['fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
-                                    ' ' tmp_fslsplit ' -t ']);
-                                obj.RunBash(exec_cmd{end});
-                            end
-                        end
-                        fprintf('DONE \n'); pause(0.25);
-                        %%%%%%%%
-                        
-                        
-                        %%%%%%%%STEP2:CHECKING FOR THE REF B0 TO BE USED
-                        fprintf('\n\tSTEP2:CHECKING FOR REF B0 TO BE USED...');
-                        for tohide=1:1
-                            %Load bval information:
-                            clear tmp_bval_idx b0idx
-                            tmp_bval_idx=load(obj.Params.B0MoCo.in.bvals{jj});
-                            b0idx=0; %Indexing each location of a b0 image
-                            %PADDING NAMING STRUCTURE AND FINDINF refB0:
-                            clear refB0_fname  refB0_index bn_refB0
-                            for ii=1:numel(tmp_bval_idx)
-                                dwi_idx=ii-1  ; %indexing from fslsplit starts at 0 not 1 so we need this additional indexing (MATLAB array index starts at 1, so focus on it!)
-                                %Get single dwi (indexed at 0000 or 0010)
-                                if ii < 11 % (idx start at 1 in matlab but fslsplit idx starts at 0, hence the difference!!
-                                    cur_in_dwi{ii} = [ tmp_fslsplit '000' num2str(dwi_idx) '.nii.gz' ];
-                                else
-                                    cur_in_dwi{ii} = [ tmp_fslsplit '00' num2str(dwi_idx) '.nii.gz' ];
-                                end
-                                [ ~, bn_curdwi{ii}, ~ ] = fileparts(cur_in_dwi{ii});
-                                %Remove '.nii' string notation if exists:
-                                if strcmp(bn_curdwi{ii}(end-3:end),'.nii')
-                                    bn_curdwi{ii}=bn_curdwi{ii}(1:end-4);
-                                end
-                                if ii==refB0
-                                    refB0_fname = cur_in_dwi{ii};
-                                    refB0_index = ii ;
-                                    bn_refB0=bn_curdwi{ii};
-                                end
-                            end
-                        end
-                        fprintf('\t\tDONE STEP2 \n'); pause(0.25);
-                        %%%%%%%%
-                        
-                        %%%%%%%%STEP3: CREATING MATFILES WITHIN B0s
-                        fprintf('\n\tSTEP3: CREATING MATFILES WITHIN B0s\n'); pause(1);
+                    
+                    %%%%%%%%STEP2:CHECKING FOR THE REF B0 TO BE USED
+                    fprintf('\n\tSTEP2:CHECKING FOR REF B0 TO BE USED...');
+                    for tohide=1:1
+                        %Load bval information:
+                        clear tmp_bval_idx b0idx
+                        tmp_bval_idx=load(obj.Params.B0MoCo.in.bvals{jj});
+                        b0idx=0; %Indexing each location of a b0 image
+                        %PADDING NAMING STRUCTURE AND FINDINF refB0:
+                        clear refB0_fname  refB0_index bn_refB0
                         for ii=1:numel(tmp_bval_idx)
-                         
-                            %If the value is 0, then its a B0 image
-                            if tmp_bval_idx(ii) == 0 %it it's a b0 image
-                                %Init variables used below:
-                                outmat_dwi2refb0{ii} =  [ tmp_fslsplit 'toref_' bn_curdwi{ii} '_2_' bn_refB0 '.mat' ];
-                                if ii == refB0 %Reference B0Volume_irst b0 volume
-                                    %if ref volume,then we will created the
-                                    %eye.mat matrix for reference on the refb0 for rotation
-                                    %matrices that will be used for rot. bvecs
-                                    outmat_dwi2earlierb0{1}=outmat_dwi2refb0{ii};
-                                    if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || obj.redo_history
-                                        exec_cmd{end+1,:}=([ obj.whatecho() ' "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
-                                            outmat_dwi2refb0{ii} ]);
-                                        obj.RunBash(exec_cmd{end});
-                                    end
-                                else
-                                    %The idea here is to create the two
-                                    %matrices needed for converting each B0
-                                    %to the ref using and also each B0 to
-                                    %its consecuent one. 
-                                    outmat_dwi2earlierb0{ii} =  [ tmp_fslsplit 'dwi_' bn_curdwi{ii} '_2_' ...
-                                        b0_padded_name{b0idx} '.mat' ];
-                                    if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || obj.redo_history
-                                        %Transform to ref b0 --> 
-                                        exec_cmd{end+1,:}=[ 'flirt -in ' cur_in_dwi{ii} ' -ref ' refB0_fname   '  -omat ' outmat_dwi2refb0{ii} ];
-                                        fprintf(['\n (FSL)Flirting and creating matfile b0 ' bn_curdwi{ii} ' to refb0: ' bn_refB0 ]);
-                                        obj.RunBash(exec_cmd{end});
-                                        fprintf('...done')
-                                        %Additional stepfor the N>2 b0 volumes
-                                            exec_cmd{end+1,:}=[ 'flirt -in ' cur_in_dwi{ii} ' -ref ' b0_fname{b0idx}  '  -omat ' outmat_dwi2earlierb0{ii} ];
-                                            fprintf(['\n (FSL)Flirting and creating matfile b0 ' bn_curdwi{ii} ' to earlier b0: '  b0_padded_name{b0idx} ]);
-                                            obj.RunBash(exec_cmd{end});
-                                            fprintf('...done');
-                                    end
-                                end
-                                %Keep previous b0 image and the index:
-                                b0idx=b0idx+1; %TODO: Fix this indexing if refb0 is not the first one!!
-                                b0_fname{b0idx}=cur_in_dwi{ii};
-                                b0_padded_name{b0idx}=bn_curdwi{ii};
-                                b0_idx_fslnot{b0idx}=ii-1; % minus 1 because fslsplit index starts at 0 and this loop at 1
-                                b0idx_MATLABnot{b0idx}=ii;
-                                omat_2_refb0{b0idx} = outmat_dwi2refb0{ii} ;
-                                omat_2_earlierb0{b0idx} = outmat_dwi2earlierb0{ii} ;
-                                
-                            end
-                        end
-                        fprintf('\n\t\tDONE STEP3! (STEP3: CREATING MATFILES WITHIN B0s)'); pause(1);
-                        %%%%%%%%
-
-                        %%%%%%%%STEP4: APPLYING TRANSFORMS TO 3D VOLUMES TO
-                        %%%%%%%%CREATE FINAL MATFILES AND NIIs
-                        fprintf('\n\n\tSTEP4: APPLYING TRANSFORMS TO CREATE AFFINE CORRECTED B0s and DWIs \n'); pause(1);
-                        for ii=1:numel(tmp_bval_idx)
-                            %Create a number to compare
-                            number_curdwi{ii}=str2num(bn_curdwi{ii});
-                            %Init the final matfile to use and the output
-                            %3D filename
-                            final_mat_dwi2B0{ii} = [ tmp_fslsplit 'final_mat_' bn_curdwi{ii} '_2_combinedB0s.mat' ];
-                            final_nii_dwi2B0{ii} =  [ tmp_fslsplit 'final_nii_' bn_curdwi{ii} '_2_combinedB0s.nii.gz' ]; %This will be merged
-                            fprintf(['\t\tIn 3D volume:' bn_curdwi{ii}  ' and matlab index: ' num2str(ii) '\n' ])
-                            %Applying apply_warp and convert_xfm
-                            if ii==refB0 %b0 ref index in MATLAB notation (e.g. index 0000.nii.gz is refB0=1)
-                                %Copy refb0:
-                                if exist(final_nii_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                    exec_cmd{end+1,:}=[ 'cp -r ' cur_in_dwi{ii} ' ' final_nii_dwi2B0{ii}  ];
-                                    obj.RunBash(exec_cmd{end});
-                                    wasRun=true;
-                                end
-                                %Copy eye.mat matrix
-                                if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                    exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{ii} ' ' final_mat_dwi2B0{ii}  ]; %only for consistency
-                                    obj.RunBash(exec_cmd{end});
-                                    wasRun=true;
-                                end
-                                
+                            dwi_idx=ii-1  ; %indexing from fslsplit starts at 0 not 1 so we need this additional indexing (MATLAB array index starts at 1, so focus on it!)
+                            %Get single dwi (indexed at 0000 or 0010)
+                            if ii < 11 % (idx start at 1 in matlab but fslsplit idx starts at 0, hence the difference!!
+                                cur_in_dwi{ii} = [ tmp_fslsplit '000' num2str(dwi_idx) '.nii.gz' ];
                             else
-                                %check if it's a b0 image, if so, apply the
-                                %flirt to ref b0.
-                                is2B0=false;
-                                for bb=1:numel(b0idx_MATLABnot) ; if b0idx_MATLABnot{bb} == ii ; is2B0=true; break ; end ; end
-                                if is2B0==true
-                                    %Copy only the flirt matrix
+                                cur_in_dwi{ii} = [ tmp_fslsplit '00' num2str(dwi_idx) '.nii.gz' ];
+                            end
+                            [ ~, bn_curdwi{ii}, ~ ] = fileparts(cur_in_dwi{ii});
+                            %Remove '.nii' string notation if exists:
+                            if strcmp(bn_curdwi{ii}(end-3:end),'.nii')
+                                bn_curdwi{ii}=bn_curdwi{ii}(1:end-4);
+                            end
+                            if ii==refB0
+                                refB0_fname = cur_in_dwi{ii};
+                                refB0_index = ii ;
+                                bn_refB0=bn_curdwi{ii};
+                            end
+                        end
+                    end
+                    fprintf('\t\tDONE STEP2 \n'); pause(0.25);
+                    %%%%%%%%
+                    
+                    %%%%%%%%STEP3: CREATING MATFILES WITHIN B0s
+                    fprintf('\n\tSTEP3: CREATING MATFILES WITHIN B0s\n'); pause(1);
+                    for ii=1:numel(tmp_bval_idx)
+                        if strcmpi(obj.projectID,'habsiic')
+                            tval = 5;
+                        else
+                            tval = 0;
+                        end
+                        %If the value is 0, then its a B0 image
+                        if tmp_bval_idx(ii) == tval %it it's a b0 image
+                            %Init variables used below:
+                            outmat_dwi2refb0{ii} =  [ tmp_fslsplit 'toref_' bn_curdwi{ii} '_2_' bn_refB0 '.mat' ];
+                            if ii == refB0 %Reference B0Volume_irst b0 volume
+                                %if ref volume,then we will created the
+                                %eye.mat matrix for reference on the refb0 for rotation
+                                %matrices that will be used for rot. bvecs
+                                outmat_dwi2earlierb0{1}=outmat_dwi2refb0{ii};
+                                if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || obj.redo_history
+                                    exec_cmd{end+1,:}=([ ' printf "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
+                                        outmat_dwi2refb0{ii} ]);
+                                    obj.RunBash(exec_cmd{end});
+                                end
+                            else
+                                %The idea here is to create the two
+                                %matrices needed for converting each B0
+                                %to the ref using and also each B0 to
+                                %its consecuent one.
+                                outmat_dwi2earlierb0{ii} =  [ tmp_fslsplit 'dwi_' bn_curdwi{ii} '_2_' ...
+                                    b0_padded_name{b0idx} '.mat' ];
+                                if exist(outmat_dwi2refb0{ii}, 'file' ) == 0  || obj.redo_history
+                                    %Transform to ref b0 -->
+                                    exec_cmd{end+1,:}=[obj.FSL_dir 'bin/flirt -in ' cur_in_dwi{ii} ' -ref ' refB0_fname   '  -omat ' outmat_dwi2refb0{ii} ];
+                                    fprintf(['\n (FSL)Flirting and creating matfile b0 ' bn_curdwi{ii} ' to refb0: ' bn_refB0 ]);
+                                    obj.RunBash(exec_cmd{end});
+                                    fprintf('...done')
+                                    %Additional stepfor the N>2 b0 volumes
+                                    exec_cmd{end+1,:}=[obj.FSL_dir 'bin/flirt -in ' cur_in_dwi{ii} ' -ref ' b0_fname{b0idx}  '  -omat ' outmat_dwi2earlierb0{ii} ];
+                                    fprintf(['\n (FSL)Flirting and creating matfile b0 ' bn_curdwi{ii} ' to earlier b0: '  b0_padded_name{b0idx} ]);
+                                    obj.RunBash(exec_cmd{end});
+                                    fprintf('...done');
+                                end
+                            end
+                            %Keep previous b0 image and the index:
+                            b0idx=b0idx+1; %TODO: Fix this indexing if refb0 is not the first one!!
+                            b0_fname{b0idx}=cur_in_dwi{ii};
+                            b0_padded_name{b0idx}=bn_curdwi{ii};
+                            b0_idx_fslnot{b0idx}=ii-1; % minus 1 because fslsplit index starts at 0 and this loop at 1
+                            b0idx_MATLABnot{b0idx}=ii;
+                            omat_2_refb0{b0idx} = outmat_dwi2refb0{ii} ;
+                            omat_2_earlierb0{b0idx} = outmat_dwi2earlierb0{ii} ;
+                            
+                        end
+                    end
+                    fprintf('\n\t\tDONE STEP3! (STEP3: CREATING MATFILES WITHIN B0s)'); pause(1);
+                    %%%%%%%%
+                    
+                    %%%%%%%%STEP4: APPLYING TRANSFORMS TO 3D VOLUMES TO
+                    %%%%%%%%CREATE FINAL MATFILES AND NIIs
+                    fprintf('\n\n\tSTEP4: APPLYING TRANSFORMS TO CREATE AFFINE CORRECTED B0s and DWIs \n'); pause(1);
+                    for ii=1:numel(tmp_bval_idx)
+                        %Create a number to compare
+                        number_curdwi{ii}=str2num(bn_curdwi{ii});
+                        %Init the final matfile to use and the output
+                        %3D filename
+                        final_mat_dwi2B0{ii} = [ tmp_fslsplit 'final_mat_' bn_curdwi{ii} '_2_combinedB0s.mat' ];
+                        final_nii_dwi2B0{ii} =  [ tmp_fslsplit 'final_nii_' bn_curdwi{ii} '_2_combinedB0s.nii.gz' ]; %This will be merged
+                        fprintf(['\t\tIn 3D volume:' bn_curdwi{ii}  ' and matlab index: ' num2str(ii) '\n' ])
+                        %Applying apply_warp and convert_xfm
+                        if ii==refB0 %b0 ref index in MATLAB notation (e.g. index 0000.nii.gz is refB0=1)
+                            %Copy refb0:
+                            if exist(final_nii_dwi2B0{ii} ,'file') == 0 || obj.redo_history
+                                exec_cmd{end+1,:}=[ 'cp -r ' cur_in_dwi{ii} ' ' final_nii_dwi2B0{ii}  ];
+                                obj.RunBash(exec_cmd{end});
+                                wasRun=true;
+                            end
+                            %Copy eye.mat matrix
+                            if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
+                                exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{ii} ' ' final_mat_dwi2B0{ii}  ]; %only for consistency
+                                obj.RunBash(exec_cmd{end});
+                                wasRun=true;
+                            end
+                            
+                        else
+                            %check if it's a b0 image, if so, apply the
+                            %flirt to ref b0.
+                            is2B0=false;
+                            for bb=1:numel(b0idx_MATLABnot) ; if b0idx_MATLABnot{bb} == ii ; is2B0=true; break ; end ; end
+                            if is2B0==true
+                                %Copy only the flirt matrix
+                                if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
+                                    exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{bb} ' ' final_mat_dwi2B0{ii}  ];
+                                    obj.RunBash(exec_cmd{end});
+                                    wasRun=true;
+                                end
+                            else
+                                %Working here with DWIs (not b0s...)
+                                %Check if 'ii' is above the last b0
+                                if ii > b0idx_MATLABnot{end}
+                                    %Omat will be the same as the last
+                                    %indexed
                                     if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{bb} ' ' final_mat_dwi2B0{ii}  ];
+                                        exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{end} ' ' final_mat_dwi2B0{ii}  ];
                                         obj.RunBash(exec_cmd{end});
                                         wasRun=true;
                                     end
                                 else
-                                    %Working here with DWIs (not b0s...)
-                                    %Check if 'ii' is above the last b0
-                                    if ii > b0idx_MATLABnot{end}
-                                        %Omat will be the same as the last
-                                        %indexed
-                                        if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                            exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{end} ' ' final_mat_dwi2B0{ii}  ];
-                                            obj.RunBash(exec_cmd{end});
-                                            wasRun=true;
-                                        end
-                                    else
-                                        %If not, what b0 are in between?
-                                        clear B0_btw B0torefB0
-                                        %for loop that tell us the b0 and necessary files in between
-                                        for bb=1:numel(b0idx_MATLABnot) ; if b0idx_MATLABnot{bb} > ii ; B0_btw=omat_2_earlierb0{bb} ; B0torefB0=omat_2_refb0{bb-1} ; break ; end ; end
-                                        
-                                        %Apply convert_xfm usinf the AtoC
-                                        %notation in FSL convert_xfm
-                                        if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                            % Given C=refB0, A=lateB0 and B=early b0 --> convert_xfm  -omat <outmat_AtoC> -concat <mat_BtoC> <mat_AtoB>
-                                            exec_cmd{end+1,:}=[ 'convert_xfm -omat ' final_mat_dwi2B0{ii} ' -concat ' B0torefB0 ' ' B0_btw   ];
-                                            obj.RunBash(exec_cmd{end});
-                                            wasRun=true;
-                                        end
+                                    %If not, what b0 are in between?
+                                    clear B0_btw B0torefB0
+                                    %for loop that tell us the b0 and necessary files in between
+                                    for bb=1:numel(b0idx_MATLABnot) ; if b0idx_MATLABnot{bb} > ii ; B0_btw=omat_2_earlierb0{bb} ; B0torefB0=omat_2_refb0{bb-1} ; break ; end ; end
+                                    
+                                    %Apply convert_xfm usinf the AtoC
+                                    %notation in FSL convert_xfm
+                                    if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
+                                        % Given C=refB0, A=lateB0 and B=early b0 --> convert_xfm  -omat <outmat_AtoC> -concat <mat_BtoC> <mat_AtoB>
+                                        exec_cmd{end+1,:}=[obj.FSL_dir 'bin/convert_xfm -omat ' final_mat_dwi2B0{ii} ' -concat ' B0torefB0 ' ' B0_btw   ];
+                                        obj.RunBash(exec_cmd{end});
+                                        wasRun=true;
                                     end
                                 end
-                                %Apply flirt with the created final_mat_dwi2B0{ii}
-                                if exist(final_nii_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                    exec_cmd{end+1,:}=[ 'flirt -in ' cur_in_dwi{ii} ...
-                                        ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp nearestneighbour'  ];
-                                    obj.RunBash(exec_cmd{end});
-                                    wasRun=true;
-                                end
                             end
-                        end
-                        fprintf('\n\t \tDONE STEP4! (STEP4: APPLYING TRANSFORMS)'); pause(1);
-                        %%%%%%%%
-                        
-                        
-                        %%%%%%%%STEP5: APPLYING TRANSFORMS TO BVECS AND COPY BVALS
-                        %BVECS:
-                        %Applying rotate_bvecs.sh...
-                        if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || obj.redo_history
-                            fprintf('\n\tSTEP5a: APPLYING TRANSFORMS TO BVECS AND COPY BVALS \n');
-                            fprintf('Applying rotation only .mat files to bvecs..');
-                            TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
-                            for pp=1:size(TEMP_BVEC,1)
-                                exec_cmd{end+1,:}=[obj.Params.B0MoCo.in.sh_rotate_bvecs ...
-                                    ' ' num2str(TEMP_BVEC(pp,:)) ...
-                                    ' ' final_mat_dwi2B0{pp} ...
-                                    ' >> ' (obj.Params.B0MoCo.out.bvecs{jj}) ];
+                            %Apply flirt with the created final_mat_dwi2B0{ii}
+                            if exist(final_nii_dwi2B0{ii} ,'file') == 0 || obj.redo_history
+                                exec_cmd{end+1,:}=[obj.FSL_dir 'bin/flirt -in ' cur_in_dwi{ii} ...
+                                    ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp nearestneighbour'  ];
                                 obj.RunBash(exec_cmd{end});
                                 wasRun=true;
                             end
-                            fprintf('...done');
-                            fprintf('\n\t \tDONE STEP5! (APPLYING TRANSFORMS TO BVECS AND COPY BVALS) \n'); pause(1);
                         end
-                        
-                        
-                        %BVALS:
-                        %Copy bval_in to bvals_out (just a simple copy as
-                        %its not affected):
-                        if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0 || obj.redo_history
-                            fprintf('\n\tSTEP5b: COPYING  BVALS \n'); pause(1);
-                            exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
-                            fprintf('Copying bvals ..');
+                    end
+                    fprintf('\n\t \tDONE STEP4! (STEP4: APPLYING TRANSFORMS)'); pause(1);
+                    %%%%%%%%
+                    
+                    
+                    %%%%%%%%STEP5: APPLYING TRANSFORMS TO BVECS AND COPY BVALS
+                    %BVECS:
+                    %Applying rotate_bvecs.sh...
+                    if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || obj.redo_history
+                        fprintf('\n\tSTEP5a: APPLYING TRANSFORMS TO BVECS AND COPY BVALS \n');
+                        fprintf('Applying rotation only .mat files to bvecs..');
+                        TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
+                        for pp=1:size(TEMP_BVEC,1)
+                            exec_cmd{end+1,:}=[obj.Params.B0MoCo.in.sh_rotate_bvecs ...
+                                ' ' num2str(TEMP_BVEC(pp,:)) ...
+                                ' ' final_mat_dwi2B0{pp} ...
+                                ' >> ' (obj.Params.B0MoCo.out.bvecs{jj}) ];
                             obj.RunBash(exec_cmd{end});
-                            fprintf('...done\n');
                             wasRun=true;
                         end
-                        %%%%%%%%
-                        
-                        %%%%%%%%STEP6: MERGING MOTION CORRECTED DWI
-                        if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0 || obj.redo_history
-                            fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
-                                clear all_niis
-                                for bb=1:numel(final_nii_dwi2B0)
-                                    if bb==1
-                                        all_niis{jj} = [ final_nii_dwi2B0{bb} ' ' ];
-                                    else
-                                        all_niis{jj} = [ all_niis{jj} final_nii_dwi2B0{bb} ' ' ];
-                                    end
-                                end
-                                display(['Merging all volumes (total: ' num2str(numel(final_nii_dwi2B0)) ')']);
-                                exec_cmd{end+1,:}=['fslmerge -t '  obj.Params.B0MoCo.out.fn{jj} ' ' all_niis{jj} ];
-                                wasRun=true;
-                                obj.RunBash(exec_cmd{end});
-                            end
-                            fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
-                        end
-                        %%%%%%%%
+                        fprintf('...done');
+                        fprintf('\n\t \tDONE STEP5! (APPLYING TRANSFORMS TO BVECS AND COPY BVALS) \n'); pause(1);
                     end
+                    
+                    
+                    %BVALS:
+                    %Copy bval_in to bvals_out (just a simple copy as
+                    %its not affected):
+                    if exist(obj.Params.B0MoCo.out.bvals{jj},'file') == 0 || obj.redo_history
+                        fprintf('\n\tSTEP5b: COPYING  BVALS \n'); pause(1);
+                        exec_cmd{end+1,:}=['cp ' obj.Params.B0MoCo.in.bvals{jj} ' ' obj.Params.B0MoCo.out.bvals{jj} ];
+                        fprintf('Copying bvals ..');
+                        obj.RunBash(exec_cmd{end});
+                        fprintf('...done\n');
+                        wasRun=true;
+                    end
+                    %%%%%%%%
+                    
+                    %%%%%%%%STEP6: MERGING MOTION CORRECTED DWI
+                    if exist(obj.Params.B0MoCo.out.fn{jj},'file')==0 || obj.redo_history
+                        fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
+                            clear all_niis
+                            for bb=1:numel(final_nii_dwi2B0)
+                                if bb==1
+                                    all_niis{jj} = [ final_nii_dwi2B0{bb} ' ' ];
+                                else
+                                    all_niis{jj} = [ all_niis{jj} final_nii_dwi2B0{bb} ' ' ];
+                                end
+                            end
+                            display(['Merging all volumes (total: ' num2str(numel(final_nii_dwi2B0)) ')']);
+                            exec_cmd{end+1,:}=[obj.FSL_dir 'bin/fslmerge -t '  obj.Params.B0MoCo.out.fn{jj} ' ' all_niis{jj} ];
+                            wasRun=true;
+                            obj.RunBash(exec_cmd{end});
+                        end
+                        fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
+                    end
+                    %%%%%%%%
                 end
-                %%%%%%%%
-                %TO UPDATE HISTORY AND RESAVE:
-                if wasRun == true
-                    obj.UpdateHist_v2(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun,exec_cmd');
-                    obj.resave();
-                end
-                %%%%%%%%
             end
+            %%%%%%%%
+            %TO UPDATE HISTORY AND RESAVE:
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun,exec_cmd');
+                obj.resave();
+            end
+            %%%%%%%%
+            
         end
  
         function obj = proc_bet2(obj)
@@ -2945,7 +2949,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0 || obj.redo_history
                         exec_cmd{end+1,:} = (['mkdir -p ' tmp_fslsplit ] );
                         obj.RunBash(exec_cmd{end});
-                        exec_cmd{end+1,:}=(['fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
+                        exec_cmd{end+1,:}=([obj.FSL_dir 'bin/fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
                             ' ' tmp_fslsplit ' -t ']);
                         obj.RunBash(exec_cmd{end});
                     end
@@ -2981,8 +2985,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %apply warp in step 2 of this method...
                             out_dwi2firstb0{ii} =  [ tmp_fslsplit 'dwi' strrep(bn_curdwi{ii},'.nii','') '_2_modfirstb0.nii.gz' ];
                             
+                            if strcmpi(obj.projectID,'habsiic')
+                                tval=5;
+                            else
+                                tval=0;
+                            end
                             %Bbregister starts here (only for b0s!):
-                            if tmp_bval_idx(ii) == 0 %it it's a b0 image
+                            if tmp_bval_idx(ii) == tval %it it's a b0 image
                                 flag_b0_idx = ii ;
                                 %Init variables (b0 dependable):
                                 out_trnii{ii}= [ tmp_fslsplit 'dwi_' strrep(bn_curdwi{ii},'.nii','') '_2_fsT1.nii.gz' ];
@@ -3018,7 +3027,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     out_fsl2firstdwimat = [ tmp_fslsplit 'mat_fslT1_2_dwi' strrep(bn_curdwi{1},'.nii','') '.mat' ];
                                     %Convert dwi2T1 into T12dwi:
                                     if exist(out_fsl2firstdwimat,'file') == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=[ 'convert_xfm -omat ' out_fsl2firstdwimat ...
+                                        exec_cmd{end+1,:}=[obj.FSL_dir 'bin/convert_xfm -omat ' out_fsl2firstdwimat ...
                                             ' -inverse ' out_dwi2fslmat{ii} ];
                                         obj.RunBash(exec_cmd{end});
                                     end
@@ -3028,7 +3037,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %spherical if added, and since this is
                                     %recycled code from Qiuyun Fang, I'll leave it as it is: 
                                     if exist(out_dwi2firstb0{ii} ,'file') == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
+                                        exec_cmd{end+1,:}=([obj.FSL_dir 'bin/applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
                                             ' -o ' out_dwi2firstb0{ii}  ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                             ' --rel --interp=spline' ]);
                                         obj.RunBash(exec_cmd{end});
@@ -3038,7 +3047,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %reference on the firstb0 for rotation
                                     %matrices that will be used for rot. bvecs
                                     if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=([ obj.whatecho() ' "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
+                                        exec_cmd{end+1,:}=([ ' printf "1 0 0 0 \n0 1 0 0 \n0 0 1 0 \n0 0 0 1 " > ' ...
                                             out_dwi2firstmat_rot_only{ii} ]);
                                         obj.RunBash(exec_cmd{end});
                                     end
@@ -3046,14 +3055,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 else
                                     %Convert dwi2T1 into T12dwi (concating the firstb0):
                                     if exist(out_dwi2firstmat{ii},'file') == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=[ 'convert_xfm -omat ' out_dwi2firstmat{ii}  ...
+                                        exec_cmd{end+1,:}=[obj.FSL_dir 'bin/convert_xfm -omat ' out_dwi2firstmat{ii}  ...
                                             ' -concat ' out_fsl2firstdwimat ' ' out_dwi2fslmat{ii} ];
                                         obj.RunBash(exec_cmd{end});
                                     end
                                     
                                     %Apply the disco_rel here using applywarp
                                     if exist(out_dwi2firstb0{ii} ,'file') == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
+                                        exec_cmd{end+1,:}=([obj.FSL_dir 'bin/applywarp -i ' cur_in_dwi{ii} ' -r ' cur_in_dwi{1} ...
                                             ' -o ' out_dwi2firstb0{ii} ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                             ' --postmat=' out_dwi2firstmat{ii} ' --interp=spline --rel ' ]);
                                         obj.RunBash(exec_cmd{end});
@@ -3063,7 +3072,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                     %avscale (this will be used for modifying
                                     %the bvecs output)
                                     if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || obj.redo_history
-                                        exec_cmd{end+1,:}=(['avscale ' out_dwi2firstmat{ii} ...
+                                        exec_cmd{end+1,:}=([obj.FSL_dir 'bin/avscale ' out_dwi2firstmat{ii} ...
                                             ' | head -5 | tail -4 > ' out_dwi2firstmat_rot_only{ii} ]);
                                         obj.RunBash(exec_cmd{end});
                                     end
@@ -3085,7 +3094,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             
                             if exist(out_dwi2firstb0{ii},'file') == 0 || obj.redo_history
                                 fprintf([ '...' bn_curdwi{ii} ] );
-                                exec_cmd{end+1,:}=(['applywarp -i ' cur_in_dwi{ii} ...
+                                exec_cmd{end+1,:}=([obj.FSL_dir 'bin/applywarp -i ' cur_in_dwi{ii} ...
                                     ' -r ' cur_in_dwi{1} ' -o ' out_dwi2firstb0{ii} ...
                                     ' -w ' obj.Params.B0MoCo.in.grad_rel{1} ...
                                     ' --postmat=' out_dwi2firstmat{dwi_b0_idx{ii}} ...
@@ -3101,11 +3110,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         
                         
                         %%%%%%%%STEP 3: APPLY ROT_MATFILES TO BVECS%%%%%%%%
-                        
                         %Extracing the rotation matrix only using
                         %avscale (this will be used for modifying the bvecs output)
                         if exist(out_dwi2firstmat_rot_only{ii}, 'file' ) == 0 || obj.redo_history
-                            exec_cmd{end+1,:}=(['avscale ' out_dwi2firstmat{ii} ...
+                            exec_cmd{end+1,:}=([obj.FSL_dir 'bin/avscale ' out_dwi2firstmat{ii} ...
                                 ' | head -5 | tail -4 > ' out_dwi2firstmat_rot_only{ii} ]);
                             obj.RunBash(exec_cmd{end});
                         end
@@ -3144,7 +3152,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             end
                             all_DWI_str = [ all_DWI_str ' ' out_dwi2firstb0{kk} ]  ;
                         end
-                        exec_cmd{end+1,:} = [ 'fslmerge -t ' obj.Params.B0MoCo.out.fn{jj}  ' ' all_DWI_str ];
+                        exec_cmd{end+1,:} = [ obj.FSL_dir 'bin/fslmerge -t ' obj.Params.B0MoCo.out.fn{jj}  ' ' all_DWI_str ];
                         fprintf('\n(FSL)Fslmerging all newer b0MoCo corrected volumes...')
                         obj.RunBash(exec_cmd{end});
                         wasRun=true;
@@ -5891,19 +5899,9 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 end
             end
         end
-        function [echoFN, temp_shell] = whatecho(obj)
-            [~, full_shell]=system('echo $SHELL');
-            [~, temp_shell ] = fileparts(full_shell);
-                if strcmp(strtrim(temp_shell),'bash')
-                    echoFN='echo -e ';
-                else
-                    echoFN='echo ';
-                end
-                
-        end
         
         function [oneliner ] = addtoSHELLPATH(obj,file_path)
-            [ ~ , temp_shell ] = obj.whatecho();
+            [ ~ , temp_shell ] = system('echo $SHELL');
             [sys_ok, temp_PATH ] = system('echo $PATH');
             if sys_ok ~= 0
                 error('Error when trying to look for the SHELL path! ');
@@ -5917,7 +5915,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             %Added path here:
             added_PATH = strtrim(regexprep(temp_PATH,file_path,file_path));
-            if strcmp(temp_shell,'bash')
+            [~ , temp_shell_bname ] = fileparts(temp_shell);
+            if strcmp(strtrim(temp_shell),'bash')
                 oneliner = ['export PATH = ' added_PATH ' ; ' ];
             else
                 oneliner = ['setenv PATH ' added_PATH ' ; ' ];

@@ -1,4 +1,4 @@
-classdef dwi_ADRC < dwiMRI_Session
+ classdef dwi_ADRC < dwiMRI_Session
     %%  This class is a subclass of its parent class dwi_MRI_Session.m
     %%  (where it will inherent other methods).
     %%  Created by: RodrigoPereaCamargo ~~> rperea14@live.com
@@ -58,7 +58,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %CHECK CHANGES MADE FROM /eris to /cluster
             %CODE CAN BE RECYCLE TO CHANGE VARIABLE STRINGS WITHIN THE
             %OBJECT
-            if ~strcmp(strtrim(obj.FS_location),'/cluster/bang/ADRC/FreeSurferv6.0/')
+            if strcmp(strtrim(obj.FS_location),'/eris/bang/ADRC/FreeSurferv6.0/')
                 display('Changing eris to cluster folder...');
                 %Then apply the mod to cluster...
                 newobj = replaceObjText_v2(obj,{'eris'},{'cluster'});
@@ -109,7 +109,7 @@ classdef dwi_ADRC < dwiMRI_Session
             %FreeSurfer Dependencies
             obj.FS_location='/cluster/bang/ADRC/FreeSurferv6.0/';
             obj.init_FS = '/usr/local/freesurfer/stable6';
-            
+            obj.FSL_dir = '/usr/pubsw/packages/fsl/5.0.9/';
             %Trkland dependencies:
             obj.fx_template_dir='/autofs/cluster/bang/ADRC/TEMPLATES/FX_1.8mm_orig/';
             

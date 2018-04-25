@@ -455,6 +455,8 @@ classdef dwi_HAB < dwiMRI_Session
             %Freesurfer Dependencies:
             obj.init_FS = '/usr/local/freesurfer/stable6';
             obj.FS_location='/cluster/bang/HAB_Project1/FreeSurferv6.0';
+            obj.FSL_dir = '/usr/pubsw/packages/fsl/5.0.9/';
+            
             %DataCentral (if false, we won't upload)
             obj.dctl_flag = false;
             
