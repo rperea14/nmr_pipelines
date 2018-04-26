@@ -191,7 +191,8 @@
             %Some optional parameters specific to what SHELL envinroment is
             %being used. If 'rdp20' then syntanx should be in bash.
             %Otherwise, the syntax should be in csh/tsch
-            [ ~, tmpb ] = system('whoami ');
+            [ ~, tmp_shell ] = system('echo $SHELL ');
+            [~, tmpb ] = fileparts(tmp_shell);
             obj.Params.FreeSurfer.shell = strtrim(tmpb);
             
             obj.proc_getFreeSurfer();
@@ -290,7 +291,7 @@
                 [~ , obj.Params.T1toDWI.in.T1 ] = system(['ls ' obj.session_location 'T1' filesep 'gnc_T1.nii' ]);
                 obj.Params.T1toDWI.in.T1=strtrim(obj.Params.T1toDWI.in.T1);
             end
-            obj.proc_T1toDWI(); % ~~~> NOT IN COMPILED VERSION
+            %obj.proc_T1toDWI(); % ~~~> NOT IN COMPILED VERSION
                 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For DWI combined DTIFIT:
@@ -357,8 +358,7 @@
         
         function obj = CommonPostProc(obj)
             %PREPARE T1 for Normalization using spm:
-            obj.prep_spmT1_proc(); % ~~~~> NOT INCLUDED IN COMPILED
-            %VERSION! 
+            %obj.prep_spmT1_proc(); % ~~~~> NOT INCLUDED IN COMPILED VERSION! 
          
             %TRACULA RELATED:
             for tohide=1:1
@@ -390,8 +390,7 @@
                 %Interpolation n:
                 obj.Trkland.fx.in.n_interp=40; %According to ~average value on previous studies in connectome!
              
-                obj.trkland_fx();  %~~~> NOT INCLUDED IN COMPILED
-               % VERSION!!
+                %obj.trkland_fx();  %~~~> NOT INCLUDED IN COMPILED VERSION!!
             end
           
             %MODIFIED OR DEPRECATED CODE, CHECK COMENTED CODE BELOW:

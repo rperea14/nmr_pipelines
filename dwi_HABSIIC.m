@@ -234,7 +234,7 @@ classdef dwi_HABSIIC < dwiMRI_Session
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For B0mean:
             obj.Params.B0mean.in.movefiles = ['..' filesep '03_B0mean'];
-            obj.Params.B0mean.in.fn=obj.Params.B0MoCo.out.fn;
+            obj.Params.B0mean.in.fn=dir_wfp([obj.root 'Orig/dMRI*.nii*']) %obj.Params.B0MoCo.out.fn;
             
             obj.Params.B0mean.in.b0_nvols=[]; %states number of volumes at the beginning. Is empty, select b0 volumes automatically
             %instead use the location of bvals:
@@ -728,7 +728,6 @@ classdef dwi_HABSIIC < dwiMRI_Session
                 end
                 obj.Params.GradNonlinCorrect.out.fn{ii,1} = outfile;
             end
-            
             % obj.UpdateHist(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.warpfile,wasRun);
         end
     end

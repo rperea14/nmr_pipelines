@@ -247,10 +247,10 @@ classdef dwi_HAB < dwiMRI_Session
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %For FreeSurfer recon-all
-            [ tmpa, tmpb ] = system('whoami ');
-            %[ tmpa, tmpb ] = system('echo $0');
-            %[~,  tmpshell , ~] = fileparts(tmpb);
+            [ ~, tmp_shell ] = system('echo $SHELL ');
+            [~, tmpb ] = fileparts(tmp_shell);
             obj.Params.FreeSurfer.shell = strtrim(tmpb); %strtrim(tmpshell);
+            
             obj.Params.FreeSurfer.dir = obj.FS_location ;
             obj.Params.FreeSurfer.init_location = obj.init_FS; 
             %Retrieving a T1 scan:

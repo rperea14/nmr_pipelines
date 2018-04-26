@@ -670,7 +670,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 exec_cmd{:}='#INIT PROC_B0s_MOCO()';
             end
             %Align all images interpersed to the refB0 image. If not
-            %outputted, then assigning the first one. 
+            %outputted, then assigning the first one.
             %refB0 index starts at 1. so if first b0 is used
             %(vol0000.nii.gz), then refB0 should be '1' and not '0'
             if nargin < 2
@@ -679,7 +679,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 pause(2)
             end
             
-            %Iterate between B0s. 
+            %Iterate between B0s.
             for jj=1:numel(obj.Params.B0MoCo.in.fn)
                 clear cur_fn;
                 %INIT VARIABLES:
@@ -693,7 +693,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %Creating an output directory:
                 outpath=obj.getPath(a,obj.Params.B0MoCo.in.movefiles);
                 %Initializing obj.Params.B0MoCo.out.XX:
-                obj.Params.B0MoCo.out.fn{jj}= [ outpath obj.Params.B0MoCo.in.prefix b c ] ;
+                if strcmp(c,'.nii') %not gzipped
+                    obj.Params.B0MoCo.out.fn{jj}= [ outpath obj.Params.B0MoCo.in.prefix b c '.gz' ] ;
+                else
+                    obj.Params.B0MoCo.out.fn{jj}= [ outpath obj.Params.B0MoCo.in.prefix b c ] ;
+                end
                 %Is the fname *.nii? or *.nii.gz
                 if strcmp(c,'.nii')
                     obj.Params.B0MoCo.out.bvecs{jj}= [ outpath  obj.Params.B0MoCo.in.prefix strcat(b,'','.voxel_space.bvecs') ];
@@ -759,12 +763,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     fprintf('\n\tSTEP3: CREATING MATFILES WITHIN B0s\n'); pause(1);
                     for ii=1:numel(tmp_bval_idx)
                         if strcmpi(obj.projectID,'habsiic')
-                            tval = 5;
+                            b0_tval = 5;
                         else
-                            tval = 0;
+                            b0_tval = 0;
+                            
                         end
                         %If the value is 0, then its a B0 image
-                        if tmp_bval_idx(ii) == tval %it it's a b0 image
+                        if tmp_bval_idx(ii) == b0_tval %it it's a b0 image
                             %Init variables used below:
                             outmat_dwi2refb0{ii} =  [ tmp_fslsplit 'toref_' bn_curdwi{ii} '_2_' bn_refB0 '.mat' ];
                             if ii == refB0 %Reference B0Volume_irst b0 volume
@@ -824,13 +829,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         fprintf(['\t\tIn 3D volume:' bn_curdwi{ii}  ' and matlab index: ' num2str(ii) '\n' ])
                         %Applying apply_warp and convert_xfm
                         if ii==refB0 %b0 ref index in MATLAB notation (e.g. index 0000.nii.gz is refB0=1)
-                            %Copy refb0:
+                            %Copy refb0 (for reference b0s to be used):
                             if exist(final_nii_dwi2B0{ii} ,'file') == 0 || obj.redo_history
                                 exec_cmd{end+1,:}=[ 'cp -r ' cur_in_dwi{ii} ' ' final_nii_dwi2B0{ii}  ];
                                 obj.RunBash(exec_cmd{end});
                                 wasRun=true;
                             end
-                            %Copy eye.mat matrix
+                            %Copy eye.mat matrix (for reference b0 chosen)
                             if exist(final_mat_dwi2B0{ii} ,'file') == 0 || obj.redo_history
                                 exec_cmd{end+1,:}=[ 'cp -r ' omat_2_refb0{ii} ' ' final_mat_dwi2B0{ii}  ]; %only for consistency
                                 obj.RunBash(exec_cmd{end});
@@ -878,8 +883,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             end
                             %Apply flirt with the created final_mat_dwi2B0{ii}
                             if exist(final_nii_dwi2B0{ii} ,'file') == 0 || obj.redo_history
-                                exec_cmd{end+1,:}=[obj.FSL_dir 'bin/flirt -in ' cur_in_dwi{ii} ...
-                                    ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp nearestneighbour'  ];
+                                %CHANGED TO SPLINE RESAMPLING (TEND TO HAVE BETTER RESULTS)
+                                %BUT KEEP PREVIOUS PROCESSING STEPS FOR
+                                %ADRC THE SAME:
+                                if strcmpi(obj.projectID,'ADRC')
+                                    exec_cmd{end+1,:}=[obj.FSL_dir 'bin/flirt -in ' cur_in_dwi{ii} ...
+                                        ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp nearestneighbour'  ];
+                                else
+                                    exec_cmd{end+1,:}=[obj.FSL_dir 'bin/flirt -in ' cur_in_dwi{ii} ...
+                                        ' -ref ' refB0_fname ' -applyxfm  -init ' final_mat_dwi2B0{ii} ' -out ' final_nii_dwi2B0{ii} ' -interp spline'  ];
+                                end
                                 obj.RunBash(exec_cmd{end});
                                 wasRun=true;
                             end
@@ -892,7 +905,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     %%%%%%%%STEP5: APPLYING TRANSFORMS TO BVECS AND COPY BVALS
                     %BVECS:
                     %Applying rotate_bvecs.sh...
-                     if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || obj.redo_history
+                    if exist(obj.Params.B0MoCo.out.bvecs{jj},'file') == 0 || obj.redo_history
                         fprintf('\n\tSTEP5a: APPLYING TRANSFORMS TO BVECS AND COPY BVALS \n');
                         fprintf('Applying rotation only .mat files to bvecs..');
                         TEMP_BVEC = load(obj.Params.B0MoCo.in.bvecs{jj});
@@ -939,11 +952,11 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                     if strcmp(c,'.nii')
                         fn_out = strcat(obj.Params.B0MoCo.out.fn{jj},'.gz');
                     else
-                        fn_out = obj.Params.B0MoCo.out.fn{jj}; 
+                        fn_out = obj.Params.B0MoCo.out.fn{jj};
                     end
                     
                     if exist(fn_out,'file')==0 || obj.redo_history
-                        fprintf('\n\tSTEP6: MERGING MOTION CORRECTED DWI \n'); pause(1);  for tohide=1:1
+                        fprintf('\n\tSTEP6: MERGING SINGELE MOTION CORRECTED DWIs \n'); pause(1);  for tohide=1:1
                             clear all_niis
                             for bb=1:numel(final_nii_dwi2B0)
                                 if bb==1
@@ -957,19 +970,20 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             wasRun=true;
                             obj.RunBash(exec_cmd{end});
                         end
-                        fprintf('\n\t\tDONE STEP6! (MERGING MOTION CORRECTED DWI) \n'); pause(1);
+                        fprintf('\n\t\tDONE STEP6! (MERGING SINGLE MOTION CORRECTED DWIs) \n'); pause(1);
                     end
                     %%%%%%%%
+                else
+                    fprintf([ '\t ' obj.Params.B0MoCo.out.fn{jj} ' exists. Nothing to do... \n' ]);
                 end
+                %%%%%%%%
+                %TO UPDATE HISTORY AND RESAVE:
+                if wasRun == true
+                    obj.UpdateHist_v2(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun,exec_cmd');
+                    obj.resave();
+                end
+                %%%%%%%%
             end
-            %%%%%%%%
-            %TO UPDATE HISTORY AND RESAVE:
-            if wasRun == true
-                obj.UpdateHist_v2(obj.Params.B0MoCo,'proc_B0MoCo', obj.Params.B0MoCo.out.fn{jj},wasRun,exec_cmd');
-                obj.resave();
-            end
-            %%%%%%%%
-            
         end
  
         function obj = proc_bet2(obj)
@@ -1674,7 +1688,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             
             
             %PREPARING THE SHELLS (THIS SHOULD CHANGE!!):
-            if strcmp(obj.Params.FreeSurfer.shell,'rdp20') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
+            if strcmp(obj.Params.FreeSurfer.shell,'bash') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
                 export_shell=[ 'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
                     ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
                     ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; '];
@@ -1840,7 +1854,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.RunBash(['mkdir -p ' outpath filesep 'aparc2009_aseg' filesep]);
                 obj.RunBash(['mkdir -p ' outpath filesep 'hippos' filesep]);
                 %Sourcing FS and SUBJECTS_DIR:
-                if strcmp(obj.Params.FreeSurfer.shell,'rdp20') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
+                if strcmp(obj.Params.FreeSurfer.shell,'bash') %due to launchpad errors, I decided to use this 'whoami' instead of shell. NEED TO FIX IT!
                     export_shell=[ 'export FREESURFER_HOME=' obj.Params.FreeSurfer.init_location ' ; '...
                         ' source $FREESURFER_HOME/SetUpFreeSurfer.sh ;' ...
                         ' export SUBJECTS_DIR=' obj.Params.FreeSurfer.dir ' ; '];
@@ -3060,12 +3074,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             out_dwi2firstb0{ii} =  [ tmp_fslsplit 'dwi' strrep(bn_curdwi{ii},'.nii','') '_2_modfirstb0.nii.gz' ];
                             
                             if strcmpi(obj.projectID,'habsiic')
-                                tval=5;
+                                b0_tval=5; %For some reason the b0-value in project HABS_IIC (TAW, HCP-A, same project different names has a b0 value of 5) 
                             else
-                                tval=0;
+                                b0_tval=0;
                             end
                             %Bbregister starts here (only for b0s!):
-                            if tmp_bval_idx(ii) == tval %it it's a b0 image
+                            if tmp_bval_idx(ii) == b0_tval %it it's a b0 image
                                 flag_b0_idx = ii ;
                                 %Init variables (b0 dependable):
                                 out_trnii{ii}= [ tmp_fslsplit 'dwi_' strrep(bn_curdwi{ii},'.nii','') '_2_fsT1.nii.gz' ];
