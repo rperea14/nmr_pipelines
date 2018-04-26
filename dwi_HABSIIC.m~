@@ -132,27 +132,69 @@ classdef dwi_HABSIIC < dwiMRI_Session
         
         %COMMON METHODS THAT CALL post_XXX METHODS IN SUPERCLASS dwiMRI_Session.m:
         function obj = CommonPreProc(obj)
-            keyboard; 
-%             if isempty(obj.rawfiles)
-%                 obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii*' ] );
-%                 if isempty(obj.rawfiles)
-%                     error('Cannot find any *.nii* files in obj.root/Orig/*.nii*. Please check')
-%                 end
-%             end           
-            %% check that the AP/PA files are chosen correctly.
-            if isempty(dir_wfp([obj.root '01_GNC/gnc_dMRI*AP.nii']))
+            %keyboard; 
+            if isempty(obj.rawfiles)
+                obj.rawfiles = dir_wfp([obj.root 'Orig' filesep '*.nii*' ] );
+                if isempty(obj.rawfiles)
+                    error('Cannot find any *.nii* files in obj.root/Orig/*.nii*. Please check')
+                end
+            end           
+
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %01_Merging all the AP and PAs DWIs
+            fprintf('MERGING DWIs...\n');
+            obj.Params.mergeDWIs.root =[obj.root '01_MergedDWIs/'];
+            if exist(obj.Params.mergeDWIs.root,'dir') == 0 
+                mkdir(obj.Params.mergeDWIs.root);
+            end
+            %AP:
+            for tohide=1:1
+                % INPUT:
+                obj.Params.mergeDWIs.AP.in.dwi = dir_wfp([obj.root 'Orig/dMRI*AP*.nii*']) ;
+                for ii=1:numel(obj.Params.mergeDWIs.AP.in.dwi)
+                    obj.Params.mergeDWIs.AP.in.bval{ii} = strrep(obj.Params.mergeDWIs.AP.in.dwi{ii},'.nii','.bval');
+                    obj.Params.mergeDWIs.AP.in.bvec{ii} = strrep(obj.Params.mergeDWIs.AP.in.dwi{ii},'.nii','.bvec');
+                end
+                % OUTPUT:
+                obj.Params.mergeDWIs.AP.out.dwi  = [ obj.Params.mergeDWIs.root 'merged_dMRI_AP.nii' ];
+                obj.Params.mergeDWIs.AP.out.bval = [ obj.Params.mergeDWIs.root 'merged_dMRI_AP.bvals' ];
+                obj.Params.mergeDWIs.AP.out.bvec = [ obj.Params.mergeDWIs.root 'merged_dMRI_AP.voxel_space.bvecs' ];
+            end
+            %Run the common method to merge:
+            obj.proc_mergeDWIs(obj.Params.mergeDWIs.AP.in,obj.Params.mergeDWIs.AP.out);
             
+            %PA:
+            for tohide=1:1
+                % INPUT:
+                obj.Params.mergeDWIs.PA.in.dwi = dir_wfp([obj.root 'Orig/dMRI*PA*.nii*']) ;
+                for ii=1:numel(obj.Params.mergeDWIs.PA.in.dwi)
+                    obj.Params.mergeDWIs.PA.in.bval{ii} = strrep(obj.Params.mergeDWIs.PA.in.dwi{ii},'.nii','.bval');
+                    obj.Params.mergeDWIs.PA.in.bvec{ii} = strrep(obj.Params.mergeDWIs.PA.in.dwi{ii},'.nii','.bvec');
+                end
+                % OUTPUT:
+                obj.Params.mergeDWIs.PA.out.dwi  = [ obj.Params.mergeDWIs.root 'merged_dMRI_PA.nii' ];
+                obj.Params.mergeDWIs.PA.out.bval = [ obj.Params.mergeDWIs.root 'merged_dMRI_PA.bvals' ];
+                obj.Params.mergeDWIs.PA.out.bvec = [ obj.Params.mergeDWIs.root 'merged_dMRI_PA.voxel_space.bvecs' ];
+            end
+            %Run the common method to merge:
+            obj.proc_mergeDWIs(obj.Params.mergeDWIs.PA.in,obj.Params.mergeDWIs.PA.out);
+            fprintf('DONE MERGING DWIs...\n');
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %02_GNC
+            %% check that the AP/PA files are chosen correctly.
+            if isempty(dir_wfp([obj.root '02_GNC/gnc_merged_dMRI*AP.nii']))
                 obj.Params.GradNonlinCorrect.in.movefiles = '';
                 obj.Params.GradNonlinCorrect.in.prefix = 'gnc_';
                 obj.Params.GradNonlinCorrect.in.gradfile = '/autofs/cluster/hab/HAB/HABS_IIC/Scripts/coeff_AS82.grad';
-                fn = dir_wfp([obj.root 'Orig/dMRI*AP*.nii*']);
+                fn = dir_wfp([obj.root '01_MergedDWIs/merged_dMRI*AP*.nii*']);
                 obj.Params.GradNonlinCorrect.in.fn = fn;
-                
-                mkdir([obj.root '01_GNC/AP_dwi_grads']);
-                
+                if exist([obj.root '02_GNC/AP_dwi_grads'],'dir') == 0
+                    mkdir([obj.root '02_GNC/AP_dwi_grads']);
+                end
                 [m, h] = read_image([fn{1} ',1'],0);
                 h = h(1);
-                h.fname = [obj.root '01_GNC/AP_dwi_grads/firstb0.nii'];
+                h.fname = [obj.root '02_GNC/AP_dwi_grads/firstb0.nii'];
                 spm_write_vol(h,m);
                 
                 obj.Params.GradNonlinCorrect.in.target = h.fname;
@@ -162,31 +204,22 @@ classdef dwi_HABSIIC < dwiMRI_Session
                 obj.Params.GradNonlinCorrect.out.fn = [];
                 obj.proc_gradient_nonlin_correct();
                 
-                system(['mv ' obj.root 'Orig/gnc* ' obj.root '01_GNC/']);
-                
-                %%%
-%                 mkdir([rp 'CommonProc/01_GNC/AP_se_grads'])
-%                 system(['cp ' rp 'Orig/0*SpinEcho*AP*.nii ' rp 'CommonProc/01_GNC/AP_se_grads/'])
-%                 obj.Params.GradNonlinCorrect.in.fn = [];
-%                 obj.Params.GradNonlinCorrect.in.target = char(dir_wfp([rp 'CommonProc/01_GNC/AP_se_grads/0*.nii']));
-%                 obj.proc_gradient_nonlin_correct;
-%                 
-%                 system(['mv ' rp 'CommonProc/01_GNC/AP_se_grads/gnc_0*AP.nii ' rp 'CommonProc/01_GNC/']);
+                system(['mv ' obj.root '01_MergedDWIs/gnc* ' obj.root '01_GNC/']);
             end
             %%
-             if isempty(dir_wfp([obj.root '01_GNC/gnc_dMRI*PA.nii']))
+             if isempty(dir_wfp([obj.root '02_GNC/gnc_merged_dMRI*PA.nii']))
             
                 obj.Params.GradNonlinCorrect.in.movefiles = '';
                 obj.Params.GradNonlinCorrect.in.prefix = 'gnc_';
                 obj.Params.GradNonlinCorrect.in.gradfile = '/autofs/cluster/hab/HAB/HABS_IIC/Scripts/coeff_AS82.grad';
-                fn = dir_wfp([obj.root 'Orig/dMRI*PA*.nii*']);
+                fn = dir_wfp([obj.root '01_MergedDWIs/merged_dMRI*PA*.nii*']);
                 obj.Params.GradNonlinCorrect.in.fn = fn;
                 
-                mkdir([obj.root '01_GNC/PA_dwi_grads']);
+                mkdir([obj.root '02_GNC/PA_dwi_grads']);
                 
                 [m, h] = read_image([fn{1} ',1'],0);
                 h = h(1);
-                h.fname = [obj.root '01_GNC/PA_dwi_grads/firstb0.nii'];
+                h.fname = [obj.root '02_GNC/PA_dwi_grads/firstb0.nii'];
                 spm_write_vol(h,m);
                 
                 obj.Params.GradNonlinCorrect.in.target = h.fname;
@@ -196,32 +229,20 @@ classdef dwi_HABSIIC < dwiMRI_Session
                 obj.Params.GradNonlinCorrect.out.fn = [];
                 obj.proc_gradient_nonlin_correct();
                 
-                system(['mv ' obj.root 'Orig/gnc* ' obj.root '01_GNC/']);
-                
-                %%%
-%                 mkdir([rp 'CommonProc/01_GNC/AP_se_grads'])
-%                 system(['cp ' rp 'Orig/0*SpinEcho*AP*.nii ' rp 'CommonProc/01_GNC/AP_se_grads/'])
-%                 obj.Params.GradNonlinCorrect.in.fn = [];
-%                 obj.Params.GradNonlinCorrect.in.target = char(dir_wfp([rp 'CommonProc/01_GNC/AP_se_grads/0*.nii']));
-%                 obj.proc_gradient_nonlin_correct;
-%                 
-%                 system(['mv ' rp 'CommonProc/01_GNC/AP_se_grads/gnc_0*AP.nii ' rp 'CommonProc/01_GNC/']);
+                system(['mv ' obj.root '01_MergedDWIs/gnc* ' obj.root '02_GNC/']);
             end
             %%
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %03_B0 motion correciton (based on interspersed b0s)
-            obj.Params.B0MoCo.in.movefiles = '../02_B0s_MoCo/';
-            obj.Params.B0MoCo.in.fn = dir_wfp([obj.root '01_GNC/gnc_dMRI*.nii']);
+            obj.Params.B0MoCo.in.movefiles = '../03_B0s_MoCo/';
+            obj.Params.B0MoCo.in.fn = dir_wfp([obj.root '02_GNC/gnc_merged_dMRI*.nii']);
+            %Assigning bvecs, bvals:
             bvals = []; bvecs = [];
             for ii = 1:numel(obj.Params.B0MoCo.in.fn)
-                [s1 s2 s3] = fileparts(obj.Params.B0MoCo.in.fn{ii});
-                tmp = dir_wfp([obj.root 'Orig/' regexprep(s2,'gnc_','') '.bval']);
-                bvals{ii,1} = tmp{1};
-                tmp = dir_wfp([obj.root 'Orig/' regexprep(s2,'gnc_','') '.bvec']);
-                bvecs{ii,1} = tmp{1};
+                [s1, s2, s3] = fileparts(obj.Params.B0MoCo.in.fn{ii});
+                obj.Params.B0MoCo.in.bvals{ii,1} = ([obj.root '01_MergedDWIs/' regexprep(s2,'gnc_','') '.bvals']);
+                obj.Params.B0MoCo.in.bvecs{ii,1} = ([obj.root '01_MergedDWIs/' regexprep(s2,'gnc_','') '.voxel_space.bvecs']);
             end
-            obj.Params.B0MoCo.in.bvals = bvals;
-            obj.Params.B0MoCo.in.bvecs = bvecs;
             obj.Params.B0MoCo.in.prefix = 'moco_';
             
             obj.Params.B0MoCo.in.refB0 = 1 ; %First b0! 
@@ -232,15 +253,26 @@ classdef dwi_HABSIIC < dwiMRI_Session
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            %For B0mean:
-            obj.Params.B0mean.in.movefiles = ['..' filesep '03_B0mean'];
-            obj.Params.B0mean.in.fn=obj.Params.B0MoCo.out.fn;
-            obj.Params.B0mean.in.b0_nvols=[]; %states number of volumes at the beginning. Is empty, select b0 volumes automatically
+            %04_B0mean:
+            obj.Params.B0mean.in.movefiles = ['..' filesep '04_B0mean'];
+            obj.Params.B0mean.in.fn= obj.Params.B0MoCo.out.fn;
             
+            obj.Params.B0mean.in.b0_nvols=[]; %states number of volumes at the beginning. Is empty, select b0 volumes automatically
+            %instead use the location of bvals:
+            obj.Params.B0mean.in.fn_bvals=obj.Params.B0MoCo.out.bvals;
+            %and a b0indx:
+            obj.Params.B0mean.in.b0idx =5;
             obj.proc_meanb0();
             
             
-            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %05_TOPUP:
+            obj.Params.Topup.in.movefiles = ['..' filesep '05_Topup'];
+            obj.Params.Topup.in.fn_AP= dir_wfp([obj.root '03_B0s_MoCo/moco_gnc_merged_dMRI*AP.nii*']);
+            obj.Params.Topup.in.fn_PA= dir_wfp([obj.root '03_B0s_MoCo/moco_gnc_merged_dMRI*PA.nii*']);
+            obj.Params.Topup.in.b0_AP= dir_wfp([obj.root '04_B0mean/b0mean*AP.nii*']);
+            obj.Params.Topup.in.b0_PA= dir_wfp([obj.root '03_B0mean/b0eman*PA.nii*']);
+            obj.Params.Topup.in.acqp_params = [] 
             
             %%
             %%%%%%%%%%%%
@@ -724,7 +756,6 @@ classdef dwi_HABSIIC < dwiMRI_Session
                 end
                 obj.Params.GradNonlinCorrect.out.fn{ii,1} = outfile;
             end
-            
             % obj.UpdateHist(obj.Params.GradNonlinCorrect,'proc_gradient_nonlin_correct',obj.Params.GradNonlinCorrect.out.warpfile,wasRun);
         end
     end

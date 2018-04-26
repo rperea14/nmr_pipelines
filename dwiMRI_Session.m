@@ -741,8 +741,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             %Get single dwi (indexed at 0000 or 0010)
                             if ii < 11 % (idx start at 1 in matlab but fslsplit idx starts at 0, hence the difference!!
                                 cur_in_dwi{ii} = [ tmp_fslsplit '000' num2str(dwi_idx) '.nii.gz' ];
-                            else
+                            elseif ii < 101
                                 cur_in_dwi{ii} = [ tmp_fslsplit '00' num2str(dwi_idx) '.nii.gz' ];
+                            else
+                                cur_in_dwi{ii} = [ tmp_fslsplit '0' num2str(dwi_idx) '.nii.gz' ];
                             end
                             [ ~, bn_curdwi{ii}, ~ ] = fileparts(cur_in_dwi{ii});
                             %Remove '.nii' string notation if exists:
@@ -1255,15 +1257,12 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %create an if statement to separate this (earlier)
                 %implementation with the later one (for HABS_IISC):
                 if ~strcmpi(obj.projectID,'hab')
-                    
                     %Check equal number of elementes in *Bval and *fnames:
                     if numel(obj.Params.B0mean.in.fn) ~= numel(obj.Params.B0mean.in.fn_bvals)
-                        error('proc_meanb0(): Number of bvals are not equalt to number of U.niis files inputted. Please check!')
+                        error('proc_meanb0(): Number of bvals are not equalt to number of U.niis files inputted. Please check!');
                     end
-                    
                     %CHECK IF B0Mean exists:
                     if exist(obj.Params.B0mean.out.fn{jj}, 'file') == 0 || obj.redo_history
-                        
                         %Splitting the current DWI:
                         clear tmp_fslsplit;
                         tmp_fslsplit=[ outpath 'tmp' filesep ...
@@ -1271,7 +1270,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         if exist([tmp_fslsplit '0000.nii.gz' ],'file') == 0  || obj.redo_history
                             exec_cmd{:,end+1} = (['mkdir -p ' tmp_fslsplit ] );
                             obj.RunBash(exec_cmd{end});
-                            fprintf(['spliting..' obj.Params.B0MoCo.in.fn{jj}  ]);
+                            fprintf(['splitting..' obj.Params.B0MoCo.in.fn{jj}  ]);
                             exec_cmd{:,end+1}=([obj.FSL_dir  'bin/fslsplit ' obj.Params.B0MoCo.in.fn{jj} ...
                                 ' ' tmp_fslsplit ' -t ']);
                             obj.RunBash(exec_cmd{end});
@@ -1294,8 +1293,10 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                                 %Get single dwi (indexed at 0000 or 0010)
                                 if ii < 11 % (idx start at 1 in matlab but fslsplit idx starts at 0, hence the difference!!
                                     cur_in_dwi{ii} = [ tmp_fslsplit '000' num2str(dwi_idx) '.nii.gz' ];
-                                else
+                                elseif ii < 101
                                     cur_in_dwi{ii} = [ tmp_fslsplit '00' num2str(dwi_idx) '.nii.gz' ];
+                                else 
+                                    cur_in_dwi{ii} = [ tmp_fslsplit '0' num2str(dwi_idx) '.nii.gz' ];
                                 end
                                 [ ~, bn_curdwi{ii}, ~ ] = fileparts(cur_in_dwi{ii});
                                 %Remove '.nii' string notation if exists:
@@ -1363,6 +1364,56 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.resave();
             end
             
+        end
+        
+        function obj = proc_topup(obj)
+            wasRun=false;
+            if ~exist('exec_cmd','var')
+                exec_cmd{:} = '#INIT PROC_TOPUP()';
+            end
+            fprintf('\n%s\n', 'PERFORMING PROC_TOPUP():');
+            
+            [a, b, c ] = fileparts(obj.Params.Topup.in.fn_AP{end});
+            outpath=obj.getPath(a,obj.Params.Topup.in.movefiles);
+            
+            obj.Params.Topup.out.b0merged = [outpath 'meanb0s_AP_PA.nii.gz' ] ;
+            
+            obj.Params.Topup.out.fname_acqp = [ outpath 'acqp.txt'] ;
+            if exist(obj.Params.Topup.out.fname_acqp,'file') == 0
+                fprintf('\nCreating acqp.txt...');
+                fileID=fopen(obj.Params.Topup.out.fname_acqp,'w');
+                fprintf(fileID,'%f %f %f %f \n',obj.Params.Topup.in.acqp_params');
+                fclose(fileID)
+                fprintf('...done\n');
+            end
+            
+            %Merging b0s:
+            if exist(obj.Params.Topup.out.b0merged, 'file') == 0 
+                %Making sure a single 3D volums is passed per each pahse
+                %enconding
+                if numel(obj.Params.Topup.in.b0_AP) > 1 ; error('obj.Params.Topup.in.b0_AP contiains >1 filename. Please combine them before running topup') ; end
+                if numel(obj.Params.Topup.in.b0_PA) > 1 ; error('obj.Params.Topup.in.b0_AP contiains >1 filename. Please combine them before running topup') ; end
+                fprintf('\nMerging b0s...');
+                exec_cmd{:,end+1} = [obj.FSL_dir '/bin/fslmerge -t ' obj.Params.Topup.out.b0merged  ' ' obj.Params.Topup.in.b0_AP{end}  ' ' obj.Params.Topup.in.b0_PA{end}  ] ;
+                obj.RunBash(exec_cmd{end});
+                fprintf('...done\n')
+                wasRun =true;
+            end
+            
+            %Creating topup_config directory
+            obj.Params.Topup.out.cnf_dir = [outpath 'topup_results' filesep ] ; 
+            if exist(obj.Params.Topup.out.cnf_dir,'dir') == 0 
+                mkdir(obj.Params.Topup.out.cnf_dir);
+            end
+            
+            %Apply topup:
+            exec_cmd{:,end+1} = [obj.FSL_dir '/bin/topup --imain=' obj.Params.Topup.out.b0merged ' --datain=' obj.Params.Topup.out.fname_acqp  ' --config=b02b0.cnf  --out=' obj.Params.Topup.out.cnf_dir  ];
+            fprintf('\nApplying topup....');
+            obj.RunBash(exec_cmd{end},44); %44 allows us to see output in the MATLAB terminal window. 
+            fprintf('...done');
+            wasRun =true;
+            
+            fprintf('\n%s\n', 'END OF PROC_MEANB0():');
         end
         
         function obj = proc_mask_after_eddy(obj)
@@ -2111,6 +2162,65 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
         end
              
         %Use when multiple DWIs sequences are acquired
+        function obj = proc_mergeDWIs(obj,in,out)
+            %in should be formatted: in.dwi in.bval in.bvec
+            %out should be formatted: out.dwi out.bval out.bvec
+            
+            
+            AA=2;
+            if exist(out.dwi,'file') == 0
+                tmp_nii = '' ;
+                for ii=1:numel(in.dwi)
+                    tmp_nii = [ tmp_nii in.dwi{ii} ' '  ] ;
+                    if exist(in.bval{ii}, 'file' ) ~= 0 ;
+                        tmp_bval{ii} = load(in.bval{ii});
+                        if size(tmp_bval{ii},1) < size(tmp_bval{ii},2)  tmp_bval{ii} = tmp_bval{ii}' ; end
+                    else
+                        error(['File: ' in.bval{ii} ' doest not exist' ] );
+                    end
+                    if exist(in.bvec{ii}, 'file' ) ~= 0 ;
+                        tmp_bvec{ii} = load(in.bvec{ii});
+                        if size(tmp_bvec{ii},1) < size(tmp_bvec{ii},2) ; tmp_bvec{ii} = tmp_bvec{ii}' ; end
+                    else
+                        error(['File: ' in.bvec{ii} ' doest not exist' ] );
+                    end
+                end
+                
+                %Merging Niis:
+                fprintf(['Merging using...']);
+                toexec = [ 'fslmerge -t ' out.dwi ' ' tmp_nii ] ;
+                fprintf([ toexec '\n']);
+                system(toexec);
+                fprintf('...done\n');
+                
+                %Is it in *.nii space? 
+                [a , b, c ] = fileparts(out.dwi);
+                if strcmp(c,'.nii')
+                    fprintf('gunzipping...')
+                    system(['gunzip ' out.dwi '.gz' ]);
+                    fprintf('done\n');
+                end
+            else
+                display([out.dwi ' exists. Nothing to do...']);
+            end
+            %Merging bvals and bvecs:
+            if exist(out.bval,'file') == 0
+                fileID=fopen(out.bval,'w');
+                for ii=1:numel(in.bval)
+                    fprintf(fileID,'%d \n',tmp_bval{ii});
+                end
+                fclose(fileID);
+            end
+            
+            if exist(out.bvec,'file') == 0
+                fileID=fopen(out.bvec,'w');
+                for ii=1:numel(in.bvec)
+                    fprintf(fileID,'%f %f %f \n',tmp_bvec{ii}'); %somehow transposing here for filewrite works correctly :/ 
+                end
+                fclose(fileID);
+            end
+        end
+        
         function obj = proc_coreg_multiple(obj)
             wasRun=false;
             fprintf('\n%s\n', 'PERFORMING PROC_COREG_MULTIPLE():');
@@ -2518,7 +2628,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                obj.Params.GQI=rmfield(obj.Params.GQI,'history_saved');
             end
         end
-          
+        
         %Data management (datacentral) related  methods:
         function obj = getDB(obj)
             R = DataCentral(['SELECT * FROM Sessions.MRI WHERE MRI_Session_Name="' obj.sessionname '"']);
@@ -3759,6 +3869,47 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         if size_mergeds ~=6
                             error(['Incomplete number of merged_* files in: ' obj.Params.probtrackx.bedp_dir  'Should be 6 and there is: ' num2str(size_mergeds)]);
                         end
+                        
+                        %Check if the merged* files have the same
+                        %dimensions as our data. If not, the best solution
+                        %is to re-run tracula:
+                        if isempty(obj.FSL_dir)
+                            obj.setMyParams();
+                        end
+                        [~, b0_dim1 ]  = system([obj.FSL_dir '/bin/fslinfo ' obj.Params.probtrackx.b0 '  | grep ^dim1 | awk ''{print $2}'' '   ]);
+                        b0_dim1=strtrim(b0_dim1);
+                        [~, b0_dim2 ]  = system([obj.FSL_dir '/bin/fslinfo ' obj.Params.probtrackx.b0 '  | grep ^dim2 | awk ''{print $2}'' '   ]);
+                        b0_dim2=strtrim(b0_dim2);
+                        [~, b0_dim3 ]  = system([obj.FSL_dir '/bin/fslinfo ' obj.Params.probtrackx.b0 '  | grep ^dim3 | awk ''{print $2}'' '   ]);
+                        b0_dim3=strtrim(b0_dim3);
+                        
+                        [~, merged_dim1 ]  = system([obj.FSL_dir '/bin/fslinfo ' temp_mergeds{end} '  | grep ^dim1 | awk ''{print $2}'' '   ]);
+                        merged_dim1=strtrim(merged_dim1);
+                        [~, merged_dim2 ]  = system([obj.FSL_dir '/bin/fslinfo ' temp_mergeds{end} '  | grep ^dim2 | awk ''{print $2}'' '   ]);
+                        merged_dim2=strtrim(merged_dim2);
+                        [~, merged_dim3 ]  = system([obj.FSL_dir '/bin/fslinfo ' temp_mergeds{end} '  | grep ^dim3 | awk ''{print $2}'' '   ]);
+                        merged_dim3=strtrim(merged_dim3);
+                        
+                        
+                        if str2num(b0_dim1) ~= str2num(merged_dim1)
+                            fprintf(['\ndim1 is not equal in: \n  obj.Params.probtrackx.b0  (' b0_dim1 ') and merged_th2samples.nii.gz (' merged_dim1  ')\n']) ;
+                            warning('This error occurs because TRACULA (or more specific bedpostx did not successfully completed');
+                            error('Please re-run TRACULA');
+                        end
+                        
+                        if str2num(b0_dim2) ~= str2num(merged_dim2)
+                            fprintf(['\ndim2 is not equal in: \n  obj.Params.probtrackx.b0  (' b0_dim2 ') and  merged_th2samples.nii.gz (' merged_dim2  ')\n']) ;
+                            warning('This error occurs because TRACULA (or more specific bedpostx did not successfully completed');
+                            error('Please re-run TRACULA');
+                        end
+                        
+                        if str2num(b0_dim3) ~= str2num(merged_dim3)
+                            fprintf(['\ndim3 is not equal in: \n  obj.Params.probtrackx.b0  (' b0_dim3 ') and merged_th2samples.nii.gz (' merged_dim3  ')\n']) ;
+                            warningn('This error occurs because TRACULA (or more specific bedpostx did not successfully completed\n');
+                            error('Please considere re-running TRACULA! ');
+                        end
+                        
+                        
                     else
                         error(['Cannot find bedpostx directory: ' ' Was obj.proc_tracula() completely run? Exiting now...']);
                     end

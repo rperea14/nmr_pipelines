@@ -36,6 +36,11 @@
                 donothing=1;
             end
             
+            %Reinitialize params if obj.FSL_dir is empty:
+            if isempty(obj.FSL_dir)
+               obj.setMyParams(); 
+            end
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %Check if you are in the right project (if not, probably obj.session_location doesn't exist:
             if ~exist([obj.session_location ],'dir')

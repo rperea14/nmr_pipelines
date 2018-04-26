@@ -57,6 +57,11 @@ classdef dwi_HAB < dwiMRI_Session
             end
             
             
+            %Reinitialize params if obj.FSL_dir is empty:
+            if isempty(obj.FSL_dir)
+               obj.setMyParams(); 
+            end
+            
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %CHECK CHANGES MADE FROM DWIs_XX/Sessions/DWIs to
             %Sessions/DWIs:
