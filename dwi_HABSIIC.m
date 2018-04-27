@@ -279,6 +279,46 @@ classdef dwi_HABSIIC < dwiMRI_Session
             
             obj.proc_topup();
             
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %For EDDY:
+            obj.Params.Eddy.in.movefiles = ['..' filesep '06_Eddy'];
+            
+            %Merginfiles before executing Eddy:
+            in_eddy.dwi = obj.Params.B0MoCo.out.fn';
+            in_eddy.bval = obj.Params.B0MoCo.out.bvals';
+            in_eddy.bvec = obj.Params.B0MoCo.out.bvecs';
+            out_eddy.dwi = [ obj.root '06_Eddy/merged_AP_PA_dMRI.nii.gz' ];
+            out_eddy.bval = [ obj.root '06_Eddy/merged_AP_PA_dMRI.bvals' ];
+            out_eddy.bvec = [ obj.root '06_Eddy/merged_AP_PA_dMRI.voxel_space.bvecs' ];
+            
+            obj.proc_mergeDWIs(in_eddy, out_eddy);
+            %...finished merging AP_PAs
+            
+            
+            obj.Params.Eddy.in.fn{1}=out_eddy.dwi;
+            obj.Params.Eddy.in.bvals{1}=out_eddy.bval;
+            obj.Params.Eddy.in.bvecs{1}=out_eddy.bvec;
+            obj.Params.Eddy.in.mask{1} =obj.Params.Topup.out.bet_mask;
+            obj.Params.Eddy.in.index= [ ones(1,199) -1*ones(1,199) ]; %for 35 volumes
+            obj.Params.Eddy.in.topup = obj.Params.Topup.out.cnf_prefix ; 
+            
+            %RePLACED
+            %obj.Params.Eddy.in.acqp= [ 0 -1 0 0.08201 ]; %PE=A>>P (-1 at Y ) Echo spacing = 0.59 and EPI factor = 140 ==> 0.59(EPI)*0.001*(PE-1)139
+            %WITH (only in this porject that uses TOPUP, the others will
+            %create it automatically give the .in.acqp...
+            obj.Params.Eddy.out.fn_acqp{1} =[ obj.root '06_Eddy/acqp.txt' ];
+            if exist(obj.Params.Eddy.out.fn_acqp{1} ,'file') == 0 
+                %AP direction:
+                for ii=1:199
+                    system(['printf " 0 1 0 0.096\n" >> ' obj.Params.Eddy.out.fn_acqp{1}  ]);
+                end
+                %PA direction:
+                for ii=1:199
+                    system(['printf " 0 -1 0 0.096\n" >> ' obj.Params.Eddy.out.fn_acqp{1}]);
+                end
+            end
+            obj.proc_eddy();
+            keyboard
             %%
             %%%%%%%%%%%%
 %             %02_GradCorrect

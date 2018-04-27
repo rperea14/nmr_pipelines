@@ -1052,11 +1052,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 outpath=obj.getPath(a,obj.Params.Eddy.in.movefiles);
                 clear outfile
                 %(dependency) Attempting to create acqp file:
-                obj.Params.Eddy.out.fn_acqp{ii}= [ outpath 'acqp.txt' ] ;
+                if isfield(obj.Params.Eddy,'out') == 0 
+                    obj.Params.Eddy.out = [] ; 
+                end
+                if isfield(obj.Params.Eddy.out,'fn_acqp') == 0 
+                    obj.Params.Eddy.out.fn_acqp{ii}= [ outpath 'acqp.txt' ] ;
+                end
+                %For HABSIIC, this should be passed in the child class
+                %after TOPUP is run:
                 if exist(obj.Params.Eddy.out.fn_acqp{ii},'file')==0 || obj.redo_history
-                    
-                    exec_cmd{:,end+1}=['echo " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
-                    
+                    exec_cmd{:,end+1}=['printf " ' num2str(obj.Params.Eddy.in.acqp) ' " >> ' obj.Params.Eddy.out.fn_acqp{ii}  ];
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_acqp{ii}  ]);
                     obj.RunBash(exec_cmd{end});
                     wasRun=true;
@@ -1065,7 +1070,7 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %(dependency) Attempting to create index file:
                 obj.Params.Eddy.out.fn_index{ii}= [ outpath 'index.txt' ] ;
                 if exist(obj.Params.Eddy.out.fn_index{ii},'file')==0 || obj.redo_history
-                    exec_cmd{:,end+1}=['echo "' num2str(obj.Params.Eddy.in.index) '" >> ' obj.Params.Eddy.out.fn_index{ii}  ];
+                    exec_cmd{:,end+1}=['printf "' num2str(obj.Params.Eddy.in.index) '" >> ' obj.Params.Eddy.out.fn_index{ii}  ];
                     fprintf(['\n Creating ' obj.Params.Eddy.out.fn_index{ii}  ]);
                     obj.RunBash(exec_cmd{end});
                     wasRun=true;
@@ -1076,7 +1081,16 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 obj.Params.Eddy.out.bvecs{ii} = [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','.eddy_rotated_bvecs') ];
                 %EXEC command to store:
                 if exist(obj.Params.Eddy.out.fn{ii},'file')==0 || obj.redo_history
-                        
+                    if isfield(obj.Params.Eddy.in,'topup')
+                         exec_cmd{:,end+1}=[  obj.FSL_dir 'bin/eddy_openmp  --imain=' obj.Params.Eddy.in.fn{ii} ...
+                            ' --mask=' obj.Params.Eddy.in.mask{ii} ...
+                            ' --index=' obj.Params.Eddy.out.fn_index{ii} ...
+                            ' --acqp='  obj.Params.Eddy.out.fn_acqp{ii}  ...
+                            ' --bvecs='  obj.Params.Eddy.in.bvecs{ii} ...
+                            ' --bvals=' obj.Params.Eddy.in.bvals{ii}  ...
+                            ' --topup='  obj.Params.Eddy.in.topup ...
+                            ' --repol --out=' [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','') ]  ];
+                    else
                         exec_cmd{:,end+1}=[  obj.FSL_dir 'bin/eddy_openmp  --imain=' obj.Params.Eddy.in.fn{ii} ...
                             ' --mask=' obj.Params.Eddy.in.mask{ii} ...
                             ' --index=' obj.Params.Eddy.out.fn_index{ii} ...
@@ -1084,11 +1098,13 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                             ' --bvecs='  obj.Params.Eddy.in.bvecs{ii} ...
                             ' --bvals=' obj.Params.Eddy.in.bvals{ii}  ...
                             ' --repol --out=' [ outpath obj.Params.Eddy.in.prefix strrep(b,'.nii','') ]  ];
-                        fprintf(['\nApplying eddy in: ' obj.Params.Eddy.in.fn{ii} ]);
-                        fprintf('\n this will take a couple  of minutes...');
-                        obj.RunBash(exec_cmd{end},44);
-                        fprintf('...done \n');
-                        wasRun=true;
+                    end
+                    fprintf(['\nApplying eddy in: ' obj.Params.Eddy.in.fn{ii} ]);
+                    fprintf('\n this will take a couple  of minutes...');
+                    keyboard
+                    obj.RunBash(exec_cmd{end},44);
+                    fprintf('...done \n');
+                    wasRun=true;
                 else
                     [~, bb, cc] = fileparts(obj.Params.Eddy.out.fn{ii});
                     fprintf(['File ' bb cc ' is now complete \n']) ;
@@ -1401,19 +1417,47 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
             end
             
             %Creating topup_config directory
-            obj.Params.Topup.out.cnf_dir = [outpath 'topup_results' filesep ] ; 
-            if exist(obj.Params.Topup.out.cnf_dir,'dir') == 0 
-                mkdir(obj.Params.Topup.out.cnf_dir);
+            obj.Params.Topup.out.cnf_prefix = [outpath 'topup_results' ] ; 
+            obj.Params.Topup.out.cnf_movpar = [outpath 'topup_results_movpar.txt' ] ;
+            %Creating topup files:
+            if exist(obj.Params.Topup.out.cnf_movpar,'file' ) == 0
+                exec_cmd{:,end+1} = [obj.FSL_dir '/bin/topup --imain=' obj.Params.Topup.out.b0merged ' --datain=' obj.Params.Topup.out.fname_acqp  ' --config=b02b0.cnf  --out=' obj.Params.Topup.out.cnf_prefix  ];
+                fprintf('\n Creating topup files based on b0s....');
+                obj.RunBash(exec_cmd{end},44); %44 allows us to see output in the MATLAB terminal window.
+                fprintf('...done');
+                wasRun =true;
             end
             
-            %Apply topup:
-            exec_cmd{:,end+1} = [obj.FSL_dir '/bin/topup --imain=' obj.Params.Topup.out.b0merged ' --datain=' obj.Params.Topup.out.fname_acqp  ' --config=b02b0.cnf  --out=' obj.Params.Topup.out.cnf_dir  ];
-            fprintf('\nApplying topup....');
-            obj.RunBash(exec_cmd{end},44); %44 allows us to see output in the MATLAB terminal window. 
-            fprintf('...done');
-            wasRun =true;
             
-            fprintf('\n%s\n', 'END OF PROC_MEANB0():');
+            %Applying topup
+            obj.Params.Topup.out.topup_mergedb0s = [outpath 'topup_mergedb0s_dMRI.nii.gz' ] ;
+            if exist(obj.Params.Topup.out.topup_mergedb0s,'file') == 0 
+                fprintf('\nApplying topup....');
+                exec_cmd{:,end+1} = [obj.FSL_dir '/bin/applytopup --imain=' obj.Params.Topup.in.b0_AP{end} ',' obj.Params.Topup.in.b0_PA{end} ' --inindex=1,2  --datain=' obj.Params.Topup.out.fname_acqp  ' --topup=' obj.Params.Topup.out.cnf_prefix ' --out=' obj.Params.Topup.out.topup_mergedb0s  ];
+                obj.RunBash(exec_cmd{end},44); %44 allows us to see output in the MATLAB terminal window.
+                fprintf('...done');
+                wasRun =true;
+            end    
+                
+            %Generating a mask from Eddy:
+            obj.Params.Topup.out.bet = [outpath 'topup_mergedb0s_dMRI_bet' ] ;
+            obj.Params.Topup.out.bet_mask = [outpath 'topup_mergedb0s_dMRI_bet_mask.nii.gz' ] ;
+            if exist(obj.Params.Topup.out.bet_mask,'file') == 0 
+                fprintf('\n Generating mask for eddy....');
+                exec_cmd{:,end+1} = [obj.FSL_dir '/bin/bet2 ' obj.Params.Topup.out.topup_mergedb0s ' ' obj.Params.Topup.out.bet ' -m -f 0.4 ' ];
+                obj.RunBash(exec_cmd{end},44); %44 allows us to see output in the MATLAB terminal window.
+                fprintf('...done');
+                wasRun =true;
+            end    
+                    
+            
+            %Update history if possible
+            if wasRun == true
+                obj.UpdateHist_v2(obj.Params.Topup,'proc_topup()', obj.Params.Topup.out.cnf_movpar,wasRun,exec_cmd');
+                obj.resave();
+            end
+            
+            fprintf('\n%s\n', 'END OF PROC_TOPUP():');
         end
         
         function obj = proc_mask_after_eddy(obj)
