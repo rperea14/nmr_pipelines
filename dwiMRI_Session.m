@@ -3949,8 +3949,8 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                         
                         if str2num(b0_dim3) ~= str2num(merged_dim3)
                             fprintf(['\ndim3 is not equal in: \n  obj.Params.probtrackx.b0  (' b0_dim3 ') and merged_th2samples.nii.gz (' merged_dim3  ')\n']) ;
-                            warningn('This error occurs because TRACULA (or more specific bedpostx did not successfully completed\n');
-                            error('Please considere re-running TRACULA! ');
+                            warning('This error occurs because TRACULA (or more specific bedpostx did not successfully completed\n');
+                            error('Please consider re-running TRACULA! ');
                         end
                         
                         

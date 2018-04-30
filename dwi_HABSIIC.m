@@ -299,7 +299,7 @@ classdef dwi_HABSIIC < dwiMRI_Session
             obj.Params.Eddy.in.bvals{1}=out_eddy.bval;
             obj.Params.Eddy.in.bvecs{1}=out_eddy.bvec;
             obj.Params.Eddy.in.mask{1} =obj.Params.Topup.out.bet_mask;
-            obj.Params.Eddy.in.index= [ ones(1,199) -1*ones(1,199) ]; %for 35 volumes
+            obj.Params.Eddy.in.index= [ ones(1,199) 2*ones(1,199) ]; %for 35 volumes
             obj.Params.Eddy.in.topup = obj.Params.Topup.out.cnf_prefix ; 
             
             %RePLACED
