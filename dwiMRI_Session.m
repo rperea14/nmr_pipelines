@@ -485,8 +485,6 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 else
                     disp([ '==> out_file: ' out_file ' exists. SKIPPING...'])
                 end
-                
-                obj.RunBash
                 %Create out_file directory if doesnt exist:
                 if ~exist(obj.Params.DCM2NII.out(ii).location,'dir')
                     exec_cmd{:,end+1} = ['mkdir -p ' obj.Params.DCM2NII.out(ii).location ];
