@@ -3891,8 +3891,17 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 
                 %INIT VARIABLES
                 obj.Params.probtrackx.root = [obj.root 'post_PROBTRACKX' filesep];
-                obj.Params.probtrackx.b0 = obj.Params.CoRegMultiple.out.combined_b0;
-                obj.Params.probtrackx.b0_mask = obj.Params.CoRegMultiple.out.combined_mask;
+                if strcmp(obj.projectID,'ADRC')
+                 obj.Params.probtrackx.b0 = obj.Params.CoRegMultiple.out.combined_b0;
+                 obj.Params.probtrackx.b0_mask = obj.Params.CoRegMultiple.out.combined_mask;
+                elseif strcmp(obj.projectID,'HAB')
+                 obj.Params.probtrackx.b0 = [ obj.Params.Tracula.out.dir  obj.sessionname ...
+                    filesep 'dmri' filesep 'lowb_brain.nii.gz' ];
+                 obj.Params.probtrackx.b0_mask = [ obj.Params.Tracula.out.dir  obj.sessionname ...
+                    filesep 'dmri' filesep 'nodif_brain_mask.nii.gz' ]            
+                else
+                  warning(['Please implement this for other project: obj.projectID=' obj.projectID  ' not recognized' ]);
+                end
                 obj.Params.probtrackx.probtracx2_args = ...
                 ' -l --onewaycondition -c 0.2 -S 2000 --steplength=0.5 -P 5000 --fibthresh=0.01 --distthresh=0.0 --sampvox=0.0 --forcedir --opd  ' ;
             
