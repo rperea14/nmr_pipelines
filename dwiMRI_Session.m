@@ -3975,8 +3975,14 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
 %                 else
 %                     obj.Params.probtrackx.bedp_dir = obj.Params.tracxBYmask.tracula.bedp_dir;
 %                 end
-                obj.Params.probtrackx.dwi_fn  = obj.Params.CoRegMultiple.out.combined_fn;
-                
+
+                %if strcmp(obj.projectID,'ADRC')
+                % obj.Params.probtrackx.dwi_fn  = obj.Params.CoRegMultiple.out.combined_fn;
+                %elseif strcmp(obj.projectID,'HAB')
+                % obj.Params.probtrackx.dwi_fn  = obj.Params.Tracula.in.fn;       
+                %else
+                %  warning(['Please implement this for other project: obj.projectID=' obj.projectID  ' not recognized' ]);
+                %end
                 %Creating working directory for specific mask:
                 obj.Params.probtrackx.(fname_bname).out.root     = [obj.Params.probtrackx.root fname_bname filesep ];
                 if ~exist(obj.Params.probtrackx.(fname_bname).out.root,'dir')
@@ -3986,15 +3992,15 @@ classdef dwiMRI_Session  < dynamicprops & matlab.mixin.SetGet
                 %%%%%%%%%%%%%% FILE CHECKING: IF EXIST %%%%%%%%%%%%%%%%%%%%%%%%%
                 for tohide=1:1
                     %Check b0 exists:
-                    if ~exist(obj.Params.probtrackx.dwi_fn,'file');
-                        error(['proc_probtrackx: b0 file ' '' obj.Params.probtrackx.dwi_fn '' ' does not exist. Returning...']);
-                        return
-                    end
-                    %Check if mask_fname exists
-                    if ~exist(mask_fname,'file');
-                        error(['proc_probtrackx: filename ' '' mask_fname''  ' does not exist. Returning...']);
-                        return
-                    end
+                   % if ~exist(obj.Params.probtrackx.dwi_fn,'file');
+                   %     error(['proc_probtrackx: b0 file ' '' obj.Params.probtrackx.dwi_fn '' ' does not exist. Returning...']);
+                   %     return
+                   % end
+                   % %Check if mask_fname exists
+                   % if ~exist(mask_fname,'file');
+                   %     error(['proc_probtrackx: filename ' '' mask_fname''  ' does not exist. Returning...']);
+                   %     return
+                   % end
                 end
                 %~~%%%%%%%%%%% END OF FILE CHECKING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
